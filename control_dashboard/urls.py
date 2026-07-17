@@ -135,4 +135,9 @@ urlpatterns = [
     # API - Exceptions
     path('api/exception/<int:exception_id>/', views.api_get_exception_detail, name='api_get_exception_detail'),
     path('api/exception/<int:exception_id>/update/', views.api_update_exception, name='api_update_exception'),
+    # ==================== AUTHENTICATION URLs ====================
+    path('login/', views.login_view, name='login'),
+    path('microsoft-login/', views.microsoft_login, name='microsoft_login'),
+    path('logout/', views.logout_view, name='logout'),
+    path('test-login/<str:role>/', views.test_login, name='test_login'),
 ]

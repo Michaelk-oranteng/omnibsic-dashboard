@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.http import JsonResponse, HttpResponse
 from django.contrib import messages
 from django.db.models import Q, Count  # Add Count here
@@ -3244,3 +3245,133 @@ def supervisor_activity_logs(request):
     
     return render(request, 'control_dashboard/activity-sup.html', context)
 
+# ==================== AUTHENTICATION VIEWS ====================
+# Add these functions after your imports
+
+def login_view(request):
+    """
+    Login page view with Microsoft login option.
+    """
+    if request.user.is_authenticated:
+        try:
+            user_profile = UserProfile.objects.get(email=request.user.email)
+            if user_profile.role == 'admin':
+                return redirect('admin_page')
+            elif user_profile.role == 'supervisor':
+                return redirect('supervisor_dashboard')
+            else:
+                return redirect('member_dashboard')
+        except UserProfile.DoesNotExist:
+            pass
+    
+    return render(request, 'control_dashboard/login.html')
+
+def microsoft_login(request):
+    """
+    Redirect to Microsoft login.
+    """
+    return redirect(reverse('social:begin', args=['azuread-oauth2']))
+
+def logout_view(request):
+    """
+    Logout view.
+    """
+    if request.user.is_authenticated:
+        try:
+            user_profile = UserProfile.objects.get(email=request.user.email)
+            log_activity(
+                user=user_profile,
+                activity_type='logout',
+                details=f'User logged out',
+                request=request
+            )
+        except:
+            pass
+    
+    auth_logout(request)
+    messages.info(request, 'You have been logged out successfully.')
+    return redirect('login')
+
+def test_login(request, role):
+    """
+    Development-only test login.
+    """
+    if not settings.DEBUG:
+        return redirect('login')
+    
+    # Map role to email
+    role_emails = {
+        'admin': 'admin@test.com',
+        'member': 'member@test.com',
+        'supervisor': 'supervisor@test.com'
+    }
+    
+    email = role_emails.get(role)
+    if not email:
+        messages.error(request, 'Invalid test role')
+        return redirect('login')
+    
+    # Get or create Django user
+    django_user, created = DjangoUser.objects.get_or_create(
+        username=email,
+        defaults={'email': email}
+    )
+    
+    if created:
+        django_user.set_password('Test@123')
+        django_user.save()
+    
+    # Get or create UserProfile
+    try:
+        user_profile = UserProfile.objects.get(email=email)
+    except UserProfile.DoesNotExist:
+        # Map role to position and role
+        role_map = {
+            'admin': {'position': 'hoc', 'role': 'admin'},
+            'member': {'position': 'hoc', 'role': 'member'},
+            'supervisor': {'position': 'cc', 'role': 'supervisor'}
+        }
+        role_data = role_map.get(role, {'position': 'hoc', 'role': 'member'})
+        
+        user_profile = UserProfile.objects.create(
+            email=email,
+            full_name=f'{role.capitalize()} User',
+            position=role_data['position'],
+            role=role_data['role'],
+            status='active'
+        )
+    
+    # Login the user
+    auth_login(request, django_user)
+    
+    # Log the activity
+    log_activity(
+        user=user_profile,
+        activity_type='login',
+        details=f'Test login as {role}',
+        request=request
+    )
+    
+    # Redirect based on role
+    if role == 'admin':
+        return redirect('admin_page')
+    elif role == 'supervisor':
+        return redirect('supervisor_dashboard')
+    else:
+        return redirect('member_dashboard')
+
+def get_or_create_user_profile(django_user):
+    """
+    Helper function to get or create UserProfile from Django user.
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=django_user.email)
+    except UserProfile.DoesNotExist:
+        user_profile = UserProfile.objects.create(
+            email=django_user.email,
+            full_name=django_user.get_full_name() or django_user.username,
+            position='hoc',
+            role='member',
+            status='active'
+        )
+    return user_profile
