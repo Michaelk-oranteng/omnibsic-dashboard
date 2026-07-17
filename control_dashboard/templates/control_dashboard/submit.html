@@ -1,0 +1,444 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Member Dashboard - Submit Exception Report</title>
+    <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
+    <link rel="stylesheet" href="{% static 'stylesheets/member.css' %}" type="text/css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <meta name="csrf-token" content="{{ csrf_token }}">
+    </head>
+
+    <body>
+        <div class="page-wrapper">
+            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
+            <div class="nav-bar">
+                <div class="logo">
+                    <a href="{% url 'control_dashboard:member_dashboard' %}">
+                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
+                    </a>
+                </div>
+
+                <ul class="nav-links">
+                    <li><a href="{% url 'control_dashboard:member_dashboard' %}">
+                        <span class="nav-icon"><i class="fas fa-chart-pie"></i></span>
+                        <span class="nav-text">Dashboard</span>
+                    </a></li>
+                    <li><a href="{% url 'control_dashboard:drafts_page' %}">
+                        <span class="nav-icon"><i class="fas fa-file-alt"></i></span>
+                        <span class="nav-text">Drafts</span>
+                    </a></li>     
+                    <li><a href="{% url 'control_dashboard:reports_page' %}">
+                        <span class="nav-icon"><i class="fas fa-file-pdf"></i></span>
+                        <span class="nav-text">Reports</span>
+                    </a></li>       
+                    <li class="active"><a href="{% url 'control_dashboard:submit_page' %}">
+                        <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
+                        <span class="nav-text">Submit</span>
+                    </a></li>  
+                    <li><a href="{% url 'control_dashboard:member_checklist' %}">
+                        <span class="nav-icon"><i class="fas fa-check-double"></i></span>
+                        <span class="nav-text">Checklist</span>
+                    </a></li> 
+                    <li><a href="{% url 'control_dashboard:member_activity_logs' %}">
+                        <span class="nav-icon"><i class="fas fa-clipboard-list"></i></span>
+                        <span class="nav-text">Activity logs</span>
+                    </a></li> 
+                </ul>
+
+                <div class="nav-footer">
+                    <div class="nav-profile-card">
+                        <div class="nav-profile-img-wrapper">
+                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
+                        </div>
+                        <div class="nav-profile-info">
+                            <h4 class="nav-user-name">{{ user_data.name }}</h4>
+                            <p class="nav-user-role">{{ user_data.department }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== TOP HEADER ==================== -->
+            <div class="top-header">
+                <div class="top-header-left">
+                    <span class="page-title">Submit Exception Report</span>
+                </div>
+
+                <div class="top-header-center">
+                    <div class="header-filter-group">
+                        <label for="report-type-filter">Report Type</label>
+                        <select id="report-type-filter" class="header-select" onchange="filterExceptions()">
+                            <option value="all">All Categories</option>
+                            {% for report_type in report_types %}
+                            <option value="{{ report_type }}">{{ report_type }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="top-header-right">
+                    <button class="btn-send-header" onclick="sendEmail()">
+                        <i class="fas fa-paper-plane"></i> Send Mail
+                    </button>
+                </div>
+            </div>
+
+            <!-- ==================== MESSAGES ==================== -->
+            {% if messages %}
+            <div class="messages-container">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                    <button class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- ==================== MAIN CONTENT ==================== -->
+            <div class="main-content">
+                <div class="email-builder-grid">
+                    <div class="builder-card email-form-box">
+                        <div class="form-row">
+                            <label for="email-to">To</label>
+                            <select id="email-to" class="table-select">
+                                <option value="">Select Recipient...</option>
+                                {% for recipient in email_recipients %}
+                                <option value="{{ recipient.email }}">{{ recipient.name }} ({{ recipient.department }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-row">
+                            <label for="email-cc">CC</label>
+                            <select id="email-cc" class="table-select">
+                                <option value="">Select CC Recipient...</option>
+                                {% for recipient in email_recipients %}
+                                <option value="{{ recipient.email }}">{{ recipient.name }} ({{ recipient.department }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-row">
+                            <label for="email-subject">Email Subject Line</label>
+                            <input type="text" id="email-subject" class="table-input" placeholder="Enter email subject...">
+                        </div>
+
+                        <div class="form-row">
+                            <label for="email-body">Email Body Template</label>
+                            <textarea id="email-body" class="template-textarea" placeholder="Dear Sir,&#10;&#10;Kindly find attached exceptions for the week ending...&#10;&#10;Best regards,"></textarea>
+                        </div>
+
+                        <div class="selected-summary" id="selectedSummary">
+                            <div class="selected-header">
+                                <span class="selected-count" id="selectedCount">0</span>
+                                <span class="selected-label">Exceptions Selected</span>
+                            </div>
+                            <div class="selected-tags" id="selectedTags">
+                                <span style="color: rgba(26,35,50,0.3);">No exceptions selected</span>
+                            </div>
+                        </div>
+
+                        <button class="btn-send-mail" id="sendMailBtn" onclick="sendEmail()">
+                            <i class="fas fa-paper-plane"></i> Send Email
+                        </button>
+                    </div>
+
+                    <div class="builder-card exception-selector-box">
+                        <div class="selector-header">
+                            <div class="selector-header-left">
+                                <h4>Available Exceptions</h4>
+                                <span class="exception-count" id="exceptionCount">0 exceptions</span>
+                            </div>
+                            <div class="selector-header-right">
+                                <button class="btn-select-all" onclick="toggleSelectAll()">
+                                    <i class="fas fa-check-double"></i> <span id="selectAllText">Select All</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="category-filter" id="categoryFilter">
+                            <button class="category-btn active" data-category="all" onclick="filterByCategory('all')">All</button>
+                            {% for category in categories %}
+                            <button class="category-btn" data-category="{{ category.id }}" onclick="filterByCategory('{{ category.id }}')">
+                                {{ category.name }}
+                            </button>
+                            {% endfor %}
+                        </div>
+
+                        <div class="exception-checklist-stack" id="exceptionStack">
+                            <!-- Rendered by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <p>Sending email...</p>
+            </div>
+        </div>
+
+        <div id="toastNotification" class="toast-notification">
+            <div class="toast-icon"><i class="fas fa-check"></i></div>
+            <div class="toast-content">
+                <p class="toast-title">Success!</p>
+                <p class="toast-message" id="toastMessage">Action completed successfully.</p>
+            </div>
+            <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
+        </div>
+
+        <script>
+            // Safe data fallback parse
+let exceptionsData = [];
+try {
+    exceptionsData = JSON.parse('{{ exceptions_json|safe }}');
+} catch (e) {
+    console.error("Exception payload error: ", e);
+}
+
+const userData = {
+    name: '{{ user_data.name|escapejs }}',
+    email: '{{ user_data.email|escapejs }}',
+    department: '{{ user_data.department|escapejs }}'
+};
+
+let selectedExceptions = new Set();
+let currentCategory = 'all';
+let currentReportType = 'all';
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadDraft(); // Load saved fields before rendering
+    renderExceptions();
+    updateSelectedSummary();
+    updateSubjectLine();
+});
+
+function renderExceptions() {
+    const stack = document.getElementById('exceptionStack');
+    if (!stack) return;
+    
+    stack.innerHTML = '';
+
+    let filtered = exceptionsData;
+
+    if (currentCategory !== 'all') {
+        filtered = filtered.filter(ex => ex.category === currentCategory);
+    }
+
+    if (currentReportType !== 'all') {
+        filtered = filtered.filter(ex => ex.report_type === currentReportType);
+    }
+
+    // Only allow draft and rejected exceptions to be packaged and submitted
+    filtered = filtered.filter(ex => ex.status === 'draft' || ex.status === 'rejected');
+
+    if (filtered.length === 0) {
+        stack.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>No exceptions available for selection</p>
+                <p class="sub-text">Only draft and rejected exceptions can be submitted</p>
+            </div>
+        `;
+        return;
+    }
+
+    filtered.forEach(exception => {
+        const isChecked = selectedExceptions.has(exception.id);
+        const card = document.createElement('label');
+        card.className = `exception-select-card ${isChecked ? 'active' : ''}`;
+        card.dataset.id = exception.id;
+
+        const header = exception.data.header || exception.report_type || 'Untitled';
+        const unit = exception.unit || 'N/A';
+        const statusClass = exception.status || 'draft';
+        const statusDisplay = exception.status_display || exception.status.charAt(0).toUpperCase() + exception.status.slice(1);
+
+        card.innerHTML = `
+            <input type="checkbox" class="exception-checkbox" ${isChecked ? 'checked' : ''} 
+                   onchange="toggleException(${exception.id})">
+            <div class="exception-card-info">
+                <span class="ex-unit">${unit}</span>
+                <h5 class="ex-title">${header}</h5>
+                <div class="ex-meta">
+                    <span class="ex-date"><i class="far fa-calendar-alt"></i> ${exception.created_at || new Date().toLocaleDateString()}</span>
+                    <span class="ex-status ${statusClass}">${statusDisplay}</span>
+                </div>
+            </div>
+        `;
+
+        stack.appendChild(card);
+    });
+
+    updateSelectAllButton();
+    updateExceptionCount();
+}
+
+function filterByCategory(category) {
+    currentCategory = category;
+    
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.category === category);
+    });
+    
+    renderExceptions();
+}
+
+function filterExceptions() {
+    const select = document.getElementById('report-type-filter');
+    currentReportType = select ? select.value : 'all';
+    renderExceptions();
+}
+
+function toggleException(id) {
+    if (selectedExceptions.has(id)) {
+        selectedExceptions.delete(id);
+    } else {
+        selectedExceptions.add(id);
+    }
+    
+    renderExceptions();
+    updateSelectedSummary();
+    updateSubjectLine();
+    autoSaveDraft();
+}
+
+function toggleSelectAll() {
+    const visibleCards = document.querySelectorAll('.exception-select-card');
+    const visibleIds = Array.from(visibleCards).map(card => parseInt(card.dataset.id));
+    
+    if (visibleIds.length === 0) return;
+    
+    const allSelected = visibleIds.every(id => selectedExceptions.has(id));
+    
+    if (allSelected) {
+        visibleIds.forEach(id => selectedExceptions.delete(id));
+    } else {
+        visibleIds.forEach(id => selectedExceptions.add(id));
+    }
+    
+    renderExceptions();
+    updateSelectedSummary();
+    updateSubjectLine();
+    updateSelectAllButton();
+    autoSaveDraft();
+}
+
+function updateSelectAllButton() {
+    const textSpan = document.getElementById('selectAllText');
+    if (!textSpan) return;
+
+    const visibleCards = document.querySelectorAll('.exception-select-card');
+    const visibleIds = Array.from(visibleCards).map(card => parseInt(card.dataset.id));
+    
+    if (visibleIds.length === 0) {
+        textSpan.textContent = 'Select All';
+        return;
+    }
+    
+    const allSelected = visibleIds.every(id => selectedExceptions.has(id));
+    textSpan.textContent = allSelected ? 'Deselect All' : 'Select All';
+}
+
+function updateSelectedSummary() {
+    const count = selectedExceptions.size;
+    const countEl = document.getElementById('selectedCount');
+    const tagsContainer = document.getElementById('selectedTags');
+    
+    if (countEl) countEl.textContent = count;
+    if (!tagsContainer) return;
+    
+    if (count === 0) {
+        tagsContainer.innerHTML = '<span style="color: rgba(26,35,50,0.3);">No exceptions selected</span>';
+        return;
+    }
+    
+    const selectedTitles = exceptionsData
+        .filter(ex => selectedExceptions.has(ex.id))
+        .map(ex => ex.data.header || ex.report_type || 'Untitled');
+    
+    tagsContainer.innerHTML = selectedTitles.map(title => 
+        `<span class="selected-tag">${title}</span>`
+    ).join('');
+}
+
+function updateSubjectLine() {
+    const count = selectedExceptions.size;
+    const subjectInput = document.getElementById('email-subject');
+    if (!subjectInput) return;
+    
+    if (count === 0) {
+        if (!subjectInput.value) {
+            subjectInput.placeholder = 'Select exceptions to auto-generate subject...';
+        }
+        return;
+    }
+    
+    const selectedItems = exceptionsData.filter(ex => selectedExceptions.has(ex.id));
+    const units = [...new Set(selectedItems.map(ex => ex.unit || 'Various'))];
+    const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    
+    let subject = 'EXCEPTION REPORT';
+    if (units.length > 0 && units.length <= 3) {
+        subject += ` - ${units.join(' & ')}`;
+    }
+    subject += ` (${selectedItems.length} exceptions) for ${date}`;
+    
+    subjectInput.value = subject;
+}
+
+function updateExceptionCount() {
+    const countEl = document.getElementById('exceptionCount');
+    if (!countEl) return;
+    const visible = document.querySelectorAll('.exception-select-card').length;
+    countEl.textContent = `${visible} exceptions`;
+}
+
+function autoSaveDraft() {
+    const emailData = {
+        to: document.getElementById('email-to').value,
+        cc: document.getElementById('email-cc').value,
+        subject: document.getElementById('email-subject').value,
+        body: document.getElementById('email-body').value,
+        selected: Array.from(selectedExceptions)
+    };
+    
+    try {
+        localStorage.setItem('emailDraft_' + userData.email, JSON.stringify(emailData));
+    } catch (e) {
+        console.warn("Storage limits exceeded: ", e);
+    }
+}
+
+function loadDraft() {
+    try {
+        const draft = localStorage.getItem('emailDraft_' + userData.email);
+        if (draft) {
+            const data = JSON.parse(draft);
+            if (data.to) document.getElementById('email-to').value = data.to;
+            if (data.cc) document.getElementById('email-cc').value = data.cc;
+            if (data.subject) document.getElementById('email-subject').value = data.subject;
+            if (data.body) document.getElementById('email-body').value = data.body;
+            if (data.selected && data.selected.length > 0) {
+                data.selected.forEach(id => selectedExceptions.add(id));
+            }
+        }
+    } catch (e) {
+        console.warn("Draft loading failed: ", e);
+    }
+}
+
+// Track input changes in form area to trigger drafts storage saving
+document.addEventListener('input', function(e) {
+    if (e.target.closest('.email-form-box')) {
+        autoSaveDraft();
+    }
+});
+        </script>
+    </body>
+</html>

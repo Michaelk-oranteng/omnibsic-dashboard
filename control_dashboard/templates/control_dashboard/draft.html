@@ -1,0 +1,307 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Member Dashboard - Submit Report</title>
+        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
+        <link rel="stylesheet" href="{% static 'stylesheets/member.css' %}" type="text/css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <meta name="csrf-token" content="{{ csrf_token }}">
+    </head>
+
+    <body>
+        <div class="page-wrapper">
+            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
+            <div class="nav-bar">
+                <div class="logo">
+                    <a href="{% url 'control_dashboard:member_dashboard' %}">
+                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
+                    </a>
+                </div>
+
+                <ul class="nav-links">
+                    <li><a href="{% url 'control_dashboard:member_dashboard' %}">
+                        <span class="nav-icon"><i class="fas fa-chart-pie"></i></span>
+                        <span class="nav-text">Dashboard</span>
+                    </a></li>
+                    <li class="active"><a href="{% url 'control_dashboard:drafts_page' %}">
+                        <span class="nav-icon"><i class="fas fa-file-alt"></i></span>
+                        <span class="nav-text">Submit Report</span>
+                    </a></li>     
+                    <li><a href="{% url 'control_dashboard:reports_page' %}">
+                        <span class="nav-icon"><i class="fas fa-file-pdf"></i></span>
+                        <span class="nav-text">Reports</span>
+                    </a></li>       
+                    <li><a href="{% url 'control_dashboard:submit_page' %}">
+                        <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
+                        <span class="nav-text">Submit</span>
+                    </a></li>  
+                    <li><a href="{% url 'control_dashboard:member_checklist' %}">
+                        <span class="nav-icon"><i class="fas fa-check-double"></i></span>
+                        <span class="nav-text">Checklist</span>
+                    </a></li> 
+                    <li><a href="{% url 'control_dashboard:member_activity_logs' %}">
+                        <span class="nav-icon"><i class="fas fa-clipboard-list"></i></span>
+                        <span class="nav-text">Activity logs</span>
+                    </a></li> 
+                </ul>
+
+                <div class="nav-footer">
+                    <div class="nav-profile-card">
+                        <div class="nav-profile-img-wrapper">
+                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
+                        </div>
+                        <div class="nav-profile-info">
+                            <h4 class="nav-user-name">{{ request.user.get_full_name|default:user_profile.full_name|default:"Member User" }}</h4>
+                            <p class="nav-user-role">{{ user_profile.get_position_display|default:"Member" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== TOP HEADER ==================== -->
+            <div class="top-header">
+                <div class="top-header-left">
+                    <span class="page-title">Submit Control Report</span>
+                </div>
+
+                <div class="top-header-center">
+                    <div class="header-filter-group">
+                        <label for="report-type-filter">Report Type</label>
+                        <select id="report-type-filter" class="header-select" onchange="loadTemplate()">
+                            <option value="">Select Report Type...</option>
+                            {% for report_type in report_types %}
+                            <option value="{{ report_type }}">{{ report_type }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="top-header-right">
+                    <button class="btn-submit-draft-header" onclick="submitReport()">
+                        <i class="fas fa-paper-plane"></i> Submit for Review
+                    </button>
+                </div>
+            </div>
+
+            <!-- ==================== MESSAGES ==================== -->
+            {% if messages %}
+            <div class="messages-container">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                    <button class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- ==================== MAIN CONTENT ==================== -->
+            <div class="main-content">
+                <div class="checklist-container">
+                    <div class="glass-card">
+                        <h2>New Submission</h2>
+                        <p>Select a report type from the dropdown to load its template, fill in the details, and submit directly to the reports section for review.</p>
+
+                        <div id="template-container" style="margin-top: 20px; display: none;">
+                            <div class="template-header">
+                                <h4><span id="template-name-display">Template</span></h4>
+                            </div>
+                            <div class="table-container">
+                                <form id="reportForm" onsubmit="event.preventDefault();">
+                                    <div id="template-fields">
+                                        <!-- Fields will be dynamically rendered here -->
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div id="no-template-message" class="empty-state">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Select a report type from the dropdown above to load its template form.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="toastNotification" class="toast-notification">
+            <div class="toast-icon"><i class="fas fa-check"></i></div>
+            <div class="toast-content">
+                <p class="toast-title">Success!</p>
+                <p class="toast-message" id="toastMessage">Action completed successfully.</p>
+            </div>
+            <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
+        </div>
+
+        <script>
+            function getCsrfToken() {
+                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            }
+
+            function showToast(message, title = 'Success!') {
+                const toast = document.getElementById('toastNotification');
+                const msgEl = document.getElementById('toastMessage');
+                const titleEl = toast.querySelector('.toast-title');
+                msgEl.textContent = message || 'Action completed successfully.';
+                titleEl.textContent = title;
+                toast.classList.add('show');
+                
+                if (window.toastTimeout) {
+                    clearTimeout(window.toastTimeout);
+                }
+                
+                window.toastTimeout = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+
+            window.closeToast = function() {
+                const toast = document.getElementById('toastNotification');
+                toast.classList.remove('show');
+                if (window.toastTimeout) {
+                    clearTimeout(window.toastTimeout);
+                    window.toastTimeout = null;
+                }
+            };
+
+            function loadTemplate() {
+                const reportType = document.getElementById('report-type-filter').value;
+                const container = document.getElementById('template-container');
+                const noTemplateMsg = document.getElementById('no-template-message');
+                const fieldsContainer = document.getElementById('template-fields');
+                const nameDisplay = document.getElementById('template-name-display');
+
+                if (!reportType) {
+                    container.style.display = 'none';
+                    noTemplateMsg.style.display = 'block';
+                    return;
+                }
+
+                fetch("{% url 'control_dashboard:api_get_template_fields' %}?report_type=" + encodeURIComponent(reportType), {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const template = data.template;
+                        nameDisplay.textContent = template.name + (template.description ? ' - ' + template.description : '');
+                        
+                        let fieldsHTML = '';
+                        template.fields.forEach(field => {
+                            fieldsHTML += buildField(field);
+                        });
+                        fieldsContainer.innerHTML = fieldsHTML;
+                        
+                        container.style.display = 'block';
+                        noTemplateMsg.style.display = 'none';
+                    } else {
+                        showToast('Error: ' + data.error, 'Error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('An error occurred while loading the template.', 'Error');
+                });
+            }
+
+            function buildField(field) {
+                const required = field.is_required ? '<span class="required">*</span>' : '';
+                let inputHTML = '';
+
+                switch (field.field_type) {
+                    case 'textarea':
+                        inputHTML = `<textarea id="field_${field.id}" ${field.is_required ? 'required' : ''} placeholder="Enter ${field.label.toLowerCase()}..."></textarea>`;
+                        break;
+                    case 'dropdown':
+                        inputHTML = `<select id="field_${field.id}" ${field.is_required ? 'required' : ''}>`;
+                        inputHTML += `<option value="">Select ${field.label}...</option>`;
+                        if (field.options && field.options.length > 0) {
+                            field.options.forEach(opt => {
+                                inputHTML += `<option value="${opt}">${opt}</option>`;
+                            });
+                        }
+                        inputHTML += `</select>`;
+                        break;
+                    case 'date':
+                        inputHTML = `<input type="date" id="field_${field.id}" ${field.is_required ? 'required' : ''}>`;
+                        break;
+                    case 'number':
+                        inputHTML = `<input type="number" id="field_${field.id}" ${field.is_required ? 'required' : ''} placeholder="Enter ${field.label.toLowerCase()}...">`;
+                        break;
+                    case 'checkbox':
+                        inputHTML = `<input type="checkbox" id="field_${field.id}" ${field.is_required ? 'required' : ''}>`;
+                        break;
+                    default:
+                        inputHTML = `<input type="text" id="field_${field.id}" ${field.is_required ? 'required' : ''} placeholder="Enter ${field.label.toLowerCase()}...">`;
+                }
+
+                return `
+                    <div class="form-field-group">
+                        <label for="field_${field.id}">${field.label} ${required}</label>
+                        ${inputHTML}
+                        ${field.data_source !== 'manual' ? `<small style="color: rgba(26,35,50,0.3); font-size: 11px;">Data source: ${field.data_source}</small>` : ''}
+                    </div>
+                `;
+            }
+
+            function submitReport() {
+                const reportType = document.getElementById('report-type-filter').value;
+                if (!reportType) {
+                    showToast('Please select a report type first.', 'Info');
+                    return;
+                }
+
+                const form = document.getElementById('reportForm');
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+
+                const fields = document.querySelectorAll('#template-fields .form-field-group');
+                const formData = {};
+
+                fields.forEach(group => {
+                    const input = group.querySelector('input, select, textarea');
+                    if (input) {
+                        const fieldId = input.id;
+                        const value = input.type === 'checkbox' ? input.checked : input.value;
+                        formData[fieldId] = value;
+                    }
+                });
+
+                fetch("{% url 'control_dashboard:api_save_draft' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        report_type: reportType,
+                        form_data: formData,
+                        submit: true // Forces the backend to process it directly as a submission
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('Report submitted for review successfully!', 'Submitted');
+                        setTimeout(() => {
+                            window.location.href = "{% url 'control_dashboard:reports_page' %}";
+                        }, 1500);
+                    } else {
+                        showToast('Error: ' + data.error, 'Error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('An error occurred while submitting the report.', 'Error');
+                });
+            }
+        </script>
+    </body>
+</html>

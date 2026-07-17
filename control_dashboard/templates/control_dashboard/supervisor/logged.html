@@ -1,0 +1,584 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Logged Exceptions</title>
+        <link rel="stylesheet" href="{% static 'stylesheets/profile.css' %}" type="text/css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <meta name="csrf-token" content="{{ csrf_token }}">
+    </head>
+    <body>
+        <div class="page-wrapper">
+            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
+            <div class="nav-bar">
+                <div class="logo">
+                    <a href="{% url 'control_dashboard:supervisor_dashboard' %}">
+                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
+                    </a>
+                </div>
+
+                <ul class="nav-links">
+                    <li><a href="{% url 'control_dashboard:supervisor_dashboard' %}">
+                        <span class="nav-icon"><i class="fas fa-chart-line"></i></span>
+                        <span class="nav-text">Dashboard</span>
+                    </a></li>  
+                    <li><a href="{% url 'control_dashboard:team_performance' %}">
+                        <span class="nav-icon"><i class="fas fa-users"></i></span>
+                        <span class="nav-text">Team Performance</span>
+                    </a></li>
+                    <li><a href="{% url 'control_dashboard:submitted_reports' %}">
+                        <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
+                        <span class="nav-text">Submitted Reports</span>
+                    </a></li>
+                    <li><a href="{% url 'control_dashboard:ad_hoc_scorecard' %}">
+                        <span class="nav-icon"><i class="fas fa-star"></i></span>
+                        <span class="nav-text">Ad-Hoc Scorecard</span>
+                    </a></li> 
+                    <li class="active"><a href="{% url 'control_dashboard:logged_exceptions' %}">
+                        <span class="nav-icon"><i class="fas fa-exclamation-triangle"></i></span>
+                        <span class="nav-text">Logged Exceptions</span>
+                    </a></li>       
+                    <li><a href="{% url 'control_dashboard:supervisor_checklist' %}">
+                        <span class="nav-icon"><i class="fas fa-tasks"></i></span>
+                        <span class="nav-text">Activity Checklist</span>
+                    </a></li>
+                    <li><a href="{% url 'control_dashboard:supervisor_activity_logs' %}">
+                        <span class="nav-icon"><i class="fas fa-search"></i></span>
+                        <span class="nav-text">Activity Logs</span>
+                    </a></li> 
+                </ul>
+
+                <div class="nav-footer">
+                    <div class="nav-profile-card">
+                        <div class="nav-profile-img-wrapper">
+                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
+                        </div>
+                        <div class="nav-profile-info">
+                            <h4 class="nav-user-name">{{ user_profile.full_name|default:"Supervisor" }}</h4>
+                            <p class="nav-user-role">{{ user_profile.get_position_display|default:"Supervisor" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== TOP HEADER ==================== -->
+            <div class="top-header">
+                <div class="top-header-left">
+                    <span class="page-title">Exception Logs</span>
+                </div>
+
+                <div class="top-header-center">
+                    <div class="header-filter-group">
+                        <label for="branch-filter">Branch / Unit</label>
+                        <select id="branch-filter" class="header-select" onchange="applyFilters()">
+                            <option value="all">All Branches</option>
+                            {% for branch in branches %}
+                            <option value="{{ branch }}" {% if branch_filter == branch %}selected{% endif %}>
+                                {{ branch }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="header-divider"></div>
+
+                    <div class="header-filter-group">
+                        <label for="category-filter">Category</label>
+                        <select id="category-filter" class="header-select" onchange="applyFilters()">
+                            <option value="all">All Categories</option>
+                            {% for category in categories %}
+                            <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>
+                                {{ category }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="header-divider"></div>
+
+                    <div class="header-filter-group">
+                        <label for="status-filter">Status</label>
+                        <select id="status-filter" class="header-select" onchange="applyFilters()">
+                            <option value="all">All Status</option>
+                            <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
+                            <option value="submitted" {% if status_filter == 'submitted' %}selected{% endif %}>Submitted</option>
+                            <option value="in_review" {% if status_filter == 'in_review' %}selected{% endif %}>In Review</option>
+                            <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                            <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                            <option value="revision_requested" {% if status_filter == 'revision_requested' %}selected{% endif %}>Revision Requested</option>
+                        </select>
+                    </div>
+
+                    <div class="header-divider"></div>
+
+                    <div class="header-date-group">
+                        <label for="start-date">Date Range</label>
+                        <div class="header-date-wrapper">
+                            <input type="date" id="start-date" class="header-date-input" value="{{ start_date }}" onchange="applyFilters()">
+                            <span>to</span>
+                            <input type="date" id="end-date" class="header-date-input" value="{{ end_date }}" onchange="applyFilters()">
+                        </div>
+                    </div>
+
+                    <div class="header-divider"></div>
+
+                    <div class="search-box">
+                        <input type="text" id="search-input" placeholder="Search exceptions..." value="{{ search_query }}" onkeypress="if(event.key==='Enter') applyFilters()">
+                        <button onclick="applyFilters()"><i class="fas fa-search"></i></button>
+                    </div>
+                </div>
+
+                <div class="top-header-right">
+                    <button class="btn-reset-header" onclick="resetFilters()">
+                        <i class="fas fa-undo"></i> Reset Filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- ==================== MAIN CONTENT ==================== -->
+            <div class="main-content">
+                <div class="stat-summary">
+                    <div class="stat-card">
+                        <div class="stat-value text-primary">{{ total_exceptions }}</div>
+                        <div class="stat-label">Total Exceptions</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value text-danger">{{ status_counts.draft|default:0 }}</div>
+                        <div class="stat-label">Draft</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value text-warning">{{ status_counts.submitted|default:0 }}</div>
+                        <div class="stat-label">Submitted</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value text-purple">{{ status_counts.in_review|default:0 }}</div>
+                        <div class="stat-label">In Review</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value text-success">{{ status_counts.approved|default:0 }}</div>
+                        <div class="stat-label">Approved</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value text-danger">{{ status_counts.rejected|default:0 }}</div>
+                        <div class="stat-label">Rejected</div>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th>Branch/Unit</th>
+                                <th>Exception Header</th>
+                                <th>Exception Details</th>
+                                <th>Date Noted</th>
+                                <th>Status</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for exception in exceptions %}
+                            <tr>
+                                <td class="font-bold">
+                                    {{ exception.data.branch|default:exception.data.unit|default:"N/A" }}
+                                </td>
+                                <td class="exception-header-text">
+                                    {{ exception.data.header|default:exception.report_type }}
+                                </td>
+                                <td>
+                                    <div class="exception-details-cell">
+                                        {% if exception.data.details %}
+                                            <p>{{ exception.data.details|truncatechars:150 }}</p>
+                                        {% else %}
+                                            <p>No details provided</p>
+                                        {% endif %}
+                                        
+                                        {% if exception.review_comments %}
+                                        <div class="recommendation-block">
+                                            <h5>Review Comments:</h5>
+                                            <ul>
+                                                <li>{{ exception.review_comments|truncatechars:80 }}</li>
+                                            </ul>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td><span class="time-stamp">{{ exception.created_at|date:"M d, Y" }}</span></td>
+                                <td>
+                                    <span class="status-badge {{ exception.status }}">
+                                        {{ exception.get_status_display }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="table-actions-cluster">
+                                        <button class="btn-view" onclick="viewException({{ exception.id }})" title="View Full Exception">
+                                            <i class="fas fa-eye"></i> View
+                                        </button>
+                                        <button class="btn-edit-row" onclick="editException({{ exception.id }})" title="Edit Exception">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center">
+                                    <i class="fas fa-check-circle"></i>
+                                    No exceptions found. Everything looks good!
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- View Exception Modal -->
+        <div id="viewModal" class="modal">
+            <div class="modal-content">
+                <span class="modal-close" onclick="closeViewModal()">&times;</span>
+                <h2 id="viewModalTitle">Exception Details</h2>
+                <div id="viewModalBody">
+                    <!-- Filled by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Exception Modal -->
+        <div id="editModal" class="modal">
+            <div class="modal-content">
+                <span class="modal-close" onclick="closeEditModal()">&times;</span>
+                <h2>Edit Exception</h2>
+                <form id="editExceptionForm" onsubmit="saveException(event)">
+                    <input type="hidden" id="edit-exception-id">
+                    
+                    <div class="modal-section">
+                        <label class="field-label">Branch / Unit</label>
+                        <input type="text" id="edit-branch" placeholder="Enter branch or unit">
+                    </div>
+                    
+                    <div class="modal-section">
+                        <label class="field-label">Exception Header</label>
+                        <input type="text" id="edit-header" placeholder="Enter exception header">
+                    </div>
+                    
+                    <div class="modal-section">
+                        <label class="field-label">Exception Details</label>
+                        <textarea id="edit-details" rows="6" placeholder="Enter exception details..."></textarea>
+                    </div>
+                    
+                    <div class="modal-section">
+                        <label class="field-label">Status</label>
+                        <select id="edit-status">
+                            <option value="draft">Draft</option>
+                            <option value="submitted">Submitted</option>
+                            <option value="in_review">In Review</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="revision_requested">Revision Requested</option>
+                        </select>
+                    </div>
+                    
+                    <div class="modal-section">
+                        <label class="field-label">Review Comments</label>
+                        <textarea id="edit-comments" rows="3" placeholder="Add review comments..."></textarea>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button type="button" class="btn-cancel-modal" onclick="closeEditModal()">Cancel</button>
+                        <button type="submit" class="btn-save-modal" id="editSubmitBtn">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="toastNotification" class="toast-notification">
+            <div class="toast-icon"><i class="fas fa-check"></i></div>
+            <div class="toast-content">
+                <p class="toast-title">Success!</p>
+                <p class="toast-message" id="toastMessage">Action completed successfully.</p>
+            </div>
+            <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
+        </div>
+
+        <script>
+            function getCsrfToken() {
+                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            }
+
+            function showToast(message, title = 'Success!') {
+                const toast = document.getElementById('toastNotification');
+                const msgEl = document.getElementById('toastMessage');
+                const titleEl = toast.querySelector('.toast-title');
+                
+                msgEl.textContent = message || 'Action completed successfully.';
+                titleEl.textContent = title;
+                
+                const icon = toast.querySelector('.toast-icon i');
+                if (title.toLowerCase().includes('error') || title.toLowerCase().includes('warning')) {
+                    icon.className = 'fas fa-exclamation-circle';
+                    toast.style.borderLeftColor = '#ef4444';
+                    toast.querySelector('.toast-icon').style.color = '#ef4444';
+                    toast.querySelector('.toast-icon').style.background = 'rgba(239, 68, 68, 0.1)';
+                } else {
+                    icon.className = 'fas fa-check';
+                    toast.style.borderLeftColor = '#10b981';
+                    toast.querySelector('.toast-icon').style.color = '#10b981';
+                    toast.querySelector('.toast-icon').style.background = 'rgba(16, 185, 129, 0.1)';
+                }
+                
+                toast.classList.add('show');
+                
+                if (window.toastTimeout) {
+                    clearTimeout(window.toastTimeout);
+                }
+                
+                window.toastTimeout = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+
+            window.closeToast = function() {
+                const toast = document.getElementById('toastNotification');
+                toast.classList.remove('show');
+                if (window.toastTimeout) {
+                    clearTimeout(window.toastTimeout);
+                    window.toastTimeout = null;
+                }
+            };
+
+            function applyFilters() {
+                const branch = document.getElementById('branch-filter').value;
+                const category = document.getElementById('category-filter').value;
+                const status = document.getElementById('status-filter').value;
+                const startDate = document.getElementById('start-date').value;
+                const endDate = document.getElementById('end-date').value;
+                const search = document.getElementById('search-input').value;
+                
+                let url = window.location.pathname + '?';
+                if (branch && branch !== 'all') url += `branch=${encodeURIComponent(branch)}&`;
+                if (category && category !== 'all') url += `category=${encodeURIComponent(category)}&`;
+                if (status && status !== 'all') url += `status=${status}&`;
+                if (startDate) url += `start_date=${startDate}&`;
+                if (endDate) url += `end_date=${endDate}&`;
+                if (search) url += `search=${encodeURIComponent(search)}`;
+                
+                window.location.href = url;
+            }
+
+            function resetFilters() {
+                window.location.href = window.location.pathname;
+            }
+
+            function viewException(exceptionId) {
+                const modal = document.getElementById('viewModal');
+                const title = document.getElementById('viewModalTitle');
+                const body = document.getElementById('viewModalBody');
+                
+                title.textContent = 'Loading...';
+                body.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin" style="font-size: 32px;"></i><p>Loading exception details...</p></div>';
+                modal.style.display = 'block';
+                
+                fetch(`/adminboard/api/exception/${exceptionId}/`, {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const e = data.exception;
+                        title.textContent = `Exception: ${e.data.header || e.report_type}`;
+                        
+                        let html = `
+                            <div class="modal-section">
+                                <div class="field-label">Branch / Unit</div>
+                                <div class="field-value"><strong>${e.data.branch || e.data.unit || 'N/A'}</strong></div>
+                            </div>
+                            <div class="modal-section">
+                                <div class="field-label">Exception Header</div>
+                                <div class="field-value">${e.data.header || e.report_type}</div>
+                            </div>
+                            <div class="modal-section">
+                                <div class="field-label">Details</div>
+                                <div class="field-value">${e.data.details || 'No details provided'}</div>
+                            </div>
+                            <div class="modal-section">
+                                <div class="field-label">Status</div>
+                                <div class="field-value"><span class="status-badge ${e.status}">${e.status_display}</span></div>
+                            </div>
+                            <div class="modal-section">
+                                <div class="field-label">Submitted By</div>
+                                <div class="field-value">${e.created_by.name} (${e.created_by.email})</div>
+                            </div>
+                            <div class="modal-section">
+                                <div class="field-label">Created</div>
+                                <div class="field-value">${e.created_at}</div>
+                            </div>
+                            ${e.submitted_at ? `
+                            <div class="modal-section">
+                                <div class="field-label">Submitted</div>
+                                <div class="field-value">${e.submitted_at}</div>
+                            </div>
+                            ` : ''}
+                            ${e.review_comments ? `
+                            <div class="modal-section">
+                                <div class="field-label">Review Comments</div>
+                                <div class="field-value">${e.review_comments}</div>
+                            </div>
+                            ` : ''}
+                            ${e.reviews && e.reviews.length > 0 ? `
+                            <div class="modal-section">
+                                <div class="field-label">Review History</div>
+                                <div class="review-timeline">
+                                    ${e.reviews.map(r => `
+                                    <div class="review-item">
+                                        <div class="review-action">${r.action}</div>
+                                        <div class="review-meta">By ${r.performed_by} on ${r.created_at}</div>
+                                        ${r.comments ? `<div class="review-comments">${r.comments}</div>` : ''}
+                                    </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            ` : ''}
+                        `;
+                        
+                        body.innerHTML = html;
+                    } else {
+                        showToast('Error loading exception details', 'Error');
+                        closeViewModal();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('An error occurred while loading the exception.', 'Error');
+                    closeViewModal();
+                });
+            }
+
+            function closeViewModal() {
+                document.getElementById('viewModal').style.display = 'none';
+            }
+
+            function editException(exceptionId) {
+                const modal = document.getElementById('editModal');
+                modal.style.display = 'block';
+                
+                document.getElementById('edit-exception-id').value = exceptionId;
+                document.getElementById('editSubmitBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+                document.getElementById('editSubmitBtn').disabled = true;
+                
+                fetch(`/adminboard/api/exception/${exceptionId}/`, {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const e = data.exception;
+                        document.getElementById('edit-branch').value = e.data.branch || e.data.unit || '';
+                        document.getElementById('edit-header').value = e.data.header || e.report_type || '';
+                        document.getElementById('edit-details').value = e.data.details || '';
+                        document.getElementById('edit-status').value = e.status;
+                        document.getElementById('edit-comments').value = e.review_comments || '';
+                        
+                        document.getElementById('editSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Changes';
+                        document.getElementById('editSubmitBtn').disabled = false;
+                    } else {
+                        showToast('Error loading exception details', 'Error');
+                        closeEditModal();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('An error occurred while loading the exception.', 'Error');
+                    closeEditModal();
+                });
+            }
+
+            function closeEditModal() {
+                document.getElementById('editModal').style.display = 'none';
+            }
+
+            function saveException(event) {
+                event.preventDefault();
+                
+                const exceptionId = document.getElementById('edit-exception-id').value;
+                const branch = document.getElementById('edit-branch').value;
+                const header = document.getElementById('edit-header').value;
+                const details = document.getElementById('edit-details').value;
+                const status = document.getElementById('edit-status').value;
+                const comments = document.getElementById('edit-comments').value;
+                
+                const btn = document.getElementById('editSubmitBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                
+                const data = {
+                    data: {
+                        branch: branch,
+                        header: header,
+                        details: details
+                    },
+                    status: status,
+                    review_comments: comments
+                };
+                
+                fetch(`/adminboard/api/exception/${exceptionId}/update/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+                    
+                    if (data.success) {
+                        showToast('Exception updated successfully!', 'Success');
+                        closeEditModal();
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showToast('Error: ' + data.error, 'Error');
+                    }
+                })
+                .catch(error => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+                    console.error('Error:', error);
+                    showToast('An error occurred while saving.', 'Error');
+                });
+            }
+
+            window.onclick = function(event) {
+                const viewModal = document.getElementById('viewModal');
+                const editModal = document.getElementById('editModal');
+                if (event.target == viewModal) {
+                    closeViewModal();
+                }
+                if (event.target == editModal) {
+                    closeEditModal();
+                }
+            }
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    const target = e.target;
+                    if (target.id === 'search-input' || target.id === 'start-date' || target.id === 'end-date') {
+                        applyFilters();
+                    }
+                }
+            });
+        </script>
+    </body>
+</html>

@@ -1,0 +1,642 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Admin Dashboard - Checklist Builder</title>
+        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
+        <link rel="stylesheet" href="{% static 'stylesheets/admin.css' %}" type="text/css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <meta name="csrf-token" content="{{ csrf_token }}">
+    </head>
+    <body>
+        <div class="page-wrapper">
+            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
+            <div class="nav-bar">
+                <div class="logo">
+                    <a href="{% url 'control_dashboard:admin_page' %}">
+                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
+                    </a>
+                </div>
+
+                <ul class="nav-links">
+                    <li><a href="{% url 'control_dashboard:admin_page' %}">
+                        <span class="nav-icon"><i class="fas fa-user-cog"></i></span>
+                        <span class="nav-text">User Management</span>
+                    </a></li> 
+                    <li><a href="{% url 'control_dashboard:report_center' %}">
+                        <span class="nav-icon"><i class="fas fa-flag"></i></span>
+                        <span class="nav-text">Report Center</span>
+                    </a></li>         
+                    <li><a href="{% url 'control_dashboard:template_builder' %}">
+                        <span class="nav-icon"><i class="fas fa-cubes"></i></span>
+                        <span class="nav-text">Template Builder</span>
+                    </a></li>   
+                    <li class="active"><a href="{% url 'control_dashboard:checklist_builder' %}">
+                        <span class="nav-icon"><i class="fas fa-tools"></i></span>
+                        <span class="nav-text">Checklist Builder</span>
+                    </a></li>
+                    <li><a href="{% url 'control_dashboard:activity_logs' %}">
+                        <span class="nav-icon"><i class="fas fa-key"></i></span>
+                        <span class="nav-text">Activity Logs</span>
+                    </a></li> 
+                </ul>
+
+                <div class="nav-footer">
+                    <div class="nav-profile-card">
+                        <div class="nav-profile-img-wrapper">
+                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
+                        </div>
+                        <div class="nav-profile-info">
+                            <h4 class="nav-user-name">{{ request.user.get_full_name|default:"Admin User" }}</h4>
+                            <p class="nav-user-role">Head Officer Control</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== TOP HEADER ==================== -->
+            <div class="top-header">
+                <div class="top-header-left">
+                    <span class="page-title">Create & Manage Activities</span>
+                </div>
+
+                <div class="top-header-center">
+                    <div class="header-filter-group">
+                        <label for="checklist-filter">Checklist</label>
+                        <select id="checklist-filter" class="header-select" onchange="loadChecklist()">
+                            <option value="">Select Checklist...</option>
+                            {% for checklist in checklists %}
+                            <option value="{{ checklist.id }}">{{ checklist.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="top-header-right">
+                    <button class="btn-create-header" onclick="saveChecklist()">
+                        <i class="fas fa-save"></i> Save Checklist
+                    </button>
+                </div>
+            </div>
+
+            <!-- ==================== MESSAGES ==================== -->
+            {% if messages %}
+            <div class="messages-container">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                    <button class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- ==================== MAIN CONTENT ==================== -->
+            <div class="main-content">
+                <div class="table-container">
+                    <h4>Create New Activity</h4>
+                    <table class="dashboard-table">
+                        <thead>
+                            <tr>
+                                <th>Activity</th>
+                                <th>Tasks / Description</th>
+                                <th>Frequency</th>
+                                <th>Assignment Target</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <input type="text" id="checklist-name" class="table-input" placeholder="e.g., Mobile Money Review...">
+                                </td>
+                                <td>
+                                    <div id="task-list">
+                                        <div class="task-input-group">
+                                            <input type="text" class="table-input task-input" placeholder="Task 1: Enter task description..." style="margin-bottom: 6px;">
+                                            <i class="fas fa-trash-alt remove-task" onclick="removeTask(this)"></i>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn-add-task" onclick="addTaskInput()">
+                                        <i class="fas fa-plus"></i> Add Task
+                                    </button>
+                                </td>
+                                <td>
+                                    <select id="checklist-frequency" class="table-select">
+                                        {% for value, label in frequencies %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td>
+                                    <select id="checklist-assignment" class="table-select" onchange="toggleUserAssignment()">
+                                        {% for value, label in assignments %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div id="user-assignment-group" style="margin-top: 8px; display: none;">
+                                        <select id="assigned-users" class="table-select" multiple style="height: 60px;">
+                                            {% for user in users %}
+                                            <option value="{{ user.id }}">{{ user.full_name|default:user.email }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <small>Hold Ctrl to select multiple users</small>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <h4>Existing Activities ({{ checklists|length }})</h4>
+                        <button class="btn-refresh" onclick="location.reload()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th>Activity</th>
+                                <th>Tasks / Description</th>
+                                <th>Frequency</th>
+                                <th>Assignment Target</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for checklist in checklists %}
+                            <tr id="checklist-row-{{ checklist.id }}">
+                                <td class="font-bold">{{ checklist.name }}</td>
+                                <td>
+                                    <ul class="task-description-list">
+                                        {% for task in checklist.tasks.all %}
+                                        <li>{{ task.description }}</li>
+                                        {% empty %}
+                                        <li>No tasks defined</li>
+                                        {% endfor %}
+                                    </ul>
+                                </td>
+                                <td><span class="frequency-tag {{ checklist.frequency }}">{{ checklist.get_frequency_display }}</span></td>
+                                <td>
+                                    {% if checklist.assignment_target == 'specific' %}
+                                        <span class="assignment-tag-all">Specific Users</span>
+                                        <ul style="list-style: none; padding: 4px 0 0; margin: 0; font-size: 11px; color: rgba(255,255,255,0.5);">
+                                            {% for user in checklist.assigned_users.all %}
+                                            <li>{{ user.full_name|default:user.email }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <span class="assignment-tag-all">{{ checklist.get_assignment_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <button class="btn-edit" onclick="editChecklist('{{ checklist.id }}')" title="Edit Activity">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </button>
+                                    <button class="btn-delete" onclick="deleteChecklist('{{ checklist.id }}')" title="Delete Activity">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    <i class="fas fa-tasks"></i>
+                                    No activities found. Create your first activity!
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== EDIT CHECKLIST MODAL ==================== -->
+        <div id="editChecklistModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close" onclick="document.getElementById('editChecklistModal').style.display='none'">&times;</span>
+                <h2>Edit Activity</h2>
+                <form id="editChecklistForm" onsubmit="submitEditChecklist(event)">
+                    {% csrf_token %}
+                    <input type="hidden" id="editChecklistId">
+                    
+                    <div class="form-group">
+                        <label>Activity Name</label>
+                        <input type="text" id="editChecklistName" class="form-control" required placeholder="Enter activity name...">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Frequency</label>
+                        <select id="editChecklistFrequency" class="form-control">
+                            {% for value, label in frequencies %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Assignment Target</label>
+                        <select id="editChecklistAssignment" class="form-control" onchange="toggleEditUserAssignment()">
+                            {% for value, label in assignments %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="edit-user-assignment-group" style="display: none;">
+                        <label>Assigned Users</label>
+                        <select id="editAssignedUsers" class="form-control" multiple style="height: 80px;">
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.full_name|default:user.email }}</option>
+                            {% endfor %}
+                        </select>
+                        <small>Hold Ctrl to select multiple users</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Tasks</label>
+                        <div id="edit-task-list">
+                            <div class="task-input-group">
+                                <input type="text" class="form-control task-input" placeholder="Task 1: Enter task description..." style="margin-bottom: 6px;">
+                            </div>
+                        </div>
+                        <button type="button" class="btn-add-task" onclick="addEditTaskInput()">
+                            <i class="fas fa-plus"></i> Add Task
+                        </button>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Update Activity</button>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            function getCsrfToken() {
+                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            }
+
+            let currentChecklistId = null;
+
+            function addTaskInput() {
+                const taskList = document.getElementById('task-list');
+                const taskCount = taskList.children.length + 1;
+                const taskGroup = document.createElement('div');
+                taskGroup.className = 'task-input-group';
+                taskGroup.innerHTML = `
+                    <input type="text" class="table-input task-input" placeholder="Task ${taskCount}: Enter task description..." style="margin-bottom: 6px; flex: 1;">
+                    <i class="fas fa-trash-alt remove-task" onclick="removeTask(this)"></i>
+                `;
+                taskList.appendChild(taskGroup);
+                updateTaskPlaceholders();
+            }
+
+            function removeTask(element) {
+                const taskGroup = element.closest('.task-input-group');
+                if (taskGroup) {
+                    taskGroup.remove();
+                    updateTaskPlaceholders();
+                }
+            }
+
+            function updateTaskPlaceholders() {
+                const taskInputs = document.querySelectorAll('#task-list .task-input, #edit-task-list .task-input');
+                taskInputs.forEach((input, index) => {
+                    if (!input.value || input.placeholder.includes('Task')) {
+                        input.placeholder = `Task ${index + 1}: Enter task description...`;
+                    }
+                });
+            }
+
+            function toggleUserAssignment() {
+                const assignment = document.getElementById('checklist-assignment').value;
+                const userGroup = document.getElementById('user-assignment-group');
+                if (assignment === 'specific') {
+                    userGroup.style.display = 'block';
+                } else {
+                    userGroup.style.display = 'none';
+                }
+            }
+
+            function toggleEditUserAssignment() {
+                const assignment = document.getElementById('editChecklistAssignment').value;
+                const userGroup = document.getElementById('edit-user-assignment-group');
+                if (assignment === 'specific') {
+                    userGroup.style.display = 'block';
+                } else {
+                    userGroup.style.display = 'none';
+                }
+            }
+
+            function addEditTaskInput() {
+                const taskList = document.getElementById('edit-task-list');
+                const taskCount = taskList.children.length + 1;
+                const taskGroup = document.createElement('div');
+                taskGroup.className = 'task-input-group';
+                taskGroup.innerHTML = `
+                    <input type="text" class="form-control task-input" placeholder="Task ${taskCount}: Enter task description..." style="margin-bottom: 6px; flex: 1;">
+                    <i class="fas fa-trash-alt remove-task" onclick="removeEditTask(this)"></i>
+                `;
+                taskList.appendChild(taskGroup);
+                updateTaskPlaceholders();
+            }
+
+            function removeEditTask(element) {
+                const taskGroup = element.closest('.task-input-group');
+                if (taskGroup) {
+                    taskGroup.remove();
+                    updateTaskPlaceholders();
+                }
+            }
+
+            function saveChecklist() {
+                const name = document.getElementById('checklist-name').value.trim();
+                const frequency = document.getElementById('checklist-frequency').value;
+                const assignmentTarget = document.getElementById('checklist-assignment').value;
+                
+                const taskInputs = document.querySelectorAll('#task-list .task-input');
+                const tasks = [];
+                taskInputs.forEach(input => {
+                    const desc = input.value.trim();
+                    if (desc) {
+                        tasks.push({ description: desc });
+                    }
+                });
+
+                const assignedUsers = [];
+                if (assignmentTarget === 'specific') {
+                    const userSelect = document.getElementById('assigned-users');
+                    Array.from(userSelect.selectedOptions).forEach(option => {
+                        assignedUsers.push(option.value);
+                    });
+                }
+
+                if (!name) {
+                    alert('Please enter an activity name.');
+                    return;
+                }
+
+                if (tasks.length === 0) {
+                    alert('Please add at least one task.');
+                    return;
+                }
+
+                const url = currentChecklistId ? 
+                    "{% url 'control_dashboard:api_edit_checklist' 0 %}".replace('0', currentChecklistId) :
+                    "{% url 'control_dashboard:api_create_checklist' %}";
+                
+                const method = currentChecklistId ? 'PUT' : 'POST';
+
+                fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        description: '',
+                        frequency: frequency,
+                        assignment_target: assignmentTarget,
+                        assigned_users: assignedUsers,
+                        tasks: tasks
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(currentChecklistId ? 'Activity updated successfully!' : 'Activity created successfully!');
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                });
+            }
+
+            function loadChecklist() {
+                const checklistId = document.getElementById('checklist-filter').value;
+                if (!checklistId) {
+                    document.getElementById('checklist-name').value = '';
+                    document.getElementById('task-list').innerHTML = `
+                        <div class="task-input-group">
+                            <input type="text" class="table-input task-input" placeholder="Task 1: Enter task description..." style="margin-bottom: 6px;">
+                            <i class="fas fa-trash-alt remove-task" onclick="removeTask(this)"></i>
+                        </div>
+                    `;
+                    document.getElementById('checklist-frequency').value = 'weekly';
+                    document.getElementById('checklist-assignment').value = 'all';
+                    document.getElementById('user-assignment-group').style.display = 'none';
+                    currentChecklistId = null;
+                    return;
+                }
+
+                fetch("{% url 'control_dashboard:api_get_checklist' 0 %}".replace('0', checklistId), {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const checklist = data.checklist;
+                        document.getElementById('checklist-name').value = checklist.name;
+                        document.getElementById('checklist-frequency').value = checklist.frequency;
+                        document.getElementById('checklist-assignment').value = checklist.assignment_target;
+                        currentChecklistId = checklist.id;
+
+                        const taskList = document.getElementById('task-list');
+                        taskList.innerHTML = '';
+                        checklist.tasks.forEach((task, index) => {
+                            const taskGroup = document.createElement('div');
+                            taskGroup.className = 'task-input-group';
+                            taskGroup.innerHTML = `
+                                <input type="text" class="table-input task-input" value="${task.description}" placeholder="Task ${index + 1}: Enter task description..." style="margin-bottom: 6px; flex: 1;">
+                                <i class="fas fa-trash-alt remove-task" onclick="removeTask(this)"></i>
+                            `;
+                            taskList.appendChild(taskGroup);
+                        });
+
+                        const userSelect = document.getElementById('assigned-users');
+                        Array.from(userSelect.options).forEach(option => {
+                            option.selected = checklist.assigned_users.includes(parseInt(option.value));
+                        });
+
+                        if (checklist.assignment_target === 'specific') {
+                            document.getElementById('user-assignment-group').style.display = 'block';
+                        } else {
+                            document.getElementById('user-assignment-group').style.display = 'none';
+                        }
+
+                        updateTaskPlaceholders();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                });
+            }
+
+            function editChecklist(checklistId) {
+                fetch("{% url 'control_dashboard:api_get_checklist' 0 %}".replace('0', checklistId), {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const checklist = data.checklist;
+                        document.getElementById('editChecklistId').value = checklistId;
+                        document.getElementById('editChecklistName').value = checklist.name;
+                        document.getElementById('editChecklistFrequency').value = checklist.frequency;
+                        document.getElementById('editChecklistAssignment').value = checklist.assignment_target;
+
+                        const taskList = document.getElementById('edit-task-list');
+                        taskList.innerHTML = '';
+                        checklist.tasks.forEach((task, index) => {
+                            const taskGroup = document.createElement('div');
+                            taskGroup.className = 'task-input-group';
+                            taskGroup.innerHTML = `
+                                <input type="text" class="form-control task-input" value="${task.description}" placeholder="Task ${index + 1}: Enter task description..." style="margin-bottom: 6px; flex: 1;">
+                                <i class="fas fa-trash-alt remove-task" onclick="removeEditTask(this)"></i>
+                            `;
+                            taskList.appendChild(taskGroup);
+                        });
+
+                        const userSelect = document.getElementById('editAssignedUsers');
+                        Array.from(userSelect.options).forEach(option => {
+                            option.selected = checklist.assigned_users.includes(parseInt(option.value));
+                        });
+
+                        if (checklist.assignment_target === 'specific') {
+                            document.getElementById('edit-user-assignment-group').style.display = 'block';
+                        } else {
+                            document.getElementById('edit-user-assignment-group').style.display = 'none';
+                        }
+
+                        document.getElementById('editChecklistModal').style.display = 'block';
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                });
+            }
+
+            function submitEditChecklist(event) {
+                event.preventDefault();
+                
+                const checklistId = document.getElementById('editChecklistId').value;
+                const name = document.getElementById('editChecklistName').value.trim();
+                const frequency = document.getElementById('editChecklistFrequency').value;
+                const assignmentTarget = document.getElementById('editChecklistAssignment').value;
+                
+                const taskInputs = document.querySelectorAll('#edit-task-list .task-input');
+                const tasks = [];
+                taskInputs.forEach(input => {
+                    const desc = input.value.trim();
+                    if (desc) {
+                        tasks.push({ description: desc });
+                    }
+                });
+
+                const assignedUsers = [];
+                if (assignmentTarget === 'specific') {
+                    const userSelect = document.getElementById('editAssignedUsers');
+                    Array.from(userSelect.selectedOptions).forEach(option => {
+                        assignedUsers.push(option.value);
+                    });
+                }
+
+                if (!name) {
+                    alert('Please enter an activity name.');
+                    return;
+                }
+
+                if (tasks.length === 0) {
+                    alert('Please add at least one task.');
+                    return;
+                }
+
+                fetch("{% url 'control_dashboard:api_edit_checklist' 0 %}".replace('0', checklistId), {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        description: '',
+                        frequency: frequency,
+                        assignment_target: assignmentTarget,
+                        assigned_users: assignedUsers,
+                        tasks: tasks
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Activity updated successfully!');
+                        document.getElementById('editChecklistModal').style.display = 'none';
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                });
+            }
+
+            function deleteChecklist(checklistId) {
+                if (!confirm('Are you sure you want to delete this activity?')) {
+                    return;
+                }
+                
+                fetch("{% url 'control_dashboard:api_delete_checklist' 0 %}".replace('0', checklistId), {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                });
+            }
+
+            window.onclick = function(event) {
+                const modal = document.getElementById('editChecklistModal');
+                if (event.target == modal) {
+                    modal.style.display = 'none';
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                updateTaskPlaceholders();
+            });
+        </script>
+    </body>
+</html>

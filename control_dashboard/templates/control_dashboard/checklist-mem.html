@@ -1,0 +1,546 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Member Dashboard · Checklist</title>
+    <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
+    <link rel="stylesheet" href="{% static 'stylesheets/member.css' %}" type="text/css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+</head>
+<body>
+<div class="page-wrapper">
+
+    <!-- ==================== SIDEBAR ==================== -->
+    <div class="nav-bar">
+        <div class="logo">
+            <a href="{% url 'control_dashboard:member_dashboard' %}">
+                <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
+            </a>
+        </div>
+        <ul class="nav-links">
+            <li><a href="{% url 'control_dashboard:member_dashboard' %}"><span class="nav-icon"><i class="fas fa-chart-pie"></i></span><span class="nav-text">Dashboard</span></a></li>
+            <li><a href="{% url 'control_dashboard:drafts_page' %}"><span class="nav-icon"><i class="fas fa-file-alt"></i></span><span class="nav-text">Drafts</span></a></li>     
+            <li><a href="{% url 'control_dashboard:reports_page' %}"><span class="nav-icon"><i class="fas fa-file-pdf"></i></span><span class="nav-text">Reports</span></a></li>       
+            <li><a href="{% url 'control_dashboard:submit_page' %}"><span class="nav-icon"><i class="fas fa-paper-plane"></i></span><span class="nav-text">Submit</span></a></li>  
+            <li class="active"><a href="{% url 'control_dashboard:member_checklist' %}"><span class="nav-icon"><i class="fas fa-check-double"></i></span><span class="nav-text">Checklist</span></a></li> 
+            <li><a href="{% url 'control_dashboard:member_activity_logs' %}"><span class="nav-icon"><i class="fas fa-clipboard-list"></i></span><span class="nav-text">Activity logs</span></a></li> 
+        </ul>
+        <div class="nav-footer">
+            <div class="nav-profile-card">
+                <div class="nav-profile-img-wrapper">
+                    <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
+                </div>
+                <div class="nav-profile-info">
+                    <h4 class="nav-user-name">{{ request.user.get_full_name|default:user_profile.full_name|default:"Member User" }}</h4>
+                    <p class="nav-user-role">{{ user_profile.get_position_display|default:"Member" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== TOP HEADER ==================== -->
+    <div class="top-header">
+        <div class="top-header-left">
+            <span class="page-title">My Checklist</span>
+        </div>
+        <div class="top-header-center"></div>
+        <div class="top-header-right">
+            <button class="btn-export-header" onclick="exportChecklist()"><i class="fas fa-download"></i> <span>Export</span></button>
+        </div>
+    </div>
+
+    <!-- ==================== MESSAGES ==================== -->
+    {% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+            <button class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ==================== MAIN CONTENT ==================== -->
+    <div class="main-content">
+        <div class="checklist-container">
+            <div class="glass-card">
+                <h2>Hello, {{ user_profile.full_name|default:"Member" }}!</h2>
+                <p>Welcome to your checklist dashboard. Here you can manage and track your assigned tasks and activities.</p>
+
+                <div class="table-container">
+                    <table class="dashboard-table">
+                        <thead>
+                            <tr>
+                                <th>Activity</th>
+                                <th>Task</th>
+                                <th>Frequency</th>
+                                <th class="text-center">Calendar</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="taskTableBody">
+                            <!-- rows injected by JS from Django data -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toastNotification" class="toast-notification">
+    <div class="toast-icon"><i class="fas fa-check"></i></div>
+    <div class="toast-content">
+        <p class="toast-title">Task Logged!</p>
+        <p class="toast-message" id="toastMessage">Completion date saved successfully.</p>
+    </div>
+    <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
+</div>
+
+<script>
+function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    }
+
+    const tasksData = [
+        {% for item in checklist_data %}
+        {
+            id: {{ item.id }},
+            activity: "{{ item.name|escapejs }}",
+            task: "{% for task in item.tasks|slice:':1' %}{{ task.description|escapejs }}{% empty %}No tasks{% endfor %}",
+            frequency: "{{ item.frequency_display|escapejs }}",
+            frequency_value: "{{ item.frequency|escapejs }}",
+            logs: [
+                {% for log in item.logs %}
+                "{{ log|escapejs }}"
+                {% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ]
+        },
+        {% endfor %}
+    ];
+
+    let completionLogs = {};
+    let editingRow = null;
+    let toastTimeout = null;
+    
+    // Store the active viewing month/year for each row to prevent calendar snapping
+    let calendarStates = {};
+
+    function showToast(message) {
+        const toast = document.getElementById('toastNotification');
+        const msgEl = document.getElementById('toastMessage');
+        msgEl.textContent = message || 'Completion date saved successfully.';
+        toast.classList.add('show');
+        
+        if (toastTimeout) {
+            clearTimeout(toastTimeout);
+        }
+        
+        toastTimeout = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    window.closeToast = function() {
+        const toast = document.getElementById('toastNotification');
+        toast.classList.remove('show');
+        if (toastTimeout) {
+            clearTimeout(toastTimeout);
+            toastTimeout = null;
+        }
+    };
+
+    function toggleLogCompletion(index, date, dayElement) {
+        if (!date) return;
+
+        const taskId = tasksData[index]?.id;
+        if (!taskId) return;
+
+        if (!completionLogs[index]) {
+            completionLogs[index] = [];
+        }
+
+        const isLogged = completionLogs[index].includes(date);
+        const action = isLogged ? 'unlog' : 'log';
+
+        fetch("{% url 'control_dashboard:api_log_checklist' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                checklist_id: taskId,
+                log_date: date,
+                action: action
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (isLogged) {
+                    completionLogs[index] = completionLogs[index].filter(d => d !== date);
+                    showToast(data.message || `"${tasksData[index]?.activity}" unlogged for ${date}`);
+                } else {
+                    completionLogs[index].push(date);
+                    showToast(data.message || `"${tasksData[index]?.activity}" logged for ${date}`);
+                }
+                updateRowUI(index);
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again.');
+        });
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('taskTableBody');
+        tbody.innerHTML = '';
+
+        tasksData.forEach((task, index) => {
+            const tr = document.createElement('tr');
+            const isEditing = (editingRow === index);
+
+            if (!completionLogs[index]) {
+                completionLogs[index] = task.logs || [];
+            }
+
+            const tdAct = document.createElement('td');
+            tdAct.style.fontWeight = '500';
+            tdAct.style.color = 'rgba(26,35,50,0.7)';
+            const actCell = createEditableCell('activity', task.activity, index, isEditing);
+            tdAct.appendChild(actCell);
+
+            const tdTask = document.createElement('td');
+            tdTask.style.fontWeight = '600';
+            tdTask.style.color = '#1a2332';
+            const taskCell = createEditableCell('task', task.task, index, isEditing);
+            tdTask.appendChild(taskCell);
+
+            const tdFreq = document.createElement('td');
+            const freqCell = createFrequencyCell(task.frequency, index, isEditing);
+            tdFreq.appendChild(freqCell);
+
+            const tdCalendar = document.createElement('td');
+            tdCalendar.className = 'log-column text-center';
+            const calendar = createMiniCalendar(index, task.frequency_value);
+            tdCalendar.appendChild(calendar);
+
+            const tdActions = document.createElement('td');
+            tdActions.className = 'actions-column text-center';
+            const actionContainer = document.createElement('div');
+            actionContainer.className = 'table-actions-cluster';
+
+            if (isEditing) {
+                const saveBtn = document.createElement('button');
+                saveBtn.className = 'btn-save';
+                saveBtn.innerHTML = `<i class="fas fa-save"></i> <span>Save</span>`;
+                saveBtn.addEventListener('click', () => saveRow(index));
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'btn-cancel-row';
+                cancelBtn.innerHTML = `<i class="fas fa-times"></i> <span>Cancel</span>`;
+                cancelBtn.addEventListener('click', () => cancelEdit(index));
+
+                actionContainer.appendChild(saveBtn);
+                actionContainer.appendChild(cancelBtn);
+            } else {
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn-edit-row';
+                editBtn.innerHTML = `<i class="fas fa-edit"></i> <span>Edit</span>`;
+                editBtn.addEventListener('click', () => startEdit(index));
+                actionContainer.appendChild(editBtn);
+            }
+
+            tdActions.appendChild(actionContainer);
+
+            tr.appendChild(tdAct);
+            tr.appendChild(tdTask);
+            tr.appendChild(tdFreq);
+            tr.appendChild(tdCalendar);
+            tr.appendChild(tdActions);
+            tbody.appendChild(tr);
+        });
+    }
+
+    function createMiniCalendar(index, frequency) {
+        const container = document.createElement('div');
+        container.className = 'mini-calendar';
+        
+        // Initialize or recall viewing state for this row
+        if (!calendarStates[index]) {
+            const today = new Date();
+            calendarStates[index] = {
+                month: today.getMonth(),
+                year: today.getFullYear()
+            };
+        }
+
+        function buildCalendar() {
+            const currentMonth = calendarStates[index].month;
+            const currentYear = calendarStates[index].year;
+
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const loggedDates = completionLogs[index] || [];
+            const todayStr = new Date().toISOString().slice(0, 10);
+
+            container.innerHTML = `
+                <div class="cal-header">
+                    <button class="cal-prev"><i class="fas fa-chevron-left"></i></button>
+                    <span>${new Date(currentYear, currentMonth).toLocaleString('default', { month: 'short' })} ${currentYear}</span>
+                    <button class="cal-next"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <div class="cal-grid">
+            `;
+
+            const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+            for (let i = 0; i < 7; i++) {
+                const label = document.createElement('div');
+                label.className = 'day-label';
+                label.textContent = dayLabels[i];
+                container.querySelector('.cal-grid').appendChild(label);
+            }
+
+            const startOffset = (firstDay === 0) ? 6 : firstDay - 1;
+            for (let i = 0; i < startOffset; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'cal-day empty';
+                container.querySelector('.cal-grid').appendChild(empty);
+            }
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateObj = new Date(currentYear, currentMonth, d);
+                const dateStr = dateObj.toISOString().slice(0, 10);
+                let classes = 'cal-day';
+                if (dateStr === todayStr) classes += ' today';
+                
+                const isLogged = loggedDates.includes(dateStr);
+                if (isLogged) classes += ' logged';
+                
+                const dayDiv = document.createElement('button');
+                dayDiv.className = classes;
+                dayDiv.dataset.date = dateStr;
+                dayDiv.dataset.index = index;
+                
+                // Add tick icon markup for logged dates
+                if (isLogged) {
+                    dayDiv.innerHTML = `<span class="day-num">${d}</span><i class="fas fa-check cal-tick-mark"></i>`;
+                } else {
+                    dayDiv.innerHTML = `<span class="day-num">${d}</span>`;
+                }
+                
+                dayDiv.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    toggleLogCompletion(index, this.dataset.date, this);
+                });
+                
+                container.querySelector('.cal-grid').appendChild(dayDiv);
+            }
+
+            container.querySelector('.cal-prev').addEventListener('click', function(e) {
+                e.stopPropagation();
+                calendarStates[index].month--;
+                if (calendarStates[index].month < 0) {
+                    calendarStates[index].month = 11;
+                    calendarStates[index].year--;
+                }
+                buildCalendar();
+            });
+
+            container.querySelector('.cal-next').addEventListener('click', function(e) {
+                e.stopPropagation();
+                calendarStates[index].month++;
+                if (calendarStates[index].month > 11) {
+                    calendarStates[index].month = 0;
+                    calendarStates[index].year++;
+                }
+                buildCalendar();
+            });
+        }
+
+        buildCalendar();
+        return container;
+    }
+
+    function createEditableCell(field, value, index, isEditing) {
+        const container = document.createElement('div');
+        container.className = 'editable-cell';
+        container.dataset.field = field;
+        container.dataset.index = index;
+
+        if (isEditing) {
+            container.classList.add('editing');
+            const input = document.createElement('input');
+            input.className = 'cell-input';
+            input.type = 'text';
+            input.value = value || '';
+            input.dataset.field = field;
+            input.dataset.index = index;
+            setTimeout(() => {
+                input.focus();
+                input.select();
+            }, 50);
+            container.appendChild(input);
+        } else {
+            const display = document.createElement('span');
+            display.className = 'cell-display';
+            display.textContent = value || '-';
+            container.appendChild(display);
+        }
+
+        return container;
+    }
+
+    function createFrequencyCell(value, index, isEditing) {
+        const container = document.createElement('div');
+        container.className = 'editable-cell';
+        container.dataset.field = 'frequency';
+        container.dataset.index = index;
+
+        if (isEditing) {
+            container.classList.add('editing');
+            const select = document.createElement('select');
+            select.className = 'cell-input frequency-input';
+            select.dataset.field = 'frequency';
+            select.dataset.index = index;
+
+            const options = ['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Annually'];
+            options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt;
+                option.textContent = opt;
+                if (opt === value) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+
+            container.appendChild(select);
+        } else {
+            const badge = document.createElement('span');
+            badge.className = 'frequency-tag';
+            badge.textContent = value;
+            container.appendChild(badge);
+        }
+
+        return container;
+    }
+
+    function updateRowUI(index) {
+        const rows = document.querySelectorAll('#taskTableBody tr');
+        if (!rows[index]) return;
+        
+        const tdCalendar = rows[index].querySelector('.log-column');
+        if (!tdCalendar) return;
+        
+        const task = tasksData[index];
+        const newCalendar = createMiniCalendar(index, task.frequency_value);
+        tdCalendar.innerHTML = '';
+        tdCalendar.appendChild(newCalendar);
+    }
+
+    function startEdit(index) {
+        if (editingRow !== null) {
+            cancelEdit(editingRow);
+        }
+        editingRow = index;
+        renderTable();
+    }
+
+    function saveRow(index) {
+        const rows = document.querySelectorAll('#taskTableBody tr');
+        if (!rows[index]) return;
+
+        const inputs = rows[index].querySelectorAll('.cell-input');
+        let newActivity = '';
+        let newTask = '';
+        let newFrequency = '';
+
+        inputs.forEach(input => {
+            const field = input.dataset.field;
+            if (field === 'activity') {
+                newActivity = input.value.trim() || tasksData[index].activity;
+            } else if (field === 'task') {
+                newTask = input.value.trim() || tasksData[index].task;
+            } else if (field === 'frequency') {
+                newFrequency = input.value || tasksData[index].frequency;
+            }
+        });
+
+        tasksData[index].activity = newActivity;
+        tasksData[index].task = newTask;
+        tasksData[index].frequency = newFrequency;
+
+        saveEdit(index, newActivity, newTask, newFrequency);
+
+        editingRow = null;
+        renderTable();
+        showToast(`Task "${newActivity}" updated successfully!`);
+    }
+
+    function saveEdit(index, activity, task, frequency) {
+        const taskId = tasksData[index]?.id;
+        if (!taskId) return;
+
+        fetch("{% url 'control_dashboard:api_edit_checklist' 0 %}".replace('0', taskId), {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                name: activity,
+                description: '',
+                frequency: frequency.toLowerCase(),
+                assignment_target: 'all',
+                assigned_users: [],
+                tasks: [{ description: task }]
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Checklist updated:', data);
+            } else {
+                console.error('Error updating checklist:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+
+    function cancelEdit(index) {
+        editingRow = null;
+        renderTable();
+    }
+
+    function exportChecklist() {
+        let csv = 'Activity,Task,Frequency,Logs\n';
+        tasksData.forEach(task => {
+            const logs = completionLogs[task.id] || [];
+            csv += `"${task.activity}","${task.task}","${task.frequency}","${logs.join('; ')}"\n`;
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'my_checklist.csv';
+        a.click();
+        window.URL.revokeObjectURL(url);
+    }
+
+    renderTable();
+</script>
+</body>
+</html>

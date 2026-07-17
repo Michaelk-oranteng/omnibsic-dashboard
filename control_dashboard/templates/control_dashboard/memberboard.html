@@ -1,0 +1,273 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Member Dashboard</title>
+        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
+        <link rel="stylesheet" href="{% static 'stylesheets/member.css' %}" type="text/css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <meta name="csrf-token" content="{{ csrf_token }}">
+    </head>
+
+    <body>
+        <div class="page-wrapper">
+            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
+            <div class="nav-bar">
+                <div class="logo">
+                    <a href="{% url 'control_dashboard:member_dashboard' %}">
+                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
+                    </a>
+                </div>
+
+                <ul class="nav-links">
+                    <li class="active"><a href="{% url 'control_dashboard:member_dashboard' %}">
+                        <span class="nav-icon"><i class="fas fa-chart-pie"></i></span>
+                        <span class="nav-text">Dashboard</span>
+                    </a></li>
+                    <li><a href="{% url 'control_dashboard:drafts_page' %}">
+                        <span class="nav-icon"><i class="fas fa-file-alt"></i></span>
+                        <span class="nav-text">Drafts</span>
+                    </a></li>     
+                    <li><a href="{% url 'control_dashboard:reports_page' %}">
+                        <span class="nav-icon"><i class="fas fa-file-pdf"></i></span>
+                        <span class="nav-text">Reports</span>
+                    </a></li>       
+                    <li><a href="{% url 'control_dashboard:submit_page' %}">
+                        <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
+                        <span class="nav-text">Submit</span>
+                    </a></li>  
+                    <li><a href="{% url 'control_dashboard:member_checklist' %}">
+                        <span class="nav-icon"><i class="fas fa-check-double"></i></span>
+                        <span class="nav-text">Checklist</span>
+                    </a></li> 
+                    <li><a href="{% url 'control_dashboard:member_activity_logs' %}">
+                        <span class="nav-icon"><i class="fas fa-clipboard-list"></i></span>
+                        <span class="nav-text">Activity logs</span>
+                    </a></li> 
+                </ul>
+
+                <div class="nav-footer">
+                    <div class="nav-profile-card">
+                        <div class="nav-profile-img-wrapper">
+                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
+                        </div>
+                        <div class="nav-profile-info">
+                            <h4 class="nav-user-name">{{ request.user.get_full_name|default:user_profile.full_name|default:"Member User" }}</h4>
+                            <p class="nav-user-role">{{ user_profile.get_position_display|default:"Member" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== TOP HEADER ==================== -->
+            <div class="top-header">
+                <div class="top-header-left">
+                    <span class="page-title">Member Dashboard</span>
+                </div>
+                <div class="top-header-center"></div>
+                <div class="top-header-right">
+                    <span style="font-size: 13px; color: rgba(26,35,50,0.5);">
+                        <i class="fas fa-calendar-alt"></i> {{ today|date:"F d, Y" }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- ==================== MESSAGES ==================== -->
+            {% if messages %}
+            <div class="messages-container">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                    <button class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- ==================== MAIN CONTENT ==================== -->
+            <div class="main-content">
+                <div class="analytics-metrics-grid">
+                    <div class="metric-card border-left-warning">
+                        <div class="metric-card-content">
+                            <span class="card-metric-label">Assigned This Week</span>
+                            <h3 class="card-metric-value text-warning">{{ assigned_this_week|default:0 }}</h3>
+                            <span class="card-metric-subtext">Due by close of business</span>
+                        </div>
+                        <div class="metric-card-icon text-warning-dim"><i class="fas fa-clipboard-list"></i></div>
+                    </div>
+
+                    <div class="metric-card border-left-danger">
+                        <div class="metric-card-content">
+                            <span class="card-metric-label">Exceptions This Week</span>
+                            <h3 class="card-metric-value text-danger">{{ exceptions_this_week|default:0 }}</h3>
+                            <span class="card-metric-subtext">Pending supervisor review</span>
+                        </div>
+                        <div class="metric-card-icon text-danger-dim"><i class="fas fa-bug"></i></div>
+                    </div>
+
+                    <div class="metric-card border-left-primary">
+                        <div class="metric-card-content">
+                            <span class="card-metric-label">Pending Submissions</span>
+                            <h3 class="card-metric-value text-primary">{{ pending_submissions|default:0 }}</h3>
+                            <span class="card-metric-subtext">Awaiting your action</span>
+                        </div>
+                        <div class="metric-card-icon text-primary-dim"><i class="fas fa-clock"></i></div>
+                    </div>
+                </div>
+
+                <div class="dashboard-split-layout">
+                    <div class="dashboard-panel-card">
+                        <div class="panel-card-header">
+                            <h4>Activity Checklist</h4>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span class="badge-count">{{ daily_checklists|length }} Daily Controls</span>
+                                <a href="{% url 'control_dashboard:member_checklist' %}" class="btn-view">
+                                    <i class="fas fa-arrow-right"></i> View All
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <table class="users-table">
+                            <thead>
+                                <tr>
+                                    <th>Activity / Task</th>
+                                    <th>Frequency</th>
+                                    <th class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for checklist in daily_checklists %}
+                                <tr>
+                                    <td>
+                                        <span class="font-bold block-element">{{ checklist.name }}</span>
+                                        <span class="sub-table-desc">
+                                            {% for task in checklist.tasks.all|slice:":2" %}
+                                                {{ task.description }}{% if not forloop.last %}; {% endif %}
+                                            {% endfor %}
+                                            {% if checklist.tasks.count > 2 %}
+                                                <span style="color: rgba(26,35,50,0.3);">+{{ checklist.tasks.count|add:"-2" }} more</span>
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td><span class="frequency-tag {{ checklist.frequency }}">{{ checklist.get_frequency_display }}</span></td>
+                                    <td class="text-center">
+                                        {% with completed_count=checklist.tasks.filter.is_completed.count total_count=checklist.tasks.count %}
+                                            {% if total_count > 0 %}
+                                                <span class="status-badge {% if completed_count == total_count %}active{% else %}pending{% endif %}">
+                                                    {{ completed_count }}/{{ total_count }}
+                                                </span>
+                                            {% else %}
+                                                <span class="status-badge pending">0/0</span>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center">
+                                        <i class="fas fa-check-circle"></i>
+                                        No daily checklists assigned
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="dashboard-panel-card">
+                        <div class="panel-card-header">
+                            <h4>Quick Actions</h4>
+                        </div>
+                        <div class="quick-actions-list-stack">
+                            <a href="{% url 'control_dashboard:drafts_page' %}" class="action-shortcut-item">
+                                <div class="shortcut-icon-box danger-box"><i class="fas fa-exclamation-circle"></i></div>
+                                <div class="shortcut-text-box">
+                                    <h5>New Exception</h5>
+                                    <p class="shortcut-desc">Log a control breach directly</p>
+                                </div>
+                            </a>
+                            <a href="{% url 'control_dashboard:reports_page' %}" class="action-shortcut-item">
+                                <div class="shortcut-icon-box primary-box"><i class="fas fa-file-alt"></i></div>
+                                <div class="shortcut-text-box">
+                                    <h5>Report Logs</h5>
+                                    <p class="shortcut-desc">View all captured exceptions</p>
+                                </div>
+                            </a>
+                            <a href="{% url 'control_dashboard:submit_page' %}" class="action-shortcut-item">
+                                <div class="shortcut-icon-box success-box"><i class="fas fa-file-alt"></i></div>
+                                <div class="shortcut-text-box">
+                                    <h5>Submit Report</h5>
+                                    <p class="shortcut-desc">Send drafted report</p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-panel-card">
+                    <div class="panel-card-header">
+                        <h4>Recent Submissions</h4>
+                    </div>
+                    
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th>Report Type</th>
+                                <th>Deadline Date</th>
+                                <th>Submission Time</th>
+                                <th class="text-center">Manual Deduction</th>
+                                <th class="text-center">Final Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for submission in recent_submissions %}
+                            <tr>
+                                <td class="font-bold">{{ submission.report_type }}</td>
+                                <td>{{ submission.deadline_date|date:"M d, Y"|default:"-" }}</td>
+                                <td>
+                                    {% if submission.submitted_at %}
+                                        <span class="time-stamp">
+                                            {{ submission.submitted_at|date:"h:i A" }} 
+                                            {% if submission.is_on_time %}
+                                                <span style="color: #10b981;">(On Time)</span>
+                                            {% else %}
+                                                <span style="color: #ef4444;">(Late)</span>
+                                            {% endif %}
+                                        </span>
+                                    {% else %}
+                                        <span class="time-stamp">Not submitted</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center font-mono">{{ submission.manual_deduction|default:"0" }}</td>
+                                <td class="text-center">
+                                    {% if submission.final_score %}
+                                        <span class="score-badge {% if submission.final_score >= 80 %}badge-success{% else %}badge-warning{% endif %}">
+                                            {{ submission.final_score }}%
+                                        </span>
+                                    {% else %}
+                                        <span class="score-badge badge-warning">Pending</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    <i class="fas fa-file-alt"></i>
+                                    No recent submissions
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function getCsrfToken() {
+                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            }
+        </script>
+    </body>
+</html>

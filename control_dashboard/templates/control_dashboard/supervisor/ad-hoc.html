@@ -1,0 +1,456 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Ad-Hoc Scorecard</title>
+        <link rel="stylesheet" href="{% static 'stylesheets/profile.css' %}" type="text/css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <meta name="csrf-token" content="{{ csrf_token }}">
+    </head>
+    <body>
+        <div class="page-wrapper">
+            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
+            <div class="nav-bar">
+                <div class="logo">
+                    <a href="{% url 'control_dashboard:supervisor_dashboard' %}">
+                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
+                    </a>
+                </div>
+
+                <ul class="nav-links">
+                    <li><a href="{% url 'control_dashboard:supervisor_dashboard' %}">
+                        <span class="nav-icon"><i class="fas fa-chart-line"></i></span>
+                        <span class="nav-text">Dashboard</span>
+                    </a></li>  
+                    <li><a href="{% url 'control_dashboard:team_performance' %}">
+                        <span class="nav-icon"><i class="fas fa-users"></i></span>
+                        <span class="nav-text">Team Performance</span>
+                    </a></li> 
+                    <li><a href="{% url 'control_dashboard:submitted_reports' %}">
+                        <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
+                        <span class="nav-text">Submitted Reports</span>
+                    </a></li>
+                    <li class="active"><a href="{% url 'control_dashboard:ad_hoc_scorecard' %}">
+                        <span class="nav-icon"><i class="fas fa-star"></i></span>
+                        <span class="nav-text">Ad-Hoc Scorecard</span>
+                    </a></li>
+                    <li><a href="{% url 'control_dashboard:logged_exceptions' %}">
+                        <span class="nav-icon"><i class="fas fa-exclamation-triangle"></i></span>
+                        <span class="nav-text">Logged Exceptions</span>
+                    </a></li>       
+                    <li><a href="{% url 'control_dashboard:supervisor_checklist' %}">
+                        <span class="nav-icon"><i class="fas fa-tasks"></i></span>
+                        <span class="nav-text">Activity Checklist</span>
+                    </a></li>
+                    <li><a href="{% url 'control_dashboard:supervisor_activity_logs' %}">
+                        <span class="nav-icon"><i class="fas fa-search"></i></span>
+                        <span class="nav-text">Activity Logs</span>
+                    </a></li> 
+                </ul>
+
+                <div class="nav-footer">
+                    <div class="nav-profile-card">
+                        <div class="nav-profile-img-wrapper">
+                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
+                        </div>
+                        <div class="nav-profile-info">
+                            <h4 class="nav-user-name">{{ user_profile.full_name|default:"Supervisor" }}</h4>
+                            <p class="nav-user-role">{{ user_profile.get_position_display|default:"Supervisor" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== TOP HEADER ==================== -->
+            <div class="top-header">
+                <div class="top-header-left">
+                    <span class="page-title">Ad-Hoc Scorecard</span>
+                </div>
+
+                <div class="top-header-center">
+                    <div class="header-filter-group">
+                        <label for="user-filter">Filter By User</label>
+                        <select id="user-filter" class="header-select" onchange="applyFilter()">
+                            <option value="all">All Users</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}" {% if user_filter|add:"0" == user.id %}selected{% endif %}>
+                                {{ user.full_name|default:user.email }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="top-header-right">
+                    <button class="btn-create-header" onclick="openCreateModal()">
+                        <i class="fas fa-plus"></i> Create New Score
+                    </button>
+                </div>
+            </div>
+
+            <!-- ==================== MAIN CONTENT ==================== -->
+            <div class="main-content">
+                <div class="stat-summary">
+                    <div class="stat-card">
+                        <div class="stat-value text-primary">{{ total_deductions }}</div>
+                        <div class="stat-label">Total Deductions</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value text-warning">{{ users.count }}</div>
+                        <div class="stat-label">Team Members</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value text-danger">
+                            {% with total_points=0 %}
+                                {% for d in deductions %}
+                                    {% with total_points=total_points|add:d.points %}{% endwith %}
+                                {% endfor %}
+                                {{ total_points }}
+                            {% endwith %}
+                        </div>
+                        <div class="stat-label">Total Points Deducted</div>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th>Full Name</th>
+                                <th>Task Description</th>
+                                <th>Deduction</th>
+                                <th>Penalty Reason</th>
+                                <th>Date</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deductionsTableBody">
+                            {% for deduction in deductions %}
+                            <tr id="row_{{ deduction.id }}">
+                                <td><span class="font-bold">{{ deduction.user_name }}</span></td>
+                                <td><span>{{ deduction.task_description|default:"-" }}</span></td>
+                                <td class="text-center">
+                                    <span class="deduction-badge {% if deduction.points >= 20 %}high{% elif deduction.points >= 10 %}medium{% else %}low{% endif %}">
+                                        -{{ deduction.points }}%
+                                    </span>
+                                </td>
+                                <td><span>{{ deduction.reason|default:"-" }}</span></td>
+                                <td><span class="time-stamp">{{ deduction.created_at|date:"M d, Y" }}</span></td>
+                                <td class="text-center">
+                                    <div class="table-actions-cluster">
+                                        <button class="btn-edit-row" onclick="editDeduction({{ deduction.id }})">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                        <button class="btn-delete-row" onclick="deleteDeduction({{ deduction.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center">
+                                    <i class="fas fa-star"></i>
+                                    No ad-hoc deductions found.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Deduction Modal -->
+        <div id="createModal" class="modal">
+            <div class="modal-content">
+                <span class="modal-close" onclick="closeCreateModal()">&times;</span>
+                <h2>Create Ad-Hoc Deduction</h2>
+                <form id="createDeductionForm" onsubmit="createDeduction(event)">
+                    <div class="form-group">
+                        <label for="modal-user">User</label>
+                        <select id="modal-user" required>
+                            <option value="">Select User...</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.full_name|default:user.email }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-task">Task Description</label>
+                        <input type="text" id="modal-task" placeholder="e.g., Weekly Exceptions Report - Q2 Week 1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-points">Deduction Points (0-100)</label>
+                        <input type="number" id="modal-points" min="0" max="100" placeholder="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-reason">Penalty Reason</label>
+                        <textarea id="modal-reason" placeholder="e.g., Late submission by 1 hour"></textarea>
+                    </div>
+                    <button type="submit" class="btn-submit-modal" id="modalSubmitBtn">
+                        <i class="fas fa-plus"></i> Create Deduction
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Deduction Modal -->
+        <div id="editModal" class="modal">
+            <div class="modal-content">
+                <span class="modal-close" onclick="closeEditModal()">&times;</span>
+                <h2>Edit Deduction</h2>
+                <form id="editDeductionForm" onsubmit="updateDeduction(event)">
+                    <input type="hidden" id="edit-deduction-id">
+                    <div class="form-group">
+                        <label for="edit-task">Task Description</label>
+                        <input type="text" id="edit-task" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-points">Deduction Points (0-100)</label>
+                        <input type="number" id="edit-points" min="0" max="100" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-reason">Penalty Reason</label>
+                        <textarea id="edit-reason"></textarea>
+                    </div>
+                    <button type="submit" class="btn-submit-modal" id="editSubmitBtn">
+                        <i class="fas fa-save"></i> Update Deduction
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div id="toastNotification" class="toast-notification">
+            <div class="toast-icon"><i class="fas fa-check"></i></div>
+            <div class="toast-content">
+                <p class="toast-title">Success!</p>
+                <p class="toast-message" id="toastMessage">Action completed successfully.</p>
+            </div>
+            <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
+        </div>
+
+        <script>
+            function getCsrfToken() {
+                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            }
+
+            function showToast(message, title = 'Success!') {
+                const toast = document.getElementById('toastNotification');
+                const msgEl = document.getElementById('toastMessage');
+                const titleEl = toast.querySelector('.toast-title');
+                
+                msgEl.textContent = message || 'Action completed successfully.';
+                titleEl.textContent = title;
+                
+                const icon = toast.querySelector('.toast-icon i');
+                if (title.toLowerCase().includes('error') || title.toLowerCase().includes('warning')) {
+                    icon.className = 'fas fa-exclamation-circle';
+                    toast.style.borderLeftColor = '#ef4444';
+                    toast.querySelector('.toast-icon').style.color = '#ef4444';
+                    toast.querySelector('.toast-icon').style.background = 'rgba(239, 68, 68, 0.1)';
+                } else {
+                    icon.className = 'fas fa-check';
+                    toast.style.borderLeftColor = '#10b981';
+                    toast.querySelector('.toast-icon').style.color = '#10b981';
+                    toast.querySelector('.toast-icon').style.background = 'rgba(16, 185, 129, 0.1)';
+                }
+                
+                toast.classList.add('show');
+                
+                if (window.toastTimeout) {
+                    clearTimeout(window.toastTimeout);
+                }
+                
+                window.toastTimeout = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+
+            window.closeToast = function() {
+                const toast = document.getElementById('toastNotification');
+                toast.classList.remove('show');
+                if (window.toastTimeout) {
+                    clearTimeout(window.toastTimeout);
+                    window.toastTimeout = null;
+                }
+            };
+
+            function applyFilter() {
+                const user = document.getElementById('user-filter').value;
+                let url = window.location.pathname + '?';
+                if (user && user !== 'all') url += `user=${user}`;
+                window.location.href = url;
+            }
+
+            function openCreateModal() {
+                document.getElementById('createModal').style.display = 'block';
+                document.getElementById('createDeductionForm').reset();
+            }
+
+            function closeCreateModal() {
+                document.getElementById('createModal').style.display = 'none';
+            }
+
+            function createDeduction(event) {
+                event.preventDefault();
+                
+                const user_id = document.getElementById('modal-user').value;
+                const task = document.getElementById('modal-task').value;
+                const points = document.getElementById('modal-points').value;
+                const reason = document.getElementById('modal-reason').value;
+                
+                if (!user_id) {
+                    showToast('Please select a user', 'Warning');
+                    return;
+                }
+                
+                const btn = document.getElementById('modalSubmitBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+                
+                fetch("{% url 'control_dashboard:api_create_ad_hoc_deduction' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        user_id: user_id,
+                        task_description: task,
+                        points: points,
+                        reason: reason
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-plus"></i> Create Deduction';
+                    
+                    if (data.success) {
+                        showToast('Deduction created successfully!', 'Success');
+                        closeCreateModal();
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showToast('Error: ' + data.error, 'Error');
+                    }
+                })
+                .catch(error => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-plus"></i> Create Deduction';
+                    console.error('Error:', error);
+                    showToast('An error occurred while creating the deduction.', 'Error');
+                });
+            }
+
+            function editDeduction(deductionId) {
+                const row = document.getElementById(`row_${deductionId}`);
+                const task = row.querySelector('td:nth-child(2) span').textContent;
+                const points = row.querySelector('td:nth-child(3) span').textContent.replace('-', '').replace('%', '');
+                const reason = row.querySelector('td:nth-child(4) span').textContent;
+                
+                document.getElementById('edit-deduction-id').value = deductionId;
+                document.getElementById('edit-task').value = task === '-' ? '' : task;
+                document.getElementById('edit-points').value = points;
+                document.getElementById('edit-reason').value = reason === '-' ? '' : reason;
+                
+                document.getElementById('editModal').style.display = 'block';
+            }
+
+            function closeEditModal() {
+                document.getElementById('editModal').style.display = 'none';
+            }
+
+            function updateDeduction(event) {
+                event.preventDefault();
+                
+                const deductionId = document.getElementById('edit-deduction-id').value;
+                const task = document.getElementById('edit-task').value;
+                const points = document.getElementById('edit-points').value;
+                const reason = document.getElementById('edit-reason').value;
+                
+                const btn = document.getElementById('editSubmitBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+                
+                fetch(`/adminboard/api/ad-hoc/${deductionId}/update/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        task_description: task,
+                        points: points,
+                        reason: reason
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-save"></i> Update Deduction';
+                    
+                    if (data.success) {
+                        showToast('Deduction updated successfully!', 'Success');
+                        closeEditModal();
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showToast('Error: ' + data.error, 'Error');
+                    }
+                })
+                .catch(error => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-save"></i> Update Deduction';
+                    console.error('Error:', error);
+                    showToast('An error occurred while updating the deduction.', 'Error');
+                });
+            }
+
+            function deleteDeduction(deductionId) {
+                if (!confirm('Are you sure you want to delete this deduction?')) {
+                    return;
+                }
+                
+                const btn = document.querySelector(`#row_${deductionId} .btn-delete-row`);
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                
+                fetch(`/adminboard/api/ad-hoc/${deductionId}/delete/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('Deduction deleted successfully!', 'Success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showToast('Error: ' + data.error, 'Error');
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-trash"></i>';
+                    }
+                })
+                .catch(error => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-trash"></i>';
+                    console.error('Error:', error);
+                    showToast('An error occurred while deleting the deduction.', 'Error');
+                });
+            }
+
+            window.onclick = function(event) {
+                const createModal = document.getElementById('createModal');
+                const editModal = document.getElementById('editModal');
+                if (event.target == createModal) {
+                    closeCreateModal();
+                }
+                if (event.target == editModal) {
+                    closeEditModal();
+                }
+            }
+        </script>
+    </body>
+</html>

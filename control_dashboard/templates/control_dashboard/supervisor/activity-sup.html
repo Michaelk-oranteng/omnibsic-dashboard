@@ -1,0 +1,272 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Supervisor Activity Logs</title>
+        <link rel="stylesheet" href="{% static 'stylesheets/profile.css' %}" type="text/css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <meta name="csrf-token" content="{{ csrf_token }}">
+    </head>
+    <body>
+        <div class="page-wrapper">
+            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
+            <div class="nav-bar">
+                <div class="logo">
+                    <a href="{% url 'control_dashboard:supervisor_dashboard' %}">
+                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
+                    </a>
+                </div>
+
+                <ul class="nav-links">
+                    <li><a href="{% url 'control_dashboard:supervisor_dashboard' %}">
+                        <span class="nav-icon"><i class="fas fa-chart-line"></i></span>
+                        <span class="nav-text">Dashboard</span>
+                    </a></li>  
+                    <li><a href="{% url 'control_dashboard:team_performance' %}">
+                        <span class="nav-icon"><i class="fas fa-users"></i></span>
+                        <span class="nav-text">Team Performance</span>
+                    </a></li> 
+                    <li><a href="{% url 'control_dashboard:submitted_reports' %}">
+                        <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
+                        <span class="nav-text">Submitted Reports</span>
+                    </a></li>
+                    <li><a href="{% url 'control_dashboard:ad_hoc_scorecard' %}">
+                        <span class="nav-icon"><i class="fas fa-star"></i></span>
+                        <span class="nav-text">Ad-Hoc Scorecard</span>
+                    </a></li> 
+                    <li><a href="{% url 'control_dashboard:logged_exceptions' %}">
+                        <span class="nav-icon"><i class="fas fa-exclamation-triangle"></i></span>
+                        <span class="nav-text">Logged Exceptions</span>
+                    </a></li>       
+                    <li><a href="{% url 'control_dashboard:supervisor_checklist' %}">
+                        <span class="nav-icon"><i class="fas fa-tasks"></i></span>
+                        <span class="nav-text">Activity Checklist</span>
+                    </a></li>
+                    <li class="active"><a href="{% url 'control_dashboard:supervisor_activity_logs' %}">
+                        <span class="nav-icon"><i class="fas fa-search"></i></span>
+                        <span class="nav-text">Activity Logs</span>
+                    </a></li> 
+                </ul>
+
+                <div class="nav-footer">
+                    <div class="nav-profile-card">
+                        <div class="nav-profile-img-wrapper">
+                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
+                        </div>
+                        <div class="nav-profile-info">
+                            <h4 class="nav-user-name">{{ user_profile.full_name|default:"Supervisor" }}</h4>
+                            <p class="nav-user-role">{{ user_profile.get_position_display|default:"Supervisor" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== TOP HEADER ==================== -->
+            <div class="top-header">
+                <div class="top-header-left">
+                    <span class="page-title">Activity Logs</span>
+                </div>
+
+                <div class="top-header-center">
+                    <div class="header-filter-group">
+                        <label for="user-filter">User</label>
+                        <select id="user-filter" class="header-select" onchange="applyFilters()">
+                            <option value="all">All Users</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}" {% if user_filter|add:"0" == user.id %}selected{% endif %}>
+                                {{ user.full_name|default:user.email }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="header-divider"></div>
+
+                    <div class="header-date-group">
+                        <label for="start-date">Date Range</label>
+                        <div class="header-date-wrapper">
+                            <input type="date" id="start-date" class="header-date-input" value="{{ start_date }}" onchange="applyFilters()">
+                            <span>to</span>
+                            <input type="date" id="end-date" class="header-date-input" value="{{ end_date }}" onchange="applyFilters()">
+                        </div>
+                    </div>
+
+                    <div class="header-divider"></div>
+
+                    <div class="header-filter-group">
+                        <label for="activity-filter">Activity</label>
+                        <select id="activity-filter" class="header-select" onchange="applyFilters()">
+                            <option value="all">All Activities</option>
+                            {% for type_code, type_name in activity_types %}
+                            <option value="{{ type_code }}" {% if activity_filter == type_code %}selected{% endif %}>
+                                {{ type_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="top-header-right">
+                    <button class="btn-export-header" onclick="exportLogs()" title="Export Activity Logs">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                    <button class="btn-reset-header" onclick="resetFilters()" title="Reset Filters">
+                        <i class="fas fa-undo"></i> Reset
+                    </button>
+                </div>
+            </div>
+
+            <!-- ==================== MAIN CONTENT ==================== -->
+            <div class="main-content">
+                <div class="stat-summary">
+                    <div class="stat-card">
+                        <div class="stat-value text-primary">{{ total_logs }}</div>
+                        <div class="stat-label">Total Activities</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value text-success">{{ users.count }}</div>
+                        <div class="stat-label">Active Users</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value text-warning">{{ activity_counts|length }}</div>
+                        <div class="stat-label">Activity Types</div>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table class="dashboard-table">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>User</th>
+                                <th>Activity</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in activity_logs %}
+                            <tr>
+                                <td><span class="time-stamp">{{ log.created_at|date:"M d, Y, H:i" }}</span></td>
+                                <td class="font-bold">{{ log.user.full_name|default:log.user.email }}</td>
+                                <td>
+                                    <span class="activity-tag {{ log.activity_type }}">
+                                        {{ log.get_activity_type_display }}
+                                    </span>
+                                </td>
+                                <td>{{ log.details }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">
+                                    <i class="fas fa-clipboard-list"></i>
+                                    No activity logs found.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="toastNotification" class="toast-notification">
+            <div class="toast-icon"><i class="fas fa-check"></i></div>
+            <div class="toast-content">
+                <p class="toast-title">Success!</p>
+                <p class="toast-message" id="toastMessage">Action completed successfully.</p>
+            </div>
+            <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
+        </div>
+
+        <script>
+            function getCsrfToken() {
+                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            }
+
+            function showToast(message, title = 'Success!') {
+                const toast = document.getElementById('toastNotification');
+                const msgEl = document.getElementById('toastMessage');
+                const titleEl = toast.querySelector('.toast-title');
+                
+                msgEl.textContent = message || 'Action completed successfully.';
+                titleEl.textContent = title;
+                
+                const icon = toast.querySelector('.toast-icon i');
+                if (title.toLowerCase().includes('error') || title.toLowerCase().includes('warning')) {
+                    icon.className = 'fas fa-exclamation-circle';
+                    toast.style.borderLeftColor = '#ef4444';
+                    toast.querySelector('.toast-icon').style.color = '#ef4444';
+                    toast.querySelector('.toast-icon').style.background = 'rgba(239, 68, 68, 0.1)';
+                } else {
+                    icon.className = 'fas fa-check';
+                    toast.style.borderLeftColor = '#10b981';
+                    toast.querySelector('.toast-icon').style.color = '#10b981';
+                    toast.querySelector('.toast-icon').style.background = 'rgba(16, 185, 129, 0.1)';
+                }
+                
+                toast.classList.add('show');
+                
+                if (window.toastTimeout) {
+                    clearTimeout(window.toastTimeout);
+                }
+                
+                window.toastTimeout = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+
+            window.closeToast = function() {
+                const toast = document.getElementById('toastNotification');
+                toast.classList.remove('show');
+                if (window.toastTimeout) {
+                    clearTimeout(window.toastTimeout);
+                    window.toastTimeout = null;
+                }
+            };
+
+            function applyFilters() {
+                const user = document.getElementById('user-filter').value;
+                const startDate = document.getElementById('start-date').value;
+                const endDate = document.getElementById('end-date').value;
+                const activity = document.getElementById('activity-filter').value;
+                
+                let url = window.location.pathname + '?';
+                if (user && user !== 'all') url += `user=${user}&`;
+                if (startDate) url += `start_date=${startDate}&`;
+                if (endDate) url += `end_date=${endDate}&`;
+                if (activity && activity !== 'all') url += `activity=${activity}`;
+                
+                window.location.href = url;
+            }
+
+            function resetFilters() {
+                window.location.href = window.location.pathname;
+            }
+
+            function exportLogs() {
+                const user = document.getElementById('user-filter').value;
+                const startDate = document.getElementById('start-date').value;
+                const endDate = document.getElementById('end-date').value;
+                const activity = document.getElementById('activity-filter').value;
+                
+                let url = "{% url 'control_dashboard:export_logs' %}?";
+                if (user && user !== 'all') url += `user=${user}&`;
+                if (startDate) url += `start_date=${startDate}&`;
+                if (endDate) url += `end_date=${endDate}&`;
+                if (activity && activity !== 'all') url += `activity=${activity}`;
+                
+                window.location.href = url;
+            }
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    const target = e.target;
+                    if (target.id === 'start-date' || target.id === 'end-date') {
+                        applyFilters();
+                    }
+                }
+            });
+        </script>
+    </body>
+</html>

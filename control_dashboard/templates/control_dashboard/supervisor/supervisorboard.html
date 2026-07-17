@@ -1,0 +1,367 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Supervisor Dashboard</title>
+        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
+        <link rel="stylesheet" href="{% static 'stylesheets/supervisor.css' %}" type="text/css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <meta name="csrf-token" content="{{ csrf_token }}">
+    </head>
+    <body>
+        <div class="page-wrapper">
+            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
+            <div class="nav-bar">
+                <div class="logo">
+                    <a href="{% url 'control_dashboard:supervisor_dashboard' %}">
+                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
+                    </a>
+                </div>
+
+                <ul class="nav-links">
+                    <li class="active"><a href="{% url 'control_dashboard:supervisor_dashboard' %}">
+                        <span class="nav-icon"><i class="fas fa-chart-line"></i></span>
+                        <span class="nav-text">Dashboard</span>
+                    </a></li>  
+                    <li><a href="{% url 'control_dashboard:team_performance' %}">
+                        <span class="nav-icon"><i class="fas fa-users"></i></span>
+                        <span class="nav-text">Team Performance</span>
+                    </a></li>
+                    <li><a href="{% url 'control_dashboard:submitted_reports' %}">
+                        <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
+                        <span class="nav-text">Submitted Reports</span>
+                    </a></li> 
+                    <li><a href="{% url 'control_dashboard:ad_hoc_scorecard' %}">
+                        <span class="nav-icon"><i class="fas fa-star"></i></span>
+                        <span class="nav-text">Ad-Hoc Scorecard</span>
+                    </a></li> 
+                    <li><a href="{% url 'control_dashboard:logged_exceptions' %}">
+                        <span class="nav-icon"><i class="fas fa-exclamation-triangle"></i></span>
+                        <span class="nav-text">Logged Exceptions</span>
+                    </a></li>       
+                    <li><a href="{% url 'control_dashboard:supervisor_checklist' %}">
+                        <span class="nav-icon"><i class="fas fa-tasks"></i></span>
+                        <span class="nav-text">Activity Checklist</span>
+                    </a></li>
+                    <li><a href="{% url 'control_dashboard:supervisor_activity_logs' %}">
+                        <span class="nav-icon"><i class="fas fa-search"></i></span>
+                        <span class="nav-text">Activity Logs</span>
+                    </a></li> 
+                </ul>
+
+                <div class="nav-footer">
+                    <div class="nav-profile-card">
+                        <div class="nav-profile-img-wrapper">
+                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
+                        </div>
+                        <div class="nav-profile-info">
+                            <h4 class="nav-user-name">{{ user_profile.full_name|default:"Supervisor" }}</h4>
+                            <p class="nav-user-role">{{ user_profile.get_position_display|default:"Supervisor" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== TOP HEADER ==================== -->
+            <div class="top-header">
+                <div class="top-header-left">
+                    <span class="page-title">Supervisors Dashboard</span>
+                    <span class="week-range">Week of {{ week_start|date:"M d" }} - {{ week_end|date:"M d, Y" }}</span>
+                </div>
+
+                <div class="top-header-center"></div>
+
+                <div class="top-header-right">
+                    <button class="btn-sync-header" onclick="syncDashboard()">
+                        <i class="fas fa-sync-alt"></i> Sync Dashboard
+                    </button>
+                </div>
+            </div>
+
+            <!-- ==================== MESSAGES ==================== -->
+            {% if messages %}
+            <div class="messages-container">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                    <button class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- ==================== MAIN CONTENT ==================== -->
+            <div class="main-content">
+                <div class="analytics-metrics-grid">
+                    <div class="metric-card border-left-danger">
+                        <div class="metric-card-content">
+                            <span class="card-metric-label">Logged Exceptions <span style="font-weight: 400; text-transform: none;">(This Week)</span></span>
+                            <h3 class="card-metric-value text-danger">{{ total_exceptions }}</h3>
+                            <span class="card-metric-subtext">
+                                <span class="badge-danger-dim">
+                                    <i class="fas fa-calendar-day"></i> {{ today_exceptions }} logged today
+                                </span>
+                            </span>
+                        </div>
+                        <div class="metric-card-icon text-danger-dim"><i class="fas fa-exclamation-triangle"></i></div>
+                    </div>
+
+                    <div class="metric-card border-left-warning">
+                        <div class="metric-card-content">
+                            <span class="card-metric-label">Pending Reviews</span>
+                            <h3 class="card-metric-value text-warning">{{ pending_reviews }}</h3>
+                            <span class="card-metric-subtext">
+                                {% if pending_reviews > 0 %}
+                                <span class="badge-warning-dim"><i class="fas fa-clock"></i> Awaiting your review</span>
+                                {% else %}
+                                <span class="badge-success-dim"><i class="fas fa-check"></i> All clear</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="metric-card-icon text-warning-dim"><i class="fas fa-file-invoice"></i></div>
+                    </div>
+
+                    <div class="metric-card border-left-purple">
+                        <div class="metric-card-content">
+                            <span class="card-metric-label">In Review</span>
+                            <h3 class="card-metric-value text-purple">{{ in_review }}</h3>
+                            <span class="card-metric-subtext">
+                                <span class="badge-purple-dim"><i class="fas fa-spinner"></i> Being assessed</span>
+                            </span>
+                        </div>
+                        <div class="metric-card-icon text-purple-dim"><i class="fas fa-search"></i></div>
+                    </div>
+
+                    <div class="metric-card border-left-success">
+                        <div class="metric-card-content">
+                            <span class="card-metric-label">Team Completion Rate</span>
+                            <h3 class="card-metric-value text-success">{{ completion_rate }}%</h3>
+                            <span class="card-metric-subtext">
+                                {% if completion_rate >= 90 %}
+                                <span class="badge-success-dim"><i class="fas fa-trophy"></i> Excellent performance</span>
+                                {% elif completion_rate >= 70 %}
+                                <span class="badge-warning-dim"><i class="fas fa-chart-line"></i> Good performance</span>
+                                {% else %}
+                                <span class="badge-danger-dim"><i class="fas fa-exclamation-circle"></i> Needs improvement</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="metric-card-icon text-success-dim"><i class="fas fa-chart-line"></i></div>
+                    </div>
+                </div>
+
+                <div class="dashboard-split-layout">
+                    <div class="dashboard-panel-card">
+                        <div class="panel-card-header">
+                            <h4>Team Performance</h4>
+                            <a href="{% url 'control_dashboard:team_performance' %}" class="panel-header-link">View Full Team <i class="fas fa-arrow-right"></i></a>
+                        </div>
+                        
+                        <table class="users-table simple-clickable-table">
+                            <thead>
+                                <tr>
+                                    <th>Full Name</th>
+                                    <th class="text-center">Submitted</th>
+                                    <th class="text-center">Approved</th>
+                                    <th class="text-center">Completion</th>
+                                    <th class="text-center" style="width: 60px;">View</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for member in team_performance %}
+                                <tr>
+                                    <td class="font-bold">{{ member.user.full_name|default:member.user.email }}</td>
+                                    <td class="text-center">{{ member.submitted }}</td>
+                                    <td class="text-center">{{ member.approved }}</td>
+                                    <td class="text-center">
+                                        <span class="simple-percentage text-{{ member.status }}">
+                                            {{ member.percentage }}%
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="#" class="row-link nav-arrow">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center">
+                                        No team members found
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="dashboard-panel-card">
+                        <div class="panel-card-header">
+                            <h4>Operational Controls</h4>
+                        </div>
+                        <div class="quick-actions-list-stack">
+                            <a href="{% url 'control_dashboard:logged_exceptions' %}" class="action-shortcut-item">
+                                <div class="shortcut-icon-box danger-box">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <div class="shortcut-text-box">
+                                    <h5>Logged Exceptions 
+                                        {% if pending_reviews > 0 %}
+                                        <span class="exception-count-badge">{{ pending_reviews }}</span>
+                                        {% endif %}
+                                    </h5>
+                                    <p class="shortcut-desc">Review flagged exceptions</p>
+                                </div>
+                            </a>
+                            <a href="{% url 'control_dashboard:ad_hoc_scorecard' %}"class="action-shortcut-item">
+                                <div class="shortcut-icon-box primary-box"><i class="fas fa-star"></i></div>
+                                <div class="shortcut-text-box">
+                                    <h5>Ad-Hoc Scorecard</h5>
+                                    <p class="shortcut-desc">Assess ad-hoc reports</p>
+                                </div>
+                            </a>
+                            <a href="{% url 'control_dashboard:supervisor_activity_logs' %}" class="action-shortcut-item">
+                                <div class="shortcut-icon-box success-box"><i class="fas fa-tasks"></i></div>
+                                <div class="shortcut-text-box">
+                                    <h5>Activity Checklist</h5>
+                                    <p class="shortcut-desc">Review team checklists</p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-panel-card">
+                    <div class="panel-card-header">
+                        <h4>Outstanding Exceptions</h4>
+                        <a href="{% url 'control_dashboard:logged_exceptions' %}?status=open" class="panel-header-link">
+                            View All Exception Logs <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                    
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th>Unit / Branch</th>
+                                <th>Exception Header</th>
+                                <th>Details</th>
+                                <th>Date Noted</th>
+                                <th>Age</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for exception in outstanding_exceptions %}
+                            <tr class="outstanding-row">
+                                <td class="font-bold">
+                                    {{ exception.data.unit|default:exception.data.branch|default:"N/A" }}
+                                </td>
+                                <td class="exception-header-text">
+                                    {{ exception.data.header|default:exception.report_type }}
+                                </td>
+                                <td style="font-size: 13px; line-height: 1.5; color: rgba(26, 35, 50, 0.6);">
+                                    {{ exception.data.details|truncatechars:60|default:"No details provided" }}
+                                </td>
+                                <td><span class="time-stamp">{{ exception.created_at|date:"M d, Y" }}</span></td>
+                                <td>
+                                    <span class="badge-overdue">
+                                        <i class="fas fa-clock"></i> 
+                                        {{ exception.created_at|timesince }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="status-badge {{ exception.status }}">
+                                        {{ exception.get_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center">
+                                    <i class="fas fa-check-circle"></i>
+                                    No outstanding exceptions. All exceptions are being handled!
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    
+                    {% if outstanding_exceptions|length >= 10 %}
+                    <div style="text-align: center; margin-top: 12px;">
+                        <a href="{% url 'control_dashboard:logged_exceptions' %}?status=open" class="panel-header-link">
+                            View all outstanding exceptions <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div id="toastNotification" class="toast-notification">
+            <div class="toast-icon"><i class="fas fa-check"></i></div>
+            <div class="toast-content">
+                <p class="toast-title">Success!</p>
+                <p class="toast-message" id="toastMessage">Action completed successfully.</p>
+            </div>
+            <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
+        </div>
+
+        <script>
+            function getCsrfToken() {
+                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            }
+
+            function showToast(message, title = 'Success!') {
+                const toast = document.getElementById('toastNotification');
+                const msgEl = document.getElementById('toastMessage');
+                const titleEl = toast.querySelector('.toast-title');
+                
+                msgEl.textContent = message || 'Action completed successfully.';
+                titleEl.textContent = title;
+                
+                const icon = toast.querySelector('.toast-icon i');
+                if (title.toLowerCase().includes('error') || title.toLowerCase().includes('warning')) {
+                    icon.className = 'fas fa-exclamation-circle';
+                    toast.style.borderLeftColor = '#ef4444';
+                    toast.querySelector('.toast-icon').style.color = '#ef4444';
+                    toast.querySelector('.toast-icon').style.background = 'rgba(239, 68, 68, 0.1)';
+                } else {
+                    icon.className = 'fas fa-check';
+                    toast.style.borderLeftColor = '#10b981';
+                    toast.querySelector('.toast-icon').style.color = '#10b981';
+                    toast.querySelector('.toast-icon').style.background = 'rgba(16, 185, 129, 0.1)';
+                }
+                
+                toast.classList.add('show');
+                
+                if (window.toastTimeout) {
+                    clearTimeout(window.toastTimeout);
+                }
+                
+                window.toastTimeout = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+
+            window.closeToast = function() {
+                const toast = document.getElementById('toastNotification');
+                toast.classList.remove('show');
+                if (window.toastTimeout) {
+                    clearTimeout(window.toastTimeout);
+                    window.toastTimeout = null;
+                }
+            };
+
+            function syncDashboard() {
+                const btn = document.querySelector('.btn-sync-header');
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+                btn.disabled = true;
+                
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            }
+        </script>
+    </body>
+</html>

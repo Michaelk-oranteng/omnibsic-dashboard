@@ -1,0 +1,184 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>My Activity Logs</title>
+        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
+        <link rel="stylesheet" href="{% static 'stylesheets/member.css' %}" type="text/css">
+        <link rel="stylesheet" href="{% static 'stylesheets/profile.css' %}" type="text/css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    </head>
+
+    <body>
+        <div class="page-wrapper">
+            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
+            <div class="nav-bar">
+                <div class="logo">
+                    <a href="{% url 'control_dashboard:member_dashboard' %}">
+                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
+                    </a>
+                </div>
+
+                <ul class="nav-links">
+                    <li><a href="{% url 'control_dashboard:member_dashboard' %}">
+                        <span class="nav-icon"><i class="fas fa-chart-pie"></i></span>
+                        <span class="nav-text">Dashboard</span>
+                    </a></li>
+                    <li><a href="{% url 'control_dashboard:drafts_page' %}">
+                        <span class="nav-icon"><i class="fas fa-file-alt"></i></span>
+                        <span class="nav-text">Submit Report</span>
+                    </a></li>     
+                    <li><a href="{% url 'control_dashboard:reports_page' %}">
+                        <span class="nav-icon"><i class="fas fa-file-pdf"></i></span>
+                        <span class="nav-text">Reports</span>
+                    </a></li>       
+                    <li><a href="{% url 'control_dashboard:submit_page' %}">
+                        <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
+                        <span class="nav-text">Submit</span>
+                    </a></li>  
+                    <li><a href="{% url 'control_dashboard:member_checklist' %}">
+                        <span class="nav-icon"><i class="fas fa-check-double"></i></span>
+                        <span class="nav-text">Checklist</span>
+                    </a></li> 
+                    <li class="active"><a href="{% url 'control_dashboard:member_activity_logs' %}">
+                        <span class="nav-icon"><i class="fas fa-clipboard-list"></i></span>
+                        <span class="nav-text">Activity logs</span>
+                    </a></li> 
+                </ul>
+
+                <div class="nav-footer">
+                    <div class="nav-profile-card">
+                        <div class="nav-profile-img-wrapper">
+                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
+                        </div>
+                        <div class="nav-profile-info">
+                            <h4 class="nav-user-name">{{ request.user.get_full_name|default:user_profile.full_name|default:"Member User" }}</h4>
+                            <p class="nav-user-role">{{ user_profile.get_position_display|default:"Member" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== TOP HEADER ==================== -->
+            <div class="top-header">
+                <div class="top-header-left">
+                    <span class="page-title">My Activity Logs</span>
+                </div>
+
+                <div class="top-header-center">
+                    <div class="header-date-group">
+                        <label for="start-date">Date Range</label>
+                        <div class="header-date-wrapper">
+                            <input type="date" id="start-date" name="start-date" class="header-date-input" value="{{ start_date }}" onchange="filterActivities()">
+                            <span>to</span>
+                            <input type="date" id="end-date" name="end-date" class="header-date-input" value="{{ end_date }}" onchange="filterActivities()">
+                        </div>
+                    </div>
+
+                    <div class="header-divider"></div>
+
+                    <div class="header-filter-group">
+                        <label for="activity-filter">Activity</label>
+                        <select id="activity-filter" name="activity-filter" class="header-select" onchange="filterActivities()">
+                            <option value="all" {% if not activity_filter %}selected{% endif %}>All Activities</option>
+                            {% for type_code, type_name in activity_types %}
+                            <option value="{{ type_code }}" {% if activity_filter == type_code %}selected{% endif %}>
+                                {{ type_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="top-header-right">
+                    <button class="btn-export-header" onclick="exportLogs()" title="Export Activity Logs">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                </div>
+            </div>
+
+            <!-- ==================== MAIN CONTENT ==================== -->
+            <div class="main-content">
+                <div class="table-container">
+                    <div class="table-header">
+                        <h4>Your Activities ({{ activity_logs|length }})</h4>
+                        <button class="btn-refresh" onclick="location.reload()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+
+                    {% if activity_logs %}
+                    <table class="dashboard-table">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>User</th>
+                                <th>Activity</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in activity_logs %}
+                            <tr>
+                                <td><span class="time-stamp">{{ log.created_at|date:"M d, Y, H:i" }}</span></td>
+                                <td class="font-bold">{{ log.user.full_name|default:log.user.email }}</td>
+                                <td>
+                                    <span class="activity-tag {{ log.activity_type }}">
+                                        {{ log.get_activity_type_display }}
+                                    </span>
+                                </td>
+                                <td>{{ log.details }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-clipboard-list"></i>
+                        <h3>No Activities Found</h3>
+                        <p>You haven't performed any activities yet, or no activities match your filters.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function filterActivities() {
+                const startDate = document.getElementById('start-date').value;
+                const endDate = document.getElementById('end-date').value;
+                const activity = document.getElementById('activity-filter').value;
+                
+                let url = window.location.pathname + '?';
+                if (startDate) url += `start_date=${startDate}&`;
+                if (endDate) url += `end_date=${endDate}&`;
+                if (activity && activity !== 'all') url += `activity=${activity}`;
+                
+                window.location.href = url;
+            }
+
+            function exportLogs() {
+                const startDate = document.getElementById('start-date').value;
+                const endDate = document.getElementById('end-date').value;
+                const activity = document.getElementById('activity-filter').value;
+                
+                let url = "{% url 'control_dashboard:export_logs' %}?";
+                if (startDate) url += `start_date=${startDate}&`;
+                if (endDate) url += `end_date=${endDate}&`;
+                if (activity && activity !== 'all') url += `activity=${activity}`;
+                
+                window.location.href = url;
+            }
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    const target = e.target;
+                    if (target.id === 'start-date' || target.id === 'end-date') {
+                        filterActivities();
+                    }
+                }
+            });
+        </script>
+    </body>
+</html>

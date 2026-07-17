@@ -1,0 +1,543 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Admin Dashboard - Template Builder</title>
+        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
+        <link rel="stylesheet" href="{% static 'stylesheets/admin.css' %}" type="text/css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <meta name="csrf-token" content="{{ csrf_token }}">
+    </head>
+    <body>
+        <div class="page-wrapper">
+            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
+            <div class="nav-bar">
+                <div class="logo">
+                    <a href="{% url 'control_dashboard:admin_page' %}">
+                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
+                    </a>
+                </div>
+                <ul class="nav-links">
+                    <li><a href="{% url 'control_dashboard:admin_page' %}">
+                        <span class="nav-icon"><i class="fas fa-user-cog"></i></span>
+                        <span class="nav-text">User Management</span>
+                    </a></li> 
+                    <li><a href="{% url 'control_dashboard:report_center' %}">
+                        <span class="nav-icon"><i class="fas fa-flag"></i></span>
+                        <span class="nav-text">Report Center</span>
+                    </a></li>           
+                    <li class="active"><a href="{% url 'control_dashboard:template_builder' %}">
+                        <span class="nav-icon"><i class="fas fa-cubes"></i></span>
+                        <span class="nav-text">Template Builder</span>
+                    </a></li>
+                    <li><a href="{% url 'control_dashboard:checklist_builder' %}">
+                        <span class="nav-icon"><i class="fas fa-tools"></i></span>
+                        <span class="nav-text">Checklist Builder</span>
+                    </a></li>
+                    <li><a href="{% url 'control_dashboard:activity_logs' %}">
+                        <span class="nav-icon"><i class="fas fa-key"></i></span>
+                        <span class="nav-text">Activity Logs</span>
+                    </a></li> 
+                </ul>
+                <div class="nav-footer">
+                    <div class="nav-profile-card">
+                        <div class="nav-profile-img-wrapper">
+                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
+                        </div>
+                        <div class="nav-profile-info">
+                            <h4 class="nav-user-name">{{ request.user.get_full_name|default:"Admin User" }}</h4>
+                            <p class="nav-user-role">Head Officer Control</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== TOP HEADER ==================== -->
+            <div class="top-header">
+                <div class="top-header-left">
+                    <span class="page-title">Report Template Builder</span>
+                </div>
+                <div class="top-header-center">
+                    <div class="header-filter-group">
+                        <label for="template-filter">Template</label>
+                        <select id="template-filter" class="header-select" onchange="loadTemplate()">
+                            <option value="">Select Template...</option>
+                            {% for template in templates %}
+                            <option value="{{ template.id }}">{{ template.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="top-header-right">
+                    <button class="btn-create-header" onclick="saveTemplate()">
+                        <i class="fas fa-save"></i> Save Template
+                    </button>
+                </div>
+            </div>
+
+            <!-- ==================== MESSAGES ==================== -->
+            {% if messages %}
+            <div class="messages-container">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                    <button class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- ==================== MAIN CONTENT ==================== -->
+            <div class="main-content">
+                <div class="template-builder-grid">
+                    <div class="builder-card">
+                        <h4>Template Setup</h4>
+                        
+                        <div class="form-row">
+                            <label for="report-type">Report Type</label>
+                            <select id="report-type" class="table-select">
+                                <option value="">Select Report Type...</option>
+                                {% for report_type in report_types %}
+                                <option value="{{ report_type }}">{{ report_type }}</option>
+                                {% endfor %}
+                                <option value="custom">Custom (Type below)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-row" id="custom-report-group" style="display: none;">
+                            <label for="custom-report-type">Custom Report Type</label>
+                            <input type="text" id="custom-report-type" class="table-input" placeholder="Enter custom report type...">
+                        </div>
+
+                        <div class="form-row">
+                            <label for="template-description">Description</label>
+                            <textarea id="template-description" class="table-input" rows="2" placeholder="Enter template description..."></textarea>
+                        </div>
+
+                        <div class="field-builder-form">
+                            <div class="field-builder-header">
+                                <h4>Add New Field</h4>
+                            </div>
+                            
+                            <div class="form-row">
+                                <label for="field-label">Field Label</label>
+                                <input type="text" id="field-label" class="table-input" placeholder="e.g., Branch/Unit">
+                            </div>
+                            
+                            <div class="form-row">
+                                <label for="field-type">Field Type</label>
+                                <select id="field-type" class="table-select">
+                                    {% for value, label in field_types %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="form-row">
+                                <label for="field-source">Data Source</label>
+                                <select id="field-source" class="table-select">
+                                    {% for value, label in data_sources %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="form-row">
+                                <label for="field-required">Required</label>
+                                <select id="field-required" class="table-select">
+                                    <option value="true">Yes</option>
+                                    <option value="false" selected>No</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-row" id="options-field" style="display: none;">
+                                <label for="field-options">Options (comma separated)</label>
+                                <input type="text" id="field-options" class="table-input" placeholder="Option 1, Option 2, Option 3">
+                            </div>
+                            
+                            <button type="button" class="btn-add-to-template" onclick="addField()">
+                                <i class="fas fa-plus-circle"></i> Add Field to Template
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="builder-card">
+                        <div class="field-builder-header">
+                            <h4>Template Fields</h4>
+                            <span class="field-count-badge" id="fieldCount">0 fields</span>
+                        </div>
+
+                        <div class="field-list" id="fieldList">
+                            <div class="empty-fields">
+                                <i class="fas fa-cubes"></i>
+                                <span>No fields added yet. Add fields from the left panel.</span>
+                            </div>
+                        </div>
+
+                        <div class="preview-section">
+                            <div class="preview-header">
+                                <h4>Template Preview</h4>
+                                <span class="preview-label">Live Preview</span>
+                            </div>
+                            <div class="table-container">
+                                <table class="users-table preview-table" id="previewTable">
+                                    <thead>
+                                        <tr id="previewHeader"></tr>
+                                    </thead>
+                                    <tbody id="previewBody">
+                                        <tr class="add-row-placeholder">
+                                            <td colspan="1">
+                                                <i class="fas fa-plus-circle"></i>
+                                                <span>Add fields to see preview</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function getCsrfToken() {
+                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            }
+
+            let fieldCounter = 0;
+            let currentTemplateId = null;
+
+            document.getElementById('report-type').addEventListener('change', function() {
+                const customGroup = document.getElementById('custom-report-group');
+                if (this.value === 'custom') {
+                    customGroup.style.display = 'block';
+                } else {
+                    customGroup.style.display = 'none';
+                }
+            });
+
+            document.getElementById('field-type').addEventListener('change', function() {
+                const optionsField = document.getElementById('options-field');
+                if (this.value === 'dropdown' || this.value === 'checkbox') {
+                    optionsField.style.display = 'block';
+                } else {
+                    optionsField.style.display = 'none';
+                }
+            });
+
+            function addField() {
+                const label = document.getElementById('field-label').value.trim();
+                if (!label) {
+                    alert('Please enter a field label.');
+                    return;
+                }
+
+                const fieldType = document.getElementById('field-type').value;
+                const dataSource = document.getElementById('field-source').value;
+                const isRequired = document.getElementById('field-required').value === 'true';
+                const options = document.getElementById('field-options').value;
+
+                const fieldData = {
+                    label: label,
+                    field_type: fieldType,
+                    data_source: dataSource,
+                    is_required: isRequired,
+                    options: options
+                };
+
+                addFieldToUI(fieldData);
+                
+                document.getElementById('field-label').value = '';
+                document.getElementById('field-options').value = '';
+            }
+
+            function addFieldToUI(fieldData) {
+                const fieldList = document.getElementById('fieldList');
+                const emptyMessage = fieldList.querySelector('.empty-fields');
+                if (emptyMessage) {
+                    emptyMessage.remove();
+                }
+
+                const fieldItem = document.createElement('div');
+                fieldItem.className = 'field-item';
+                fieldItem.dataset.fieldData = JSON.stringify(fieldData);
+                fieldItem.innerHTML = `
+                    <div class="field-item-left">
+                        <i class="fas fa-grip-vertical"></i>
+                        <div>
+                            <span class="field-label">${fieldData.label}</span>
+                            <span class="field-type-badge">${fieldData.field_type.charAt(0).toUpperCase() + fieldData.field_type.slice(1)}</span>
+                        </div>
+                    </div>
+                    <div class="field-item-right">
+                        <span class="field-source-badge">${fieldData.data_source === 'manual' ? 'Manual' : fieldData.data_source === 'database' ? 'Database' : 'Options'}</span>
+                        ${fieldData.is_required ? '<span class="field-required-badge">Required</span>' : ''}
+                        <button class="btn-remove-field" onclick="removeField(this)" title="Remove Field">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                `;
+
+                fieldList.appendChild(fieldItem);
+                updateFieldCount();
+                updatePreview();
+            }
+
+            function removeField(button) {
+                const fieldItem = button.closest('.field-item');
+                if (fieldItem) {
+                    fieldItem.remove();
+                    updateFieldCount();
+                    updatePreview();
+                    
+                    const fieldList = document.getElementById('fieldList');
+                    if (fieldList.children.length === 0) {
+                        fieldList.innerHTML = `
+                            <div class="empty-fields">
+                                <i class="fas fa-cubes"></i>
+                                <span>No fields added yet. Add fields from the left panel.</span>
+                            </div>
+                        `;
+                    }
+                }
+            }
+
+            function updateFieldCount() {
+                const count = document.querySelectorAll('.field-item').length;
+                document.getElementById('fieldCount').textContent = `${count} fields`;
+            }
+
+            function updatePreview() {
+                const fieldItems = document.querySelectorAll('.field-item');
+                const thead = document.getElementById('previewHeader');
+                const tbody = document.getElementById('previewBody');
+
+                if (fieldItems.length === 0) {
+                    thead.innerHTML = '';
+                    tbody.innerHTML = `
+                        <tr class="add-row-placeholder">
+                            <td colspan="1">
+                                <i class="fas fa-plus-circle"></i>
+                                <span>Add fields to see preview</span>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                let headerHTML = '';
+                let bodyHTML = '<tr>';
+                fieldItems.forEach((item, index) => {
+                    const data = JSON.parse(item.dataset.fieldData);
+                    headerHTML += `<th>${data.label}</th>`;
+                    
+                    let inputHTML = '';
+                    if (data.field_type === 'dropdown') {
+                        const options = data.options ? data.options.split(',').map(opt => opt.trim()) : [];
+                        inputHTML = `<select class="table-select"><option value="">Select...</option>`;
+                        options.forEach(opt => {
+                            inputHTML += `<option value="${opt}">${opt}</option>`;
+                        });
+                        inputHTML += `</select>`;
+                    } else if (data.field_type === 'date') {
+                        inputHTML = `<input type="date" class="table-input">`;
+                    } else if (data.field_type === 'checkbox') {
+                        inputHTML = `<input type="checkbox" class="table-input" style="width: auto;">`;
+                    } else if (data.field_type === 'textarea') {
+                        inputHTML = `<textarea class="table-input" rows="2" placeholder="Enter ${data.label.toLowerCase()}..."></textarea>`;
+                    } else {
+                        inputHTML = `<input type="${data.field_type === 'number' ? 'number' : 'text'}" class="table-input" placeholder="Enter ${data.label.toLowerCase()}...">`;
+                    }
+                    
+                    bodyHTML += `<td>${inputHTML}</td>`;
+                });
+                bodyHTML += '</tr>';
+
+                bodyHTML += `
+                    <tr class="add-row-placeholder">
+                        <td colspan="${fieldItems.length}">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>Add new row to preview</span>
+                        </td>
+                    </tr>
+                `;
+
+                thead.innerHTML = `<tr>${headerHTML}</tr>`;
+                tbody.innerHTML = bodyHTML;
+
+                const addRow = tbody.querySelector('.add-row-placeholder');
+                if (addRow) {
+                    addRow.addEventListener('click', function() {
+                        const cols = fieldItems.length;
+                        let newRowHTML = '<tr>';
+                        for (let i = 0; i < cols; i++) {
+                            const firstRowInput = tbody.querySelector('tr:first-child td:first-child input, tr:first-child td:first-child select, tr:first-child td:first-child textarea');
+                            if (firstRowInput) {
+                                const tagName = firstRowInput.tagName.toLowerCase();
+                                const type = firstRowInput.type;
+                                if (tagName === 'select') {
+                                    newRowHTML += `<td><select class="table-select"><option value="">Select...</option></select></td>`;
+                                } else if (tagName === 'textarea') {
+                                    newRowHTML += `<td><textarea class="table-input" rows="2"></textarea></td>`;
+                                } else if (type === 'checkbox') {
+                                    newRowHTML += `<td><input type="checkbox" class="table-input" style="width: auto;"></td>`;
+                                } else if (type === 'date') {
+                                    newRowHTML += `<td><input type="date" class="table-input"></td>`;
+                                } else {
+                                    newRowHTML += `<td><input type="${type || 'text'}" class="table-input" placeholder="Enter value..."></td>`;
+                                }
+                            } else {
+                                newRowHTML += `<td><input type="text" class="table-input" placeholder="Enter value..."></td>`;
+                            }
+                        }
+                        newRowHTML += '</tr>';
+                        const placeholderRow = this;
+                        const newRow = document.createElement('tr');
+                        newRow.innerHTML = newRowHTML;
+                        tbody.insertBefore(newRow, placeholderRow);
+                    });
+                }
+            }
+
+            function loadTemplate() {
+                const templateId = document.getElementById('template-filter').value;
+                if (!templateId) {
+                    document.getElementById('report-type').value = '';
+                    document.getElementById('custom-report-type').value = '';
+                    document.getElementById('template-description').value = '';
+                    document.getElementById('fieldList').innerHTML = `
+                        <div class="empty-fields">
+                            <i class="fas fa-cubes"></i>
+                            <span>No fields added yet. Add fields from the left panel.</span>
+                        </div>
+                    `;
+                    updateFieldCount();
+                    updatePreview();
+                    currentTemplateId = null;
+                    return;
+                }
+
+                fetch("{% url 'control_dashboard:api_get_template' 0 %}".replace('0', templateId), {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const template = data.template;
+                        
+                        const reportTypeSelect = document.getElementById('report-type');
+                        const reportTypeValue = template.name;
+                        let found = false;
+                        for (let option of reportTypeSelect.options) {
+                            if (option.value === reportTypeValue) {
+                                option.selected = true;
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            reportTypeSelect.value = 'custom';
+                            document.getElementById('custom-report-type').value = reportTypeValue;
+                            document.getElementById('custom-report-group').style.display = 'block';
+                        }
+                        
+                        document.getElementById('template-description').value = template.description || '';
+                        currentTemplateId = template.id;
+
+                        const fieldList = document.getElementById('fieldList');
+                        fieldList.innerHTML = '';
+
+                        template.fields.forEach(field => {
+                            addFieldToUI({
+                                label: field.label,
+                                field_type: field.field_type,
+                                data_source: field.data_source,
+                                is_required: field.is_required,
+                                options: field.options
+                            });
+                        });
+
+                        if (template.fields.length === 0) {
+                            fieldList.innerHTML = `
+                                <div class="empty-fields">
+                                    <i class="fas fa-cubes"></i>
+                                    <span>No fields added yet. Add fields from the left panel.</span>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                });
+            }
+
+            function saveTemplate() {
+                let reportType = document.getElementById('report-type').value;
+                const customType = document.getElementById('custom-report-type').value.trim();
+                
+                if (reportType === 'custom' && customType) {
+                    reportType = customType;
+                }
+                
+                const description = document.getElementById('template-description').value.trim();
+                const fields = [];
+
+                document.querySelectorAll('.field-item').forEach(item => {
+                    const data = JSON.parse(item.dataset.fieldData);
+                    fields.push(data);
+                });
+
+                if (!reportType) {
+                    alert('Please select or enter a report type.');
+                    return;
+                }
+
+                if (fields.length === 0) {
+                    alert('Please add at least one field to the template.');
+                    return;
+                }
+
+                const url = currentTemplateId ? 
+                    "{% url 'control_dashboard:api_edit_template' 0 %}".replace('0', currentTemplateId) :
+                    "{% url 'control_dashboard:api_create_template' %}";
+                
+                const method = currentTemplateId ? 'PUT' : 'POST';
+
+                fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        report_type: reportType,
+                        description: description,
+                        fields: fields
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(currentTemplateId ? 'Template updated successfully!' : 'Template created successfully!');
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                });
+            }
+        </script>
+    </body>
+</html>

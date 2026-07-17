@@ -1,0 +1,304 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Activity Logs</title>
+        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
+        <link rel="stylesheet" href="{% static 'stylesheets/admin.css' %}" type="text/css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <meta name="csrf-token" content="{{ csrf_token }}">
+    </head>
+    <body>
+        <div class="page-wrapper">
+            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
+            <div class="nav-bar">
+                <div class="logo">
+                    <a href="{% url 'control_dashboard:admin_page' %}">
+                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
+                    </a>
+                </div>
+
+                <ul class="nav-links">
+                    <li><a href="{% url 'control_dashboard:admin_page' %}">
+                        <span class="nav-icon"><i class="fas fa-user-cog"></i></span>
+                        <span class="nav-text">User Management</span>
+                    </a></li> 
+                    <li><a href="{% url 'control_dashboard:report_center' %}">
+                        <span class="nav-icon"><i class="fas fa-flag"></i></span>
+                        <span class="nav-text">Report Center</span>
+                    </a></li>  
+                    <li><a href="{% url 'control_dashboard:template_builder' %}">
+                        <span class="nav-icon"><i class="fas fa-cubes"></i></span>
+                        <span class="nav-text">Template Builder</span>
+                    </a></li>          
+                    <li><a href="{% url 'control_dashboard:checklist_builder' %}">
+                        <span class="nav-icon"><i class="fas fa-tools"></i></span>
+                        <span class="nav-text">Checklist Builder</span>
+                    </a></li>
+                    <li class="active"><a href="{% url 'control_dashboard:activity_logs' %}">
+                        <span class="nav-icon"><i class="fas fa-key"></i></span>
+                        <span class="nav-text">Activity Logs</span>
+                    </a></li> 
+                </ul>
+
+                <div class="nav-footer">
+                    <div class="nav-profile-card">
+                        <div class="nav-profile-img-wrapper">
+                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
+                        </div>
+                        <div class="nav-profile-info">
+                            <h4 class="nav-user-name">{{ request.user.get_full_name|default:"Admin User" }}</h4>
+                            <p class="nav-user-role">Head Officer Control</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== TOP HEADER ==================== -->
+            <div class="top-header">
+                <div class="top-header-left">
+                    <span class="page-title">Activity Logs</span>
+                </div>
+
+                <div class="top-header-center">
+                    <div class="header-date-group">
+                        <label for="start-date">Date Range</label>
+                        <div class="header-date-wrapper">
+                            <input type="date" id="start-date" name="start-date" class="header-date-input" value="{{ start_date|default:'' }}">
+                            <span>to</span>
+                            <input type="date" id="end-date" name="end-date" class="header-date-input" value="{{ end_date|default:'' }}">
+                        </div>
+                    </div>
+
+                    <div class="header-divider"></div>
+
+                    <div class="header-filter-group">
+                        <label for="activity-filter">Activity</label>
+                        <select id="activity-filter" name="activity-filter" class="header-select" onchange="applyFilters()">
+                            <option value="all">All Activities</option>
+                            {% for value, label in activity_types %}
+                            <option value="{{ value }}" {% if activity_filter == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="header-divider"></div>
+
+                    <div class="header-filter-group">
+                        <label for="user-filter">User</label>
+                        <select id="user-filter" name="user-filter" class="header-select" onchange="applyFilters()">
+                            <option value="all">All Users</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}" {% if user_filter == user.id|stringformat:"s" %}selected{% endif %}>{{ user.full_name|default:user.email }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="top-header-right">
+                    <button class="btn-export-header" onclick="exportLogs()">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                    <button class="btn-refresh" onclick="location.reload()">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- ==================== MESSAGES ==================== -->
+            {% if messages %}
+            <div class="messages-container">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                    <button class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- ==================== MAIN CONTENT ==================== -->
+            <div class="main-content">
+                <div class="table-container">
+                    <div class="table-header">
+                        <h4>Activity Logs ({{ activity_logs|length }})</h4>
+                    </div>
+
+                    <table class="dashboard-table">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>User</th>
+                                <th>Activity</th>
+                                <th>Details</th>
+                                <th>IP Address</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in activity_logs %}
+                            <tr>
+                                <td><span class="time-stamp">{{ log.created_at|date:"F d, Y, H:i" }}</span></td>
+                                <td class="font-bold">{{ log.user.full_name|default:log.user.email }}</td>
+                                <td><span class="activity-tag {{ log.activity_type }}">{{ log.get_activity_type_display }}</span></td>
+                                <td>{{ log.details|default:"-" }}</td>
+                                <td><span class="time-stamp">{{ log.ip_address|default:"N/A" }}</span></td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    <i class="fas fa-history"></i>
+                                    No activity logs found.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== EDIT ACTIVITY MODAL ==================== -->
+        <div id="editActivityModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close" onclick="document.getElementById('editActivityModal').style.display='none'">&times;</span>
+                <h2>Edit Activity Log</h2>
+                <form id="editActivityForm" onsubmit="submitEditActivity(event)">
+                    {% csrf_token %}
+                    <input type="hidden" id="editActivityId">
+                    
+                    <div class="form-group">
+                        <label>User</label>
+                        <select id="editActivityUser" class="form-control" required>
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.full_name|default:user.email }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Activity Type</label>
+                        <select id="editActivityType" class="form-control" required>
+                            {% for value, label in activity_types %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Details</label>
+                        <textarea id="editActivityDetails" class="form-control" rows="3" placeholder="Enter activity details..."></textarea>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="submit" class="btn-submit">Update Activity</button>
+                        <button type="button" class="btn-cancel-modal" onclick="document.getElementById('editActivityModal').style.display='none'">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            function getCsrfToken() {
+                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            }
+
+            function exportLogs() {
+                const startDate = document.getElementById('start-date').value;
+                const endDate = document.getElementById('end-date').value;
+                const activityFilter = document.getElementById('activity-filter').value;
+                const userFilter = document.getElementById('user-filter').value;
+                
+                window.location.href = "{% url 'control_dashboard:export_logs' %}?start_date=" + startDate + "&end_date=" + endDate + "&activity=" + activityFilter + "&user=" + userFilter;
+            }
+
+            function applyFilters() {
+                const startDate = document.getElementById('start-date').value;
+                const endDate = document.getElementById('end-date').value;
+                const activityFilter = document.getElementById('activity-filter').value;
+                const userFilter = document.getElementById('user-filter').value;
+                
+                let url = "{% url 'control_dashboard:activity_logs' %}?";
+                if (startDate) url += "start_date=" + startDate + "&";
+                if (endDate) url += "end_date=" + endDate + "&";
+                if (activityFilter && activityFilter !== 'all') url += "activity=" + activityFilter + "&";
+                if (userFilter && userFilter !== 'all') url += "user=" + userFilter;
+                
+                window.location.href = url;
+            }
+
+            document.getElementById('start-date').addEventListener('change', applyFilters);
+            document.getElementById('end-date').addEventListener('change', applyFilters);
+
+            function editActivity(activityId) {
+                fetch("{% url 'control_dashboard:api_get_activity' 0 %}".replace('0', activityId), {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const activity = data.activity;
+                        document.getElementById('editActivityId').value = activityId;
+                        document.getElementById('editActivityUser').value = activity.user;
+                        document.getElementById('editActivityType').value = activity.activity_type;
+                        document.getElementById('editActivityDetails').value = activity.details || '';
+                        
+                        document.getElementById('editActivityModal').style.display = 'block';
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                });
+            }
+
+            function submitEditActivity(event) {
+                event.preventDefault();
+                
+                const activityId = document.getElementById('editActivityId').value;
+                const userId = document.getElementById('editActivityUser').value;
+                const activityType = document.getElementById('editActivityType').value;
+                const details = document.getElementById('editActivityDetails').value;
+
+                fetch("{% url 'control_dashboard:api_edit_activity' 0 %}".replace('0', activityId), {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        activity_type: activityType,
+                        details: details
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Activity updated successfully!');
+                        document.getElementById('editActivityModal').style.display = 'none';
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                });
+            }
+
+            window.onclick = function(event) {
+                const modal = document.getElementById('editActivityModal');
+                if (event.target == modal) {
+                    modal.style.display = 'none';
+                }
+            }
+        </script>
+    </body>
+</html>
