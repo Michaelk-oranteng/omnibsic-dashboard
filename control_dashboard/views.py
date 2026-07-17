@@ -11,187 +11,129 @@ from django.conf import settings
 import json
 import csv
 from datetime import datetime, date, timedelta
+from django.contrib.auth.decorators import login_required
 
 from .models import UserProfile, ActivityLog, Report, ReportTemplate, TemplateField, TemplateAssignment, Checklist, ChecklistTask, Draft, DraftReview
 
-# ==================== HELPER FUNCTIONS ====================
-
-def log_activity(user, activity_type, details, request=None):
-    """
-    Helper function to log user activities.
-    """
-    try:
-        ip_address = None
-        user_agent = ''
-        
-        if request:
-            ip_address = request.META.get('REMOTE_ADDR')
-            user_agent = request.META.get('HTTP_USER_AGENT', '')
-        
-        ActivityLog.objects.create(
-            user=user,
-            activity_type=activity_type,
-            details=details,
-            ip_address=ip_address,
-            user_agent=user_agent
-        )
-    except Exception as e:
-        # Silently fail if logging fails
-        pass
-
-def get_or_create_user_profile(django_user):
-    """
-    Helper function to get or create UserProfile from Django user.
-    """
-    try:
-        user_profile = UserProfile.objects.get(email=django_user.email)
-    except UserProfile.DoesNotExist:
-        user_profile = UserProfile.objects.create(
-            email=django_user.email,
-            full_name=django_user.get_full_name() or django_user.username,
-            position='hoc',
-            role='member',
-            status='active'
-        )
-    return user_profile
 
 # ==================== AUTHENTICATION VIEWS ====================
 
-def landing_page(request):
+def login_page(request):
     """
-    Landing page view - the first page users see.
-    """
-    # If user is already authenticated, redirect to their dashboard
-    if request.user.is_authenticated:
-        try:
-            user_profile = UserProfile.objects.get(email=request.user.email)
-            if user_profile.role == 'admin':
-                return redirect('/adminboard/admin/')
-            elif user_profile.role == 'supervisor':
-                return redirect('/adminboard/supervisor/')
-            else:
-                return redirect('/adminboard/member/')
-        except UserProfile.DoesNotExist:
-            pass
-    
-    return render(request, 'control_dashboard/index.html')
-
-def login_view(request):
-    """
-    Login page view with Microsoft login and test users.
+    Login page view - redirects to landing page since login.html was deleted.
+    The landing page (index.html) contains the login form.
     """
     # If user is already authenticated, redirect to their dashboard
     if request.user.is_authenticated:
-        try:
-            user_profile = UserProfile.objects.get(email=request.user.email)
-            if user_profile.role == 'admin':
-                return redirect('/adminboard/admin/')
-            elif user_profile.role == 'supervisor':
-                return redirect('/adminboard/supervisor/')
-            else:
-                return redirect('/adminboard/member/')
-        except UserProfile.DoesNotExist:
-            pass
+        return redirect_dashboard(request.user)
     
-    return render(request, 'control_dashboard/index.html')
+    # Redirect to landing page which has the login form
+    return redirect('control_dashboard:landing_page')
 
-def microsoft_login(request):
+def redirect_dashboard(user):
     """
-    Redirect to Microsoft login.
+    Redirect user to their appropriate dashboard based on role.
     """
-    # In production, this would redirect to Microsoft OAuth
-    # For now, redirect to the test login for demonstration
-    messages.info(request, 'Microsoft login is being configured. Using test login for now.')
-    return redirect('login')
-
-def logout_view(request):
-    """
-    Logout view.
-    """
-    if request.user.is_authenticated:
-        try:
-            user_profile = UserProfile.objects.get(email=request.user.email)
-            log_activity(
-                user=user_profile,
-                activity_type='logout',
-                details=f'User {request.user.email} logged out',
-                request=request
-            )
-        except:
-            pass
-    
-    auth_logout(request)
-    messages.info(request, 'You have been logged out successfully.')
-    return redirect('login')
-
-def test_login(request, role):
-    """
-    Development-only test login via URL.
-    """
-    if not settings.DEBUG:
-        return redirect('login')
-    
-    # Map role to email
-    role_emails = {
-        'admin': 'admin@test.com',
-        'member': 'member@test.com',
-        'supervisor': 'supervisor@test.com'
-    }
-    
-    email = role_emails.get(role)
-    if not email:
-        messages.error(request, 'Invalid test role')
-        return redirect('login')
-    
-    # Get or create Django user
-    django_user, created = DjangoUser.objects.get_or_create(
-        username=email,
-        defaults={'email': email}
-    )
-    
-    if created:
-        django_user.set_password('Test@123')
-        django_user.save()
-    
-    # Get or create UserProfile
     try:
-        user_profile = UserProfile.objects.get(email=email)
-    except UserProfile.DoesNotExist:
-        role_map = {
-            'admin': {'position': 'hoc', 'role': 'admin'},
-            'member': {'position': 'hoc', 'role': 'member'},
-            'supervisor': {'position': 'cc', 'role': 'supervisor'}
-        }
-        role_data = role_map.get(role, {'position': 'hoc', 'role': 'member'})
+        user_profile = UserProfile.objects.get(email=user.email)
         
-        user_profile = UserProfile.objects.create(
-            email=email,
-            full_name=f'{role.capitalize()} User',
-            position=role_data['position'],
-            role=role_data['role'],
-            status='active'
-        )
-    
-    # Login the user
-    auth_login(request, django_user)
-    
-    # Log the activity
-    log_activity(
-        user=user_profile,
-        activity_type='login',
-        details=f'Test login as {role}',
-        request=request
-    )
-    
-    # Redirect based on role
-    if role == 'admin':
-        return redirect('/adminboard/admin/')
-    elif role == 'supervisor':
-        return redirect('/adminboard/supervisor/')
-    else:
+        if user_profile.role == 'admin':
+            return redirect('/adminboard/admin/')
+        elif user_profile.role == 'supervisor':
+            return redirect('/adminboard/supervisor/')
+        else:
+            return redirect('/adminboard/member/')
+    except UserProfile.DoesNotExist:
+        # Default to member dashboard if no profile found
         return redirect('/adminboard/member/')
 
-# ==================== API - AUTHENTICATION ====================
+# ==================== API - EMAIL LOGIN ====================
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_email_login(request):
+    """
+    API endpoint for email-based login.
+    """
+    try:
+        data = json.loads(request.body)
+        email = data.get('email', '').strip()
+        
+        if not email:
+            return JsonResponse({
+                'success': False,
+                'error': 'Email is required'
+            }, status=400)
+        
+        # Check if user exists in UserProfile
+        try:
+            user_profile = UserProfile.objects.get(email__iexact=email)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'No account found with this email. Please contact your administrator.'
+            }, status=404)
+        
+        # Check if user is active
+        if user_profile.status != 'active':
+            return JsonResponse({
+                'success': False,
+                'error': 'Your account is inactive. Please contact support.'
+            }, status=403)
+        
+        # Get or create Django user
+        django_user, created = DjangoUser.objects.get_or_create(
+            email__iexact=email,
+            defaults={
+                'username': email,
+                'email': email
+            }
+        )
+        
+        if created:
+            django_user.save()
+        
+        # Log the user in
+        auth_login(request, django_user)
+        
+        # Log the activity
+        log_activity(
+            user=user_profile,
+            activity_type='login',
+            details=f'User {email} logged in via email API',
+            request=request
+        )
+        
+        # Determine redirect URL based on role
+        redirect_urls = {
+            'admin': '/adminboard/admin/',
+            'supervisor': '/adminboard/supervisor/',
+            'member': '/adminboard/member/'
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Welcome back, {user_profile.full_name}!',
+            'redirect_url': redirect_urls.get(user_profile.role, '/adminboard/member/'),
+            'user': {
+                'id': user_profile.id,
+                'email': user_profile.email,
+                'full_name': user_profile.full_name,
+                'role': user_profile.role,
+                'position': user_profile.position
+            }
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -302,6 +244,399 @@ def api_test_login(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+def logout_view(request):
+    """
+    Logout view.
+    """
+    if request.user.is_authenticated:
+        try:
+            user_profile = UserProfile.objects.get(email=request.user.email)
+            log_activity(
+                user=user_profile,
+                activity_type='logout',
+                details=f'User {request.user.email} logged out',
+                request=request
+            )
+        except:
+            pass
+    
+    auth_logout(request)
+    messages.info(request, 'You have been logged out successfully.')
+    return redirect('control_dashboard:landing_page')
+
+def landing_page(request):
+    """
+    Landing page view - the first page users see.
+    Renders index.html which contains the login form.
+    """
+    # If user is already authenticated, redirect to their dashboard
+    if request.user.is_authenticated:
+        return redirect_dashboard(request.user)
+    
+    return render(request, 'control_dashboard/index.html')
+
+def redirect_dashboard(user):
+    """
+    Redirect user to their appropriate dashboard based on role.
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=user.email)
+        
+        if user_profile.role == 'admin':
+            return redirect('/adminboard/admin/')
+        elif user_profile.role == 'supervisor':
+            return redirect('/adminboard/supervisor/')
+        else:
+            return redirect('/adminboard/member/')
+    except UserProfile.DoesNotExist:
+        # Default to member dashboard if no profile found
+        return redirect('/adminboard/member/')
+
+# ==================== API - EMAIL LOGIN ====================
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_email_login(request):
+    """
+    API endpoint for email-based login.
+    """
+    try:
+        data = json.loads(request.body)
+        email = data.get('email', '').strip()
+        
+        if not email:
+            return JsonResponse({
+                'success': False,
+                'error': 'Email is required'
+            }, status=400)
+        
+        # Check if user exists in UserProfile
+        try:
+            user_profile = UserProfile.objects.get(email__iexact=email)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'No account found with this email. Please contact your administrator.'
+            }, status=404)
+        
+        # Check if user is active
+        if user_profile.status != 'active':
+            return JsonResponse({
+                'success': False,
+                'error': 'Your account is inactive. Please contact support.'
+            }, status=403)
+        
+        # Get or create Django user
+        django_user, created = DjangoUser.objects.get_or_create(
+            email__iexact=email,
+            defaults={
+                'username': email,
+                'email': email
+            }
+        )
+        
+        if created:
+            django_user.save()
+        
+        # Log the user in
+        auth_login(request, django_user)
+        
+        # Log the activity
+        log_activity(
+            user=user_profile,
+            activity_type='login',
+            details=f'User {email} logged in via email API',
+            request=request
+        )
+        
+        # Determine redirect URL based on role
+        redirect_urls = {
+            'admin': '/adminboard/admin/',
+            'supervisor': '/adminboard/supervisor/',
+            'member': '/adminboard/member/'
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Welcome back, {user_profile.full_name}!',
+            'redirect_url': redirect_urls.get(user_profile.role, '/adminboard/member/'),
+            'user': {
+                'id': user_profile.id,
+                'email': user_profile.email,
+                'full_name': user_profile.full_name,
+                'role': user_profile.role,
+                'position': user_profile.position
+            }
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_test_login(request):
+    """
+    API endpoint for test login with role-based authentication.
+    """
+    try:
+        data = json.loads(request.body)
+        role = data.get('role', 'member')
+        
+        test_users = {
+            'admin': {
+                'email': 'admin@test.com',
+                'full_name': 'Admin User',
+                'position': 'hoc',
+                'role': 'admin',
+                'status': 'active',
+                'password': 'Admin@123'
+            },
+            'supervisor': {
+                'email': 'supervisor@test.com',
+                'full_name': 'Supervisor User',
+                'position': 'cc',
+                'role': 'supervisor',
+                'status': 'active',
+                'password': 'Supervisor@123'
+            },
+            'member': {
+                'email': 'member@test.com',
+                'full_name': 'Member User',
+                'position': 'hoc',
+                'role': 'member',
+                'status': 'active',
+                'password': 'Member@123'
+            }
+        }
+        
+        if role not in test_users:
+            return JsonResponse({
+                'success': False,
+                'error': 'Invalid user role'
+            }, status=400)
+        
+        user_data = test_users[role]
+        
+        # Get or create Django user
+        django_user, created = DjangoUser.objects.get_or_create(
+            username=user_data['email'],
+            defaults={
+                'email': user_data['email'],
+                'first_name': user_data['full_name']
+            }
+        )
+        
+        if created:
+            django_user.set_password(user_data['password'])
+            django_user.save()
+        
+        # Get or create UserProfile
+        user_profile, created = UserProfile.objects.get_or_create(
+            email=user_data['email'],
+            defaults={
+                'full_name': user_data['full_name'],
+                'position': user_data['position'],
+                'role': user_data['role'],
+                'status': user_data['status']
+            }
+        )
+        
+        if not created and user_profile.role != user_data['role']:
+            user_profile.role = user_data['role']
+            user_profile.save()
+        
+        # Log the user in
+        auth_login(request, django_user)
+        
+        # Log the activity
+        log_activity(
+            user=user_profile,
+            activity_type='login',
+            details=f'User {user_data["email"]} logged in via test login as {role}',
+            request=request
+        )
+        
+        # Determine redirect URL based on role
+        redirect_urls = {
+            'admin': '/adminboard/admin/',
+            'supervisor': '/adminboard/supervisor/',
+            'member': '/adminboard/member/'
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Welcome {user_data["full_name"]}!',
+            'redirect_url': redirect_urls.get(role, '/adminboard/member/'),
+            'user': {
+                'id': user_profile.id,
+                'email': user_profile.email,
+                'full_name': user_profile.full_name,
+                'role': user_profile.role,
+                'position': user_profile.position
+            }
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+def logout_view(request):
+    """
+    Logout view.
+    """
+    if request.user.is_authenticated:
+        try:
+            user_profile = UserProfile.objects.get(email=request.user.email)
+            log_activity(
+                user=user_profile,
+                activity_type='logout',
+                details=f'User {request.user.email} logged out',
+                request=request
+            )
+        except:
+            pass
+    
+    auth_logout(request)
+    messages.info(request, 'You have been logged out successfully.')
+    return redirect('control_dashboard:login')
+
+# ==================== HELPER FUNCTIONS ====================
+
+def log_activity(user, activity_type, details, request=None):
+    """
+    Helper function to log user activities.
+    """
+    try:
+        ip_address = None
+        user_agent = ''
+        
+        if request:
+            ip_address = request.META.get('REMOTE_ADDR')
+            user_agent = request.META.get('HTTP_USER_AGENT', '')
+        
+        ActivityLog.objects.create(
+            user=user,
+            activity_type=activity_type,
+            details=details,
+            ip_address=ip_address,
+            user_agent=user_agent
+        )
+    except Exception as e:
+        # Silently fail if logging fails
+        pass
+
+def get_or_create_user_profile(django_user):
+    """
+    Helper function to get or create UserProfile from Django user.
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=django_user.email)
+    except UserProfile.DoesNotExist:
+        user_profile = UserProfile.objects.create(
+            email=django_user.email,
+            full_name=django_user.get_full_name() or django_user.username,
+            position='hoc',
+            role='member',
+            status='active'
+        )
+    return user_profile
+
+# ==================== LANDING PAGE ====================
+
+def landing_page(request):
+    """
+    Landing page view - the first page users see.
+    """
+    # If user is already authenticated, redirect to their dashboard
+    if request.user.is_authenticated:
+        return redirect_dashboard(request.user)
+    
+    return render(request, 'control_dashboard/index.html')
+
+def login_view(request):
+    """
+    Legacy login page view - redirects to the new login page.
+    """
+    return redirect('control_dashboard:login')
+
+def microsoft_login(request):
+    """
+    Redirect to Microsoft login.
+    """
+    messages.info(request, 'Microsoft login is being configured. Using email login for now.')
+    return redirect('control_dashboard:login')
+
+def test_login(request, role):
+    """
+    Development-only test login via URL.
+    """
+    if not settings.DEBUG:
+        return redirect('control_dashboard:login')
+    
+    # Map role to email
+    role_emails = {
+        'admin': 'admin@test.com',
+        'member': 'member@test.com',
+        'supervisor': 'supervisor@test.com'
+    }
+    
+    email = role_emails.get(role)
+    if not email:
+        messages.error(request, 'Invalid test role')
+        return redirect('control_dashboard:login')
+    
+    # Get or create Django user
+    django_user, created = DjangoUser.objects.get_or_create(
+        username=email,
+        defaults={'email': email}
+    )
+    
+    if created:
+        django_user.set_password('Test@123')
+        django_user.save()
+    
+    # Get or create UserProfile
+    try:
+        user_profile = UserProfile.objects.get(email=email)
+    except UserProfile.DoesNotExist:
+        role_map = {
+            'admin': {'position': 'hoc', 'role': 'admin'},
+            'member': {'position': 'hoc', 'role': 'member'},
+            'supervisor': {'position': 'cc', 'role': 'supervisor'}
+        }
+        role_data = role_map.get(role, {'position': 'hoc', 'role': 'member'})
+        
+        user_profile = UserProfile.objects.create(
+            email=email,
+            full_name=f'{role.capitalize()} User',
+            position=role_data['position'],
+            role=role_data['role'],
+            status='active'
+        )
+    
+    # Login the user
+    auth_login(request, django_user)
+    
+    # Log the activity
+    log_activity(
+        user=user_profile,
+        activity_type='login',
+        details=f'Test login as {role}',
+        request=request
+    )
+    
+    # Redirect based on role
+    return redirect_dashboard(django_user)
+
 @csrf_exempt
 @require_http_methods(["GET"])
 def get_user_profile_api(request):
@@ -343,7 +678,7 @@ def admin_page(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     # Get filter parameters
     search_query = request.GET.get('search', '').strip()
@@ -398,7 +733,7 @@ def report_center(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     status_filter = request.GET.get('status', '')
     user_filter = request.GET.get('user', '')
@@ -441,7 +776,7 @@ def activity_logs(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     # Get filter parameters
     start_date = request.GET.get('start_date', '')
@@ -496,7 +831,7 @@ def export_logs(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     start_date = request.GET.get('start_date', '')
     end_date = request.GET.get('end_date', '')
@@ -565,7 +900,7 @@ def template_builder(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     templates = ReportTemplate.objects.all().order_by('-created_at')
     users = UserProfile.objects.all()
@@ -596,7 +931,7 @@ def checklist_builder(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     checklists = Checklist.objects.all().order_by('-created_at')
     users = UserProfile.objects.all()
@@ -618,7 +953,7 @@ def member_dashboard(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     # Get the current user's profile
     try:
@@ -692,7 +1027,7 @@ def member_checklist(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     # Get the current user's profile
     try:
@@ -743,7 +1078,7 @@ def member_activity_logs(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     # Get the current user's profile
     try:
@@ -796,7 +1131,7 @@ def supervisor_dashboard(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     # Get the current user's profile
     try:
@@ -912,7 +1247,7 @@ def supervisor_exceptions(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     try:
         user_profile = UserProfile.objects.get(email=request.user.email)
@@ -977,7 +1312,7 @@ def team_performance(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     # Get the current user's profile
     try:
@@ -1080,7 +1415,7 @@ def supervisor_activity_logs(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     # Get the current user's profile
     try:
@@ -1149,7 +1484,7 @@ def supervisor_checklist(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     # Get the current user's profile
     try:
@@ -1272,7 +1607,7 @@ def submitted_reports(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     # Get the current user's profile
     try:
@@ -1386,7 +1721,7 @@ def ad_hoc_scorecard(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     # Get the current user's profile
     try:
@@ -1458,7 +1793,7 @@ def logged_exceptions(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     # Get the current user's profile
     try:
@@ -1558,7 +1893,7 @@ def drafts_page(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     try:
         user_profile = UserProfile.objects.get(email=request.user.email)
@@ -1593,7 +1928,7 @@ def reports_page(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     try:
         user_profile = UserProfile.objects.get(email=request.user.email)
@@ -1621,7 +1956,7 @@ def submit_page(request):
     """
     # Check if user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('control_dashboard:login')
     
     try:
         user_profile = UserProfile.objects.get(email=request.user.email)

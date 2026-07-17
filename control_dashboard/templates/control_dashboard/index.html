@@ -2,12 +2,11 @@
 <html>
     <head>
         <meta charset="UTF-8">
-        <title>Internal Control Dashboard - Login</title>
+        <title>Internal Control Dashboard</title>
         {% load static %}
         <link rel="stylesheet" href="{% static 'stylesheets/index.css' %}" type="text/css">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
         <style>
-            /* Additional inline styles for the login page elements */
             .messages {
                 width: 100%;
                 margin-bottom: 15px;
@@ -55,6 +54,30 @@
                 display: block;
             }
 
+            .success-message {
+                background: #d4edda;
+                color: #155724;
+                padding: 10px 15px;
+                border-radius: 8px;
+                margin-bottom: 15px;
+                font-size: 14px;
+                display: none;
+                border: 1px solid #c3e6cb;
+                width: 100%;
+                text-align: center;
+            }
+
+            .success-message.show {
+                display: block;
+            }
+
+            /* Microsoft Button Container - transforms on click */
+            .microsoft-login-container {
+                width: 100%;
+                position: relative;
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
             .btn-microsoft {
                 display: inline-flex;
                 align-items: center;
@@ -68,10 +91,12 @@
                 font-family: 'Poppins', sans-serif;
                 font-size: 16px;
                 font-weight: 500;
-                transition: all 0.3s ease;
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
                 width: 100%;
                 border: none;
                 cursor: pointer;
+                position: relative;
+                overflow: hidden;
             }
 
             .btn-microsoft:hover {
@@ -83,122 +108,100 @@
 
             .btn-microsoft i {
                 font-size: 20px;
-            }
-
-            .divider-text {
-                display: flex;
-                align-items: center;
-                text-align: center;
-                margin: 25px 0 20px 0;
-                color: #999;
-                font-size: 13px;
-                width: 100%;
-            }
-
-            .divider-text::before,
-            .divider-text::after {
-                content: '';
-                flex: 1;
-                border-bottom: 1px solid #ddd;
-            }
-
-            .divider-text::before {
-                margin-right: 15px;
-            }
-
-            .divider-text::after {
-                margin-left: 15px;
-            }
-
-            .test-users {
-                width: 100%;
-                margin-top: 5px;
-            }
-
-            .test-users p {
-                font-size: 14px;
-                color: #666;
-                margin-bottom: 15px;
-                text-align: center;
-            }
-
-            .test-user-btn {
-                display: flex;
-                align-items: center;
-                width: 100%;
-                padding: 14px 18px;
-                margin-bottom: 10px;
-                border: 2px solid #e9ecef;
-                border-radius: 10px;
-                background: white;
-                cursor: pointer;
                 transition: all 0.3s ease;
-                text-align: left;
-                font-size: 14px;
-                color: #333;
-                font-family: 'Poppins', sans-serif;
             }
 
-            .test-user-btn:hover {
-                border-color: #0066cc;
-                background: #f8f9ff;
-                transform: translateX(5px);
-                box-shadow: 0 2px 10px rgba(0, 102, 204, 0.1);
+            .btn-microsoft .btn-text {
+                transition: all 0.3s ease;
             }
 
-            .test-user-btn .user-icon {
-                margin-right: 12px;
+            /* Expanded state - button transforms into input */
+            .btn-microsoft.expanded {
+                background: white;
+                color: #1b1b1b;
+                padding: 4px 16px 4px 16px;
+                border: 2px solid #0067b8;
+                box-shadow: 0 0 0 3px rgba(0, 103, 184, 0.15);
+                justify-content: flex-start;
+                cursor: default;
+                transform: none !important;
+            }
+
+            .btn-microsoft.expanded:hover {
+                background: white;
+                transform: none !important;
+                box-shadow: 0 0 0 3px rgba(0, 103, 184, 0.2);
+            }
+
+            .btn-microsoft.expanded .btn-text {
+                display: none;
+            }
+
+            .btn-microsoft.expanded i {
+                color: #0067b8;
                 font-size: 18px;
-                color: #555;
-                width: 24px;
-                text-align: center;
+                margin-right: 8px;
             }
 
-            .test-user-btn .user-role {
-                display: inline-block;
-                padding: 2px 12px;
-                border-radius: 12px;
-                font-size: 11px;
-                font-weight: 600;
-                margin-left: auto;
-            }
-
-            .role-admin {
-                background: #dc3545;
-                color: white;
-            }
-
-            .role-supervisor {
-                background: #ffc107;
-                color: #333;
-            }
-
-            .role-member {
-                background: #28a745;
-                color: white;
-            }
-
-            .test-user-btn .user-email {
-                color: #888;
-                font-size: 12px;
-                display: block;
-                margin-top: 2px;
-            }
-
-            .test-user-btn .user-info {
+            .btn-microsoft .ms-input-wrapper {
+                display: none;
                 flex: 1;
+                align-items: center;
             }
 
-            /* Spinner animation */
-            .spinner {
+            .btn-microsoft.expanded .ms-input-wrapper {
+                display: flex;
+            }
+
+            .btn-microsoft .ms-input-wrapper input {
+                flex: 1;
+                border: none;
+                outline: none;
+                font-size: 15px;
+                font-family: 'Poppins', sans-serif;
+                background: transparent;
+                color: #1b1b1b;
+                padding: 10px 0;
+                min-width: 0;
+                width: 100%;
+            }
+
+            .btn-microsoft .ms-input-wrapper input::placeholder {
+                color: #8b8b8b;
+                font-weight: 400;
+            }
+
+            .btn-microsoft .ms-input-wrapper .ms-input-icon {
+                color: #0067b8;
+                font-size: 18px;
+                margin-right: 8px;
+            }
+
+            /* Loading state for the button */
+            .btn-microsoft.loading {
+                background: #0067b8;
+                color: white;
+                cursor: wait;
+                justify-content: center;
+            }
+
+            .btn-microsoft.loading .ms-input-wrapper input {
+                color: white;
+            }
+
+            .btn-microsoft.loading .ms-input-wrapper .ms-input-icon {
+                color: white;
+            }
+
+            .btn-microsoft .spinner-small {
                 display: inline-block;
-                width: 20px;
-                height: 20px;
-                border: 3px solid rgba(255, 255, 255, 0.3);
+                width: 16px;
+                height: 16px;
+                border: 2px solid rgba(255, 255, 255, 0.3);
                 border-radius: 50%;
                 border-top-color: #fff;
-                animation: spin 1s ease-in-out infinite;
-                margin-right: 10px;
+                animation: spin 0.8s ease-in-out infinite;
+                margin-left: 8px;
             }
 
             @keyframes spin {
@@ -280,6 +283,13 @@
                 #logo {
                     width: 180px;
                 }
+                .btn-microsoft.expanded {
+                    padding: 6px 12px 6px 12px;
+                }
+                .btn-microsoft .ms-input-wrapper input {
+                    font-size: 14px;
+                    padding: 8px 0;
+                }
             }
 
             @media (max-width: 480px) {
@@ -289,16 +299,12 @@
                 .login h2 {
                     font-size: 24px;
                 }
-                .test-user-btn {
-                    padding: 12px 14px;
-                    font-size: 13px;
-                }
-                .btn-microsoft {
-                    padding: 14px 20px;
-                    font-size: 14px;
-                }
                 #logo {
                     width: 150px;
+                }
+                .btn-microsoft .ms-input-wrapper input {
+                    font-size: 12px;
+                    min-width: 60px;
                 }
             }
         </style>
@@ -334,45 +340,27 @@
                     <span id="errorText">Invalid credentials. Please try again.</span>
                 </div>
                 
-                <!-- Microsoft Login -->
-                <a href="#" onclick="microsoftLogin()" class="btn-microsoft">
-                    <i class="fab fa-microsoft"></i> Sign in with Microsoft
-                </a>
+                <!-- Success Message -->
+                <div id="successMessage" class="success-message">
+                    <i class="fas fa-check-circle"></i> 
+                    <span id="successText">Login successful! Redirecting...</span>
+                </div>
                 
-                <div class="divider-text">or use test accounts</div>
-                
-                <!-- Test Users -->
-                <div class="test-users">
-                    <p>Click a test user to login instantly:</p>
-                    
-                    <!-- Admin User -->
-                    <button onclick="loginUser('admin')" class="test-user-btn" id="loginAdmin">
-                        <i class="fas fa-user-shield user-icon"></i>
-                        <span class="user-info">
-                            Admin User
-                            <span class="user-email">admin@test.com</span>
-                        </span>
-                        <span class="user-role role-admin">Admin</span>
-                    </button>
-                    
-                    <!-- Supervisor User -->
-                    <button onclick="loginUser('supervisor')" class="test-user-btn" id="loginSupervisor">
-                        <i class="fas fa-user-tie user-icon"></i>
-                        <span class="user-info">
-                            Supervisor User
-                            <span class="user-email">supervisor@test.com</span>
-                        </span>
-                        <span class="user-role role-supervisor">Supervisor</span>
-                    </button>
-                    
-                    <!-- Member User -->
-                    <button onclick="loginUser('member')" class="test-user-btn" id="loginMember">
-                        <i class="fas fa-user user-icon"></i>
-                        <span class="user-info">
-                            Member User
-                            <span class="user-email">member@test.com</span>
-                        </span>
-                        <span class="user-role role-member">Member</span>
+                <!-- Microsoft Login with Transform -->
+                <div class="microsoft-login-container">
+                    <button class="btn-microsoft" id="msLoginBtn" onclick="expandMicrosoftLogin()">
+                        <i class="fab fa-microsoft"></i>
+                        <span class="btn-text">Sign in with Microsoft</span>
+                        <div class="ms-input-wrapper">
+                            <i class="fas fa-envelope ms-input-icon"></i>
+                            <input 
+                                type="email" 
+                                id="msEmailInput" 
+                                placeholder="Enter your email and press Enter" 
+                                autocomplete="email"
+                                onkeydown="handleMsInputKeydown(event)"
+                            />
+                        </div>
                     </button>
                 </div>
             </div>
@@ -417,110 +405,146 @@
         const csrftoken = getCookie('csrftoken');
 
         // ============================================
-        // LOGIN FUNCTIONS
+        // MICROSOFT LOGIN - EXPAND/CONTRACT
         // ============================================
 
-        /**
-         * Login with test user by role
-         */
-        function loginUser(role) {
-            hideError();
+        function expandMicrosoftLogin() {
+            const btn = document.getElementById('msLoginBtn');
+            const input = document.getElementById('msEmailInput');
             
-            const buttons = document.querySelectorAll('.test-user-btn');
-            buttons.forEach(btn => btn.disabled = true);
-            
-            const buttonMap = {
-                'admin': document.getElementById('loginAdmin'),
-                'supervisor': document.getElementById('loginSupervisor'),
-                'member': document.getElementById('loginMember')
-            };
-            
-            const button = buttonMap[role];
-            if (button) {
-                const originalText = button.innerHTML;
-                button.innerHTML = '<span class="spinner"></span> Logging in...';
+            if (!btn.classList.contains('expanded')) {
+                btn.classList.add('expanded');
+                setTimeout(() => {
+                    input.focus();
+                }, 300);
             }
+        }
+
+        function collapseMicrosoftLogin() {
+            const btn = document.getElementById('msLoginBtn');
+            const input = document.getElementById('msEmailInput');
             
-            fetch('/adminboard/api/test-login/', {
+            btn.classList.remove('expanded');
+            btn.classList.remove('loading');
+            input.value = '';
+            hideError();
+            hideSuccess();
+        }
+
+        function handleMsInputKeydown(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                processMicrosoftLogin();
+            }
+            if (event.key === 'Escape') {
+                collapseMicrosoftLogin();
+            }
+        }
+
+        // Click outside to cancel (but not on the button itself)
+        document.addEventListener('click', function(event) {
+            const btn = document.getElementById('msLoginBtn');
+            const container = document.querySelector('.microsoft-login-container');
+            
+            if (btn.classList.contains('expanded') && !container.contains(event.target)) {
+                if (!event.target.closest('.btn-microsoft')) {
+                    collapseMicrosoftLogin();
+                }
+            }
+        });
+
+        // ============================================
+        // MICROSOFT LOGIN - PROCESS
+        // ============================================
+
+        function processMicrosoftLogin() {
+            const email = document.getElementById('msEmailInput').value.trim();
+            const btn = document.getElementById('msLoginBtn');
+            
+            // Validation
+            if (!email) {
+                showError('Please enter your email address.');
+                document.getElementById('msEmailInput').focus();
+                return;
+            }
+
+            if (!email.includes('@') || !email.includes('.')) {
+                showError('Please enter a valid email address.');
+                document.getElementById('msEmailInput').focus();
+                return;
+            }
+
+            // Show loading state
+            btn.classList.add('loading');
+            hideError();
+            hideSuccess();
+
+            // Call the backend API
+            fetch('/adminboard/api/email-login/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrftoken
                 },
-                body: JSON.stringify({ role: role })
+                body: JSON.stringify({ email: email })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     showSuccess(data.message);
+                    // Redirect after a short delay
                     setTimeout(() => {
                         window.location.href = data.redirect_url;
-                    }, 1000);
+                    }, 1500);
                 } else {
                     showError(data.error || 'Login failed. Please try again.');
-                    if (button) {
-                        button.innerHTML = originalText;
-                    }
-                    // Re-enable buttons
-                    buttons.forEach(btn => btn.disabled = false);
+                    btn.classList.remove('loading');
+                    // Keep the input expanded so user can try again
+                    document.getElementById('msEmailInput').focus();
                 }
             })
             .catch(error => {
                 console.error('Login error:', error);
                 showError('An error occurred during login. Please try again.');
-                if (button) {
-                    button.innerHTML = originalText;
-                }
-                buttons.forEach(btn => btn.disabled = false);
+                btn.classList.remove('loading');
+                document.getElementById('msEmailInput').focus();
             });
         }
 
-        /**
-         * Microsoft Login - Redirect to test login
-         */
-        function microsoftLogin() {
-            // For demo purposes, redirect to member test login
-            // In production, this would redirect to Microsoft OAuth
-            window.location.href = '/adminboard/test-login/member/';
-        }
+        // ============================================
+        // MESSAGE DISPLAY FUNCTIONS
+        // ============================================
 
-        /**
-         * Show error message
-         */
         function showError(message) {
             const errorEl = document.getElementById('errorMessage');
             const errorText = document.getElementById('errorText');
             errorText.textContent = message;
             errorEl.className = 'error-message show';
-            errorEl.style.background = '#f8d7da';
-            errorEl.style.color = '#721c24';
-            errorEl.style.borderColor = '#f5c6cb';
+            hideSuccess();
         }
 
-        /**
-         * Show success message
-         */
         function showSuccess(message) {
-            const errorEl = document.getElementById('errorMessage');
-            const errorText = document.getElementById('errorText');
-            errorText.textContent = message;
-            errorEl.className = 'error-message show';
-            errorEl.style.background = '#d4edda';
-            errorEl.style.color = '#155724';
-            errorEl.style.borderColor = '#c3e6cb';
+            const successEl = document.getElementById('successMessage');
+            const successText = document.getElementById('successText');
+            successText.textContent = message;
+            successEl.className = 'success-message show';
+            hideError();
         }
 
-        /**
-         * Hide error message
-         */
         function hideError() {
             const errorEl = document.getElementById('errorMessage');
             errorEl.className = 'error-message';
         }
 
-        /**
-         * Check if user is already logged in
-         */
+        function hideSuccess() {
+            const successEl = document.getElementById('successMessage');
+            successEl.className = 'success-message';
+        }
+
+        // ============================================
+        // SESSION CHECK
+        // ============================================
+
         function checkSession() {
             fetch('/adminboard/api/user/profile/', {
                 method: 'GET',
@@ -532,7 +556,6 @@
             .then(response => response.json())
             .then(data => {
                 if (data.authenticated) {
-                    // User is already logged in, redirect to their dashboard
                     const role = data.user.role || 'member';
                     const redirectUrls = {
                         'admin': '/adminboard/admin/',
@@ -551,14 +574,15 @@
         // INITIALIZATION
         // ============================================
 
-        // Check if user is already logged in on page load
         document.addEventListener('DOMContentLoaded', function() {
             checkSession();
         });
 
-        // Make functions globally accessible for onclick handlers
-        window.loginUser = loginUser;
-        window.microsoftLogin = microsoftLogin;
+        // Make functions globally accessible
+        window.expandMicrosoftLogin = expandMicrosoftLogin;
+        window.collapseMicrosoftLogin = collapseMicrosoftLogin;
+        window.processMicrosoftLogin = processMicrosoftLogin;
+        window.handleMsInputKeydown = handleMsInputKeydown;
     </script>
 </body>
 </html>

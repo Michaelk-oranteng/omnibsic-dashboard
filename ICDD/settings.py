@@ -27,8 +27,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
-LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'member_dashboard'
+LOGIN_URL = 'control_dashboard:login'
+LOGIN_REDIRECT_URL = 'control_dashboard:landing_page'
 
 
 # Application definition
