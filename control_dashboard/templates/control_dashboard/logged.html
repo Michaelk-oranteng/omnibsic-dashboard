@@ -269,6 +269,16 @@
             </div>
         </div>
 
+        <!-- Toast Notification - Fixed Positioning -->
+        <div id="toastNotification" class="toast-notification success">
+            <div class="toast-icon"><i class="fas fa-check"></i></div>
+            <div class="toast-content">
+                <p class="toast-title">Success!</p>
+                <p class="toast-message" id="toastMessage">Action completed successfully.</p>
+            </div>
+            <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
+        </div>
+
         <script>
             function getCsrfToken() {
                 return document.querySelector('meta[name="csrf-token"]').getAttribute('content');

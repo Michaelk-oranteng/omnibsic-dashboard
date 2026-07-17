@@ -1,17 +1,311 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <meta charset ="UTF-8">
-        <title>Internal Control Dashboard</title>
-        <link rel="stylesheet" href="stylesheets/index.css" type="text/css">
+        <meta charset="UTF-8">
+        <title>Internal Control Dashboard - Login</title>
+        {% load static %}
+        <link rel="stylesheet" href="{% static 'stylesheets/index.css' %}" type="text/css">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <style>
+            /* Additional inline styles for the login page elements */
+            .messages {
+                width: 100%;
+                margin-bottom: 15px;
+            }
+
+            .alert {
+                padding: 10px 15px;
+                border-radius: 8px;
+                font-size: 14px;
+                margin-bottom: 10px;
+            }
+
+            .alert-success {
+                background: #d4edda;
+                color: #155724;
+                border: 1px solid #c3e6cb;
+            }
+
+            .alert-error {
+                background: #f8d7da;
+                color: #721c24;
+                border: 1px solid #f5c6cb;
+            }
+
+            .alert-info {
+                background: #d1ecf1;
+                color: #0c5460;
+                border: 1px solid #bee5eb;
+            }
+
+            .error-message {
+                background: #f8d7da;
+                color: #721c24;
+                padding: 10px 15px;
+                border-radius: 8px;
+                margin-bottom: 15px;
+                font-size: 14px;
+                display: none;
+                border: 1px solid #f5c6cb;
+                width: 100%;
+                text-align: center;
+            }
+
+            .error-message.show {
+                display: block;
+            }
+
+            .btn-microsoft {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+                background: #2b2b2b;
+                color: white;
+                padding: 18px 40px;
+                border-radius: 8px;
+                text-decoration: none;
+                font-family: 'Poppins', sans-serif;
+                font-size: 16px;
+                font-weight: 500;
+                transition: all 0.3s ease;
+                width: 100%;
+                border: none;
+                cursor: pointer;
+            }
+
+            .btn-microsoft:hover {
+                background: #1a1a2e;
+                transform: translateY(-2px);
+                box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+                color: white;
+            }
+
+            .btn-microsoft i {
+                font-size: 20px;
+            }
+
+            .divider-text {
+                display: flex;
+                align-items: center;
+                text-align: center;
+                margin: 25px 0 20px 0;
+                color: #999;
+                font-size: 13px;
+                width: 100%;
+            }
+
+            .divider-text::before,
+            .divider-text::after {
+                content: '';
+                flex: 1;
+                border-bottom: 1px solid #ddd;
+            }
+
+            .divider-text::before {
+                margin-right: 15px;
+            }
+
+            .divider-text::after {
+                margin-left: 15px;
+            }
+
+            .test-users {
+                width: 100%;
+                margin-top: 5px;
+            }
+
+            .test-users p {
+                font-size: 14px;
+                color: #666;
+                margin-bottom: 15px;
+                text-align: center;
+            }
+
+            .test-user-btn {
+                display: flex;
+                align-items: center;
+                width: 100%;
+                padding: 14px 18px;
+                margin-bottom: 10px;
+                border: 2px solid #e9ecef;
+                border-radius: 10px;
+                background: white;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                text-align: left;
+                font-size: 14px;
+                color: #333;
+                font-family: 'Poppins', sans-serif;
+            }
+
+            .test-user-btn:hover {
+                border-color: #0066cc;
+                background: #f8f9ff;
+                transform: translateX(5px);
+                box-shadow: 0 2px 10px rgba(0, 102, 204, 0.1);
+            }
+
+            .test-user-btn .user-icon {
+                margin-right: 12px;
+                font-size: 18px;
+                color: #555;
+                width: 24px;
+                text-align: center;
+            }
+
+            .test-user-btn .user-role {
+                display: inline-block;
+                padding: 2px 12px;
+                border-radius: 12px;
+                font-size: 11px;
+                font-weight: 600;
+                margin-left: auto;
+            }
+
+            .role-admin {
+                background: #dc3545;
+                color: white;
+            }
+
+            .role-supervisor {
+                background: #ffc107;
+                color: #333;
+            }
+
+            .role-member {
+                background: #28a745;
+                color: white;
+            }
+
+            .test-user-btn .user-email {
+                color: #888;
+                font-size: 12px;
+                display: block;
+                margin-top: 2px;
+            }
+
+            .test-user-btn .user-info {
+                flex: 1;
+            }
+
+            /* Spinner animation */
+            .spinner {
+                display: inline-block;
+                width: 20px;
+                height: 20px;
+                border: 3px solid rgba(255, 255, 255, 0.3);
+                border-radius: 50%;
+                border-top-color: #fff;
+                animation: spin 1s ease-in-out infinite;
+                margin-right: 10px;
+            }
+
+            @keyframes spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+
+            /* Responsive adjustments */
+            @media (max-width: 1200px) {
+                .login-profile {
+                    width: 450px;
+                    right: 4%;
+                }
+                .welcome {
+                    left: 4%;
+                    max-width: 420px;
+                }
+                .welcome h1 {
+                    font-size: 34px;
+                }
+            }
+
+            @media (max-width: 992px) {
+                .login-profile {
+                    width: 400px;
+                    right: 3%;
+                    top: 15%;
+                }
+                .welcome {
+                    left: 3%;
+                    max-width: 350px;
+                    top: 25%;
+                }
+                .welcome h1 {
+                    font-size: 28px;
+                }
+            }
+
+            @media (max-width: 768px) {
+                .page-wrapper {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    padding: 20px;
+                }
+                .welcome {
+                    position: relative;
+                    top: 0;
+                    left: 0;
+                    text-align: center;
+                    max-width: 100%;
+                    margin-bottom: 30px;
+                }
+                .welcome h1 {
+                    font-size: 28px;
+                }
+                .login-profile {
+                    position: relative;
+                    top: 0;
+                    right: 0;
+                    width: 100%;
+                    max-width: 450px;
+                    min-height: auto;
+                    padding: 30px 25px;
+                    margin: 0 auto;
+                }
+                .footer {
+                    position: relative;
+                    flex-direction: column;
+                    gap: 10px;
+                    height: auto;
+                    padding: 20px 5%;
+                }
+                .footer-links {
+                    flex-wrap: wrap;
+                    justify-content: center;
+                }
+                #logo {
+                    width: 180px;
+                }
+            }
+
+            @media (max-width: 480px) {
+                .login-profile {
+                    padding: 25px 20px;
+                }
+                .login h2 {
+                    font-size: 24px;
+                }
+                .test-user-btn {
+                    padding: 12px 14px;
+                    font-size: 13px;
+                }
+                .btn-microsoft {
+                    padding: 14px 20px;
+                    font-size: 14px;
+                }
+                #logo {
+                    width: 150px;
+                }
+            }
+        </style>
     </head>
 
 <body>
-    
     <div class="page-wrapper">
-        
-       
         <div class="welcome">
             <h1>Internal Control & Due Diligence Dashboard</h1>
             <p>Your centralized hub for real-time exception management, risk mitigation, and compliance reporting.</p>
@@ -19,29 +313,80 @@
         
         <div class="login-profile">
             <div class="img-container">
-                <img src="images/OmniBSIC_Bank_Logo.svg" id="logo" alt="OmniBSIC Bank Logo"/>
+                <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" id="logo" alt="OmniBSIC Bank Logo"/>
             </div>
-                <div class="login">
-                    <h2>Welcome Back</h2>
-                    <p>Sign in to your account to continue</p>
-                    <a href="memberboard.html" class="btn-microsoft">
-                        <i class="fab fa-windows"></i> Sign in with Microsoft
-                    </a>
+            <div class="login">
+                <h2>Welcome Back</h2>
+                <p>Sign in to your account to continue</p>
+                
+                <!-- Django Messages -->
+                {% if messages %}
+                    <div class="messages">
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+                <!-- Error Message -->
+                <div id="errorMessage" class="error-message">
+                    <i class="fas fa-exclamation-circle"></i> 
+                    <span id="errorText">Invalid credentials. Please try again.</span>
                 </div>
+                
+                <!-- Microsoft Login -->
+                <a href="#" onclick="microsoftLogin()" class="btn-microsoft">
+                    <i class="fab fa-microsoft"></i> Sign in with Microsoft
+                </a>
+                
+                <div class="divider-text">or use test accounts</div>
+                
+                <!-- Test Users -->
+                <div class="test-users">
+                    <p>Click a test user to login instantly:</p>
+                    
+                    <!-- Admin User -->
+                    <button onclick="loginUser('admin')" class="test-user-btn" id="loginAdmin">
+                        <i class="fas fa-user-shield user-icon"></i>
+                        <span class="user-info">
+                            Admin User
+                            <span class="user-email">admin@test.com</span>
+                        </span>
+                        <span class="user-role role-admin">Admin</span>
+                    </button>
+                    
+                    <!-- Supervisor User -->
+                    <button onclick="loginUser('supervisor')" class="test-user-btn" id="loginSupervisor">
+                        <i class="fas fa-user-tie user-icon"></i>
+                        <span class="user-info">
+                            Supervisor User
+                            <span class="user-email">supervisor@test.com</span>
+                        </span>
+                        <span class="user-role role-supervisor">Supervisor</span>
+                    </button>
+                    
+                    <!-- Member User -->
+                    <button onclick="loginUser('member')" class="test-user-btn" id="loginMember">
+                        <i class="fas fa-user user-icon"></i>
+                        <span class="user-info">
+                            Member User
+                            <span class="user-email">member@test.com</span>
+                        </span>
+                        <span class="user-role role-member">Member</span>
+                    </button>
+                </div>
+            </div>
         </div>
 
         <div class="footer">
-            <!-- Left Flank -->
             <div class="footer-links">
                 <a href="#">Privacy Policy</a>
                 <span class="divider">|</span>
                 <a href="#">Security Guidelines</a>
             </div>
-
             <div class="footer-copyright">
                 <p>&copy; 2026 OmniBSIC Bank. All rights reserved.</p>
             </div>
-
             <div class="footer-support">
                 <a href="mailto:itsupport@omnibsic.com">
                     <i class="support-icon">✉</i> IT Support Helpdesk
@@ -49,5 +394,171 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // ============================================
+        // CSRF Token Helper
+        // ============================================
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        const csrftoken = getCookie('csrftoken');
+
+        // ============================================
+        // LOGIN FUNCTIONS
+        // ============================================
+
+        /**
+         * Login with test user by role
+         */
+        function loginUser(role) {
+            hideError();
+            
+            const buttons = document.querySelectorAll('.test-user-btn');
+            buttons.forEach(btn => btn.disabled = true);
+            
+            const buttonMap = {
+                'admin': document.getElementById('loginAdmin'),
+                'supervisor': document.getElementById('loginSupervisor'),
+                'member': document.getElementById('loginMember')
+            };
+            
+            const button = buttonMap[role];
+            if (button) {
+                const originalText = button.innerHTML;
+                button.innerHTML = '<span class="spinner"></span> Logging in...';
+            }
+            
+            fetch('/adminboard/api/test-login/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ role: role })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccess(data.message);
+                    setTimeout(() => {
+                        window.location.href = data.redirect_url;
+                    }, 1000);
+                } else {
+                    showError(data.error || 'Login failed. Please try again.');
+                    if (button) {
+                        button.innerHTML = originalText;
+                    }
+                    // Re-enable buttons
+                    buttons.forEach(btn => btn.disabled = false);
+                }
+            })
+            .catch(error => {
+                console.error('Login error:', error);
+                showError('An error occurred during login. Please try again.');
+                if (button) {
+                    button.innerHTML = originalText;
+                }
+                buttons.forEach(btn => btn.disabled = false);
+            });
+        }
+
+        /**
+         * Microsoft Login - Redirect to test login
+         */
+        function microsoftLogin() {
+            // For demo purposes, redirect to member test login
+            // In production, this would redirect to Microsoft OAuth
+            window.location.href = '/adminboard/test-login/member/';
+        }
+
+        /**
+         * Show error message
+         */
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
+            errorText.textContent = message;
+            errorEl.className = 'error-message show';
+            errorEl.style.background = '#f8d7da';
+            errorEl.style.color = '#721c24';
+            errorEl.style.borderColor = '#f5c6cb';
+        }
+
+        /**
+         * Show success message
+         */
+        function showSuccess(message) {
+            const errorEl = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
+            errorText.textContent = message;
+            errorEl.className = 'error-message show';
+            errorEl.style.background = '#d4edda';
+            errorEl.style.color = '#155724';
+            errorEl.style.borderColor = '#c3e6cb';
+        }
+
+        /**
+         * Hide error message
+         */
+        function hideError() {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.className = 'error-message';
+        }
+
+        /**
+         * Check if user is already logged in
+         */
+        function checkSession() {
+            fetch('/adminboard/api/user/profile/', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.authenticated) {
+                    // User is already logged in, redirect to their dashboard
+                    const role = data.user.role || 'member';
+                    const redirectUrls = {
+                        'admin': '/adminboard/admin/',
+                        'supervisor': '/adminboard/supervisor/',
+                        'member': '/adminboard/member/'
+                    };
+                    window.location.href = redirectUrls[role] || '/adminboard/member/';
+                }
+            })
+            .catch(error => {
+                console.log('Session check failed:', error);
+            });
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+
+        // Check if user is already logged in on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkSession();
+        });
+
+        // Make functions globally accessible for onclick handlers
+        window.loginUser = loginUser;
+        window.microsoftLogin = microsoftLogin;
+    </script>
 </body>
 </html>
