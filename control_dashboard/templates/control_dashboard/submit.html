@@ -4,8 +4,8 @@
     <head>
         <meta charset="UTF-8">
         <title>Member Dashboard - Submit Exception Report</title>
-    <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
-    <link rel="stylesheet" href="{% static 'stylesheets/member.css' %}" type="text/css">
+        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
+        <link rel="stylesheet" href="{% static 'stylesheets/member.css' %}" type="text/css">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
         <meta name="csrf-token" content="{{ csrf_token }}">
     </head>
@@ -47,14 +47,21 @@
                     </a></li> 
                 </ul>
 
+                <!-- ==================== PROFILE CARD - LOGOUT BUTTON ==================== -->
                 <div class="nav-footer">
-                    <div class="nav-profile-card">
+                    <div class="nav-profile-card" onclick="logoutUser()" style="cursor: pointer;" title="Click to logout">
                         <div class="nav-profile-img-wrapper">
                             <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
                         </div>
                         <div class="nav-profile-info">
                             <h4 class="nav-user-name">{{ user_data.name }}</h4>
-                            <p class="nav-user-role">{{ user_data.department }}</p>
+                            <p class="nav-user-role">
+                                <i class="fas fa-sign-out-alt" style="font-size: 11px; margin-right: 4px;"></i>
+                                Click to logout
+                            </p>
+                        </div>
+                        <div class="nav-profile-logout-icon">
+                            <i class="fas fa-sign-out-alt"></i>
                         </div>
                     </div>
                 </div>
@@ -183,6 +190,27 @@
             </div>
         </div>
 
+        <!-- Logout Confirmation Modal -->
+        <div id="logoutModal" class="modal" style="display: none;">
+            <div class="modal-content" style="max-width: 400px; text-align: center;">
+                <div style="font-size: 48px; color: #ef4444; margin-bottom: 16px;">
+                    <i class="fas fa-sign-out-alt"></i>
+                </div>
+                <h2 style="margin-bottom: 8px;">Confirm Logout</h2>
+                <p style="color: rgba(26,35,50,0.6); margin-bottom: 24px;">
+                    Are you sure you want to logout?
+                </p>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <button onclick="closeLogoutModal()" class="btn-edit" style="padding: 10px 24px; background: #e5e7eb; color: #1a2332; border: none; border-radius: 6px; cursor: pointer;">
+                        Cancel
+                    </button>
+                    <button onclick="confirmLogout()" class="btn-create" style="padding: 10px 24px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div id="toastNotification" class="toast-notification">
             <div class="toast-icon"><i class="fas fa-check"></i></div>
             <div class="toast-content">
@@ -192,253 +220,388 @@
             <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
         </div>
 
-        <script>
-            // Safe data fallback parse
-let exceptionsData = [];
-try {
-    exceptionsData = JSON.parse('{{ exceptions_json|safe }}');
-} catch (e) {
-    console.error("Exception payload error: ", e);
-}
-
-const userData = {
-    name: '{{ user_data.name|escapejs }}',
-    email: '{{ user_data.email|escapejs }}',
-    department: '{{ user_data.department|escapejs }}'
-};
-
-let selectedExceptions = new Set();
-let currentCategory = 'all';
-let currentReportType = 'all';
-
-document.addEventListener('DOMContentLoaded', function() {
-    loadDraft(); // Load saved fields before rendering
-    renderExceptions();
-    updateSelectedSummary();
-    updateSubjectLine();
-});
-
-function renderExceptions() {
-    const stack = document.getElementById('exceptionStack');
-    if (!stack) return;
-    
-    stack.innerHTML = '';
-
-    let filtered = exceptionsData;
-
-    if (currentCategory !== 'all') {
-        filtered = filtered.filter(ex => ex.category === currentCategory);
-    }
-
-    if (currentReportType !== 'all') {
-        filtered = filtered.filter(ex => ex.report_type === currentReportType);
-    }
-
-    // Only allow draft and rejected exceptions to be packaged and submitted
-    filtered = filtered.filter(ex => ex.status === 'draft' || ex.status === 'rejected');
-
-    if (filtered.length === 0) {
-        stack.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-inbox"></i>
-                <p>No exceptions available for selection</p>
-                <p class="sub-text">Only draft and rejected exceptions can be submitted</p>
-            </div>
-        `;
-        return;
-    }
-
-    filtered.forEach(exception => {
-        const isChecked = selectedExceptions.has(exception.id);
-        const card = document.createElement('label');
-        card.className = `exception-select-card ${isChecked ? 'active' : ''}`;
-        card.dataset.id = exception.id;
-
-        const header = exception.data.header || exception.report_type || 'Untitled';
-        const unit = exception.unit || 'N/A';
-        const statusClass = exception.status || 'draft';
-        const statusDisplay = exception.status_display || exception.status.charAt(0).toUpperCase() + exception.status.slice(1);
-
-        card.innerHTML = `
-            <input type="checkbox" class="exception-checkbox" ${isChecked ? 'checked' : ''} 
-                   onchange="toggleException(${exception.id})">
-            <div class="exception-card-info">
-                <span class="ex-unit">${unit}</span>
-                <h5 class="ex-title">${header}</h5>
-                <div class="ex-meta">
-                    <span class="ex-date"><i class="far fa-calendar-alt"></i> ${exception.created_at || new Date().toLocaleDateString()}</span>
-                    <span class="ex-status ${statusClass}">${statusDisplay}</span>
-                </div>
-            </div>
-        `;
-
-        stack.appendChild(card);
-    });
-
-    updateSelectAllButton();
-    updateExceptionCount();
-}
-
-function filterByCategory(category) {
-    currentCategory = category;
-    
-    document.querySelectorAll('.category-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.category === category);
-    });
-    
-    renderExceptions();
-}
-
-function filterExceptions() {
-    const select = document.getElementById('report-type-filter');
-    currentReportType = select ? select.value : 'all';
-    renderExceptions();
-}
-
-function toggleException(id) {
-    if (selectedExceptions.has(id)) {
-        selectedExceptions.delete(id);
-    } else {
-        selectedExceptions.add(id);
-    }
-    
-    renderExceptions();
-    updateSelectedSummary();
-    updateSubjectLine();
-    autoSaveDraft();
-}
-
-function toggleSelectAll() {
-    const visibleCards = document.querySelectorAll('.exception-select-card');
-    const visibleIds = Array.from(visibleCards).map(card => parseInt(card.dataset.id));
-    
-    if (visibleIds.length === 0) return;
-    
-    const allSelected = visibleIds.every(id => selectedExceptions.has(id));
-    
-    if (allSelected) {
-        visibleIds.forEach(id => selectedExceptions.delete(id));
-    } else {
-        visibleIds.forEach(id => selectedExceptions.add(id));
-    }
-    
-    renderExceptions();
-    updateSelectedSummary();
-    updateSubjectLine();
-    updateSelectAllButton();
-    autoSaveDraft();
-}
-
-function updateSelectAllButton() {
-    const textSpan = document.getElementById('selectAllText');
-    if (!textSpan) return;
-
-    const visibleCards = document.querySelectorAll('.exception-select-card');
-    const visibleIds = Array.from(visibleCards).map(card => parseInt(card.dataset.id));
-    
-    if (visibleIds.length === 0) {
-        textSpan.textContent = 'Select All';
-        return;
-    }
-    
-    const allSelected = visibleIds.every(id => selectedExceptions.has(id));
-    textSpan.textContent = allSelected ? 'Deselect All' : 'Select All';
-}
-
-function updateSelectedSummary() {
-    const count = selectedExceptions.size;
-    const countEl = document.getElementById('selectedCount');
-    const tagsContainer = document.getElementById('selectedTags');
-    
-    if (countEl) countEl.textContent = count;
-    if (!tagsContainer) return;
-    
-    if (count === 0) {
-        tagsContainer.innerHTML = '<span style="color: rgba(26,35,50,0.3);">No exceptions selected</span>';
-        return;
-    }
-    
-    const selectedTitles = exceptionsData
-        .filter(ex => selectedExceptions.has(ex.id))
-        .map(ex => ex.data.header || ex.report_type || 'Untitled');
-    
-    tagsContainer.innerHTML = selectedTitles.map(title => 
-        `<span class="selected-tag">${title}</span>`
-    ).join('');
-}
-
-function updateSubjectLine() {
-    const count = selectedExceptions.size;
-    const subjectInput = document.getElementById('email-subject');
-    if (!subjectInput) return;
-    
-    if (count === 0) {
-        if (!subjectInput.value) {
-            subjectInput.placeholder = 'Select exceptions to auto-generate subject...';
-        }
-        return;
-    }
-    
-    const selectedItems = exceptionsData.filter(ex => selectedExceptions.has(ex.id));
-    const units = [...new Set(selectedItems.map(ex => ex.unit || 'Various'))];
-    const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    
-    let subject = 'EXCEPTION REPORT';
-    if (units.length > 0 && units.length <= 3) {
-        subject += ` - ${units.join(' & ')}`;
-    }
-    subject += ` (${selectedItems.length} exceptions) for ${date}`;
-    
-    subjectInput.value = subject;
-}
-
-function updateExceptionCount() {
-    const countEl = document.getElementById('exceptionCount');
-    if (!countEl) return;
-    const visible = document.querySelectorAll('.exception-select-card').length;
-    countEl.textContent = `${visible} exceptions`;
-}
-
-function autoSaveDraft() {
-    const emailData = {
-        to: document.getElementById('email-to').value,
-        cc: document.getElementById('email-cc').value,
-        subject: document.getElementById('email-subject').value,
-        body: document.getElementById('email-body').value,
-        selected: Array.from(selectedExceptions)
-    };
-    
-    try {
-        localStorage.setItem('emailDraft_' + userData.email, JSON.stringify(emailData));
-    } catch (e) {
-        console.warn("Storage limits exceeded: ", e);
-    }
-}
-
-function loadDraft() {
-    try {
-        const draft = localStorage.getItem('emailDraft_' + userData.email);
-        if (draft) {
-            const data = JSON.parse(draft);
-            if (data.to) document.getElementById('email-to').value = data.to;
-            if (data.cc) document.getElementById('email-cc').value = data.cc;
-            if (data.subject) document.getElementById('email-subject').value = data.subject;
-            if (data.body) document.getElementById('email-body').value = data.body;
-            if (data.selected && data.selected.length > 0) {
-                data.selected.forEach(id => selectedExceptions.add(id));
+        <style>
+            /* Profile card logout styling */
+            .nav-profile-card {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 12px 16px;
+                border-radius: 8px;
+                background: rgba(255,255,255,0.05);
+                transition: all 0.2s ease;
+                position: relative;
             }
-        }
-    } catch (e) {
-        console.warn("Draft loading failed: ", e);
-    }
-}
 
-// Track input changes in form area to trigger drafts storage saving
-document.addEventListener('input', function(e) {
-    if (e.target.closest('.email-form-box')) {
-        autoSaveDraft();
-    }
-});
+            .nav-profile-card:hover {
+                background: rgba(255,255,255,0.1);
+                transform: translateX(4px);
+            }
+
+            .nav-profile-card:hover .nav-profile-logout-icon {
+                opacity: 1;
+                transform: translateX(0);
+            }
+
+            .nav-profile-logout-icon {
+                margin-left: auto;
+                color: rgba(255,255,255,0.4);
+                font-size: 14px;
+                transition: all 0.2s ease;
+                opacity: 0;
+                transform: translateX(-8px);
+            }
+
+            .nav-user-role {
+                font-size: 11px;
+                color: rgba(255,255,255,0.5);
+                margin: 0;
+            }
+
+            .nav-user-role i {
+                color: #ef4444;
+            }
+
+            /* Modal styles */
+            .modal {
+                position: fixed;
+                z-index: 9999;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                animation: fadeIn 0.3s ease;
+            }
+
+            .modal-content {
+                background: white;
+                border-radius: 12px;
+                padding: 32px;
+                animation: slideUp 0.3s ease;
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+
+            @keyframes slideUp {
+                from { transform: translateY(30px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+
+            /* Responsive modal */
+            @media (max-width: 480px) {
+                .modal-content {
+                    margin: 20px;
+                    padding: 24px;
+                }
+                .modal-content h2 {
+                    font-size: 20px;
+                }
+            }
+        </style>
+
+        <script>
+            // ============================================
+            // CSRF Token Helper
+            // ============================================
+            function getCsrfToken() {
+                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            }
+
+            // ============================================
+            // LOGOUT FUNCTION
+            // ============================================
+
+            function logoutUser() {
+                document.getElementById('logoutModal').style.display = 'flex';
+            }
+
+            function closeLogoutModal() {
+                document.getElementById('logoutModal').style.display = 'none';
+            }
+
+            function confirmLogout() {
+                // Show loading state
+                const btn = document.querySelector('#logoutModal .btn-create');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
+                btn.disabled = true;
+
+                // Redirect to logout URL
+                window.location.href = "{% url 'control_dashboard:logout' %}";
+            }
+
+            // Close modal on background click
+            document.addEventListener('click', function(event) {
+                const modal = document.getElementById('logoutModal');
+                if (event.target === modal) {
+                    closeLogoutModal();
+                }
+            });
+
+            // Close modal on Escape key
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    closeLogoutModal();
+                }
+            });
+
+            // ============================================
+            // EXISTING FUNCTIONS
+            // ============================================
+
+            // Safe data fallback parse
+            let exceptionsData = [];
+            try {
+                exceptionsData = JSON.parse('{{ exceptions_json|safe }}');
+            } catch (e) {
+                console.error("Exception payload error: ", e);
+            }
+
+            const userData = {
+                name: '{{ user_data.name|escapejs }}',
+                email: '{{ user_data.email|escapejs }}',
+                department: '{{ user_data.department|escapejs }}'
+            };
+
+            let selectedExceptions = new Set();
+            let currentCategory = 'all';
+            let currentReportType = 'all';
+
+            document.addEventListener('DOMContentLoaded', function() {
+                loadDraft(); // Load saved fields before rendering
+                renderExceptions();
+                updateSelectedSummary();
+                updateSubjectLine();
+            });
+
+            function renderExceptions() {
+                const stack = document.getElementById('exceptionStack');
+                if (!stack) return;
+                
+                stack.innerHTML = '';
+
+                let filtered = exceptionsData;
+
+                if (currentCategory !== 'all') {
+                    filtered = filtered.filter(ex => ex.category === currentCategory);
+                }
+
+                if (currentReportType !== 'all') {
+                    filtered = filtered.filter(ex => ex.report_type === currentReportType);
+                }
+
+                // Only allow draft and rejected exceptions to be packaged and submitted
+                filtered = filtered.filter(ex => ex.status === 'draft' || ex.status === 'rejected');
+
+                if (filtered.length === 0) {
+                    stack.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>No exceptions available for selection</p>
+                            <p class="sub-text">Only draft and rejected exceptions can be submitted</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                filtered.forEach(exception => {
+                    const isChecked = selectedExceptions.has(exception.id);
+                    const card = document.createElement('label');
+                    card.className = `exception-select-card ${isChecked ? 'active' : ''}`;
+                    card.dataset.id = exception.id;
+
+                    const header = exception.data.header || exception.report_type || 'Untitled';
+                    const unit = exception.unit || 'N/A';
+                    const statusClass = exception.status || 'draft';
+                    const statusDisplay = exception.status_display || exception.status.charAt(0).toUpperCase() + exception.status.slice(1);
+
+                    card.innerHTML = `
+                        <input type="checkbox" class="exception-checkbox" ${isChecked ? 'checked' : ''} 
+                               onchange="toggleException(${exception.id})">
+                        <div class="exception-card-info">
+                            <span class="ex-unit">${unit}</span>
+                            <h5 class="ex-title">${header}</h5>
+                            <div class="ex-meta">
+                                <span class="ex-date"><i class="far fa-calendar-alt"></i> ${exception.created_at || new Date().toLocaleDateString()}</span>
+                                <span class="ex-status ${statusClass}">${statusDisplay}</span>
+                            </div>
+                        </div>
+                    `;
+
+                    stack.appendChild(card);
+                });
+
+                updateSelectAllButton();
+                updateExceptionCount();
+            }
+
+            function filterByCategory(category) {
+                currentCategory = category;
+                
+                document.querySelectorAll('.category-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.category === category);
+                });
+                
+                renderExceptions();
+            }
+
+            function filterExceptions() {
+                const select = document.getElementById('report-type-filter');
+                currentReportType = select ? select.value : 'all';
+                renderExceptions();
+            }
+
+            function toggleException(id) {
+                if (selectedExceptions.has(id)) {
+                    selectedExceptions.delete(id);
+                } else {
+                    selectedExceptions.add(id);
+                }
+                
+                renderExceptions();
+                updateSelectedSummary();
+                updateSubjectLine();
+                autoSaveDraft();
+            }
+
+            function toggleSelectAll() {
+                const visibleCards = document.querySelectorAll('.exception-select-card');
+                const visibleIds = Array.from(visibleCards).map(card => parseInt(card.dataset.id));
+                
+                if (visibleIds.length === 0) return;
+                
+                const allSelected = visibleIds.every(id => selectedExceptions.has(id));
+                
+                if (allSelected) {
+                    visibleIds.forEach(id => selectedExceptions.delete(id));
+                } else {
+                    visibleIds.forEach(id => selectedExceptions.add(id));
+                }
+                
+                renderExceptions();
+                updateSelectedSummary();
+                updateSubjectLine();
+                updateSelectAllButton();
+                autoSaveDraft();
+            }
+
+            function updateSelectAllButton() {
+                const textSpan = document.getElementById('selectAllText');
+                if (!textSpan) return;
+
+                const visibleCards = document.querySelectorAll('.exception-select-card');
+                const visibleIds = Array.from(visibleCards).map(card => parseInt(card.dataset.id));
+                
+                if (visibleIds.length === 0) {
+                    textSpan.textContent = 'Select All';
+                    return;
+                }
+                
+                const allSelected = visibleIds.every(id => selectedExceptions.has(id));
+                textSpan.textContent = allSelected ? 'Deselect All' : 'Select All';
+            }
+
+            function updateSelectedSummary() {
+                const count = selectedExceptions.size;
+                const countEl = document.getElementById('selectedCount');
+                const tagsContainer = document.getElementById('selectedTags');
+                
+                if (countEl) countEl.textContent = count;
+                if (!tagsContainer) return;
+                
+                if (count === 0) {
+                    tagsContainer.innerHTML = '<span style="color: rgba(26,35,50,0.3);">No exceptions selected</span>';
+                    return;
+                }
+                
+                const selectedTitles = exceptionsData
+                    .filter(ex => selectedExceptions.has(ex.id))
+                    .map(ex => ex.data.header || ex.report_type || 'Untitled');
+                
+                tagsContainer.innerHTML = selectedTitles.map(title => 
+                    `<span class="selected-tag">${title}</span>`
+                ).join('');
+            }
+
+            function updateSubjectLine() {
+                const count = selectedExceptions.size;
+                const subjectInput = document.getElementById('email-subject');
+                if (!subjectInput) return;
+                
+                if (count === 0) {
+                    if (!subjectInput.value) {
+                        subjectInput.placeholder = 'Select exceptions to auto-generate subject...';
+                    }
+                    return;
+                }
+                
+                const selectedItems = exceptionsData.filter(ex => selectedExceptions.has(ex.id));
+                const units = [...new Set(selectedItems.map(ex => ex.unit || 'Various'))];
+                const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                
+                let subject = 'EXCEPTION REPORT';
+                if (units.length > 0 && units.length <= 3) {
+                    subject += ` - ${units.join(' & ')}`;
+                }
+                subject += ` (${selectedItems.length} exceptions) for ${date}`;
+                
+                subjectInput.value = subject;
+            }
+
+            function updateExceptionCount() {
+                const countEl = document.getElementById('exceptionCount');
+                if (!countEl) return;
+                const visible = document.querySelectorAll('.exception-select-card').length;
+                countEl.textContent = `${visible} exceptions`;
+            }
+
+            function autoSaveDraft() {
+                const emailData = {
+                    to: document.getElementById('email-to').value,
+                    cc: document.getElementById('email-cc').value,
+                    subject: document.getElementById('email-subject').value,
+                    body: document.getElementById('email-body').value,
+                    selected: Array.from(selectedExceptions)
+                };
+                
+                try {
+                    localStorage.setItem('emailDraft_' + userData.email, JSON.stringify(emailData));
+                } catch (e) {
+                    console.warn("Storage limits exceeded: ", e);
+                }
+            }
+
+            function loadDraft() {
+                try {
+                    const draft = localStorage.getItem('emailDraft_' + userData.email);
+                    if (draft) {
+                        const data = JSON.parse(draft);
+                        if (data.to) document.getElementById('email-to').value = data.to;
+                        if (data.cc) document.getElementById('email-cc').value = data.cc;
+                        if (data.subject) document.getElementById('email-subject').value = data.subject;
+                        if (data.body) document.getElementById('email-body').value = data.body;
+                        if (data.selected && data.selected.length > 0) {
+                            data.selected.forEach(id => selectedExceptions.add(id));
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Draft loading failed: ", e);
+                }
+            }
+
+            // Track input changes in form area to trigger drafts storage saving
+            document.addEventListener('input', function(e) {
+                if (e.target.closest('.email-form-box')) {
+                    autoSaveDraft();
+                }
+            });
         </script>
     </body>
 </html>
