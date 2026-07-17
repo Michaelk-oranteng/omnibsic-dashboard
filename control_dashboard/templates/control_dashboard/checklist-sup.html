@@ -7,6 +7,189 @@
         <link rel="stylesheet" href="{% static 'stylesheets/profile.css' %}" type="text/css">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
         <meta name="csrf-token" content="{{ csrf_token }}">
+        <style>
+            /* Additional styles for the modal */
+            .modal-section {
+                margin-top: 20px;
+            }
+            .modal-section h4 {
+                margin-bottom: 12px;
+                color: #1a2332;
+                font-size: 16px;
+                font-weight: 600;
+            }
+            
+            .checklist-item {
+                background: #f8f9fa;
+                border-radius: 8px;
+                padding: 16px;
+                margin-bottom: 12px;
+                border-left: 4px solid #e5e7eb;
+                transition: all 0.2s ease;
+            }
+            .checklist-item.completed {
+                border-left-color: #10b981;
+                background: #f0fdf4;
+            }
+            .checklist-item.pending {
+                border-left-color: #f59e0b;
+                background: #fffbeb;
+            }
+            
+            .checklist-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 4px;
+            }
+            .checklist-name {
+                font-weight: 600;
+                color: #1a2332;
+                font-size: 14px;
+            }
+            .checklist-status {
+                font-size: 12px;
+                font-weight: 600;
+                padding: 2px 12px;
+                border-radius: 12px;
+            }
+            .checklist-status.completed {
+                background: #d1fae5;
+                color: #065f46;
+            }
+            .checklist-status.pending {
+                background: #fef3c7;
+                color: #92400e;
+            }
+            
+            .checklist-meta {
+                font-size: 12px;
+                color: rgba(26,35,50,0.5);
+                margin-bottom: 8px;
+            }
+            
+            .task-progress {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin: 8px 0 10px 0;
+            }
+            .progress-track {
+                flex: 1;
+                height: 6px;
+                background: #e5e7eb;
+                border-radius: 4px;
+                overflow: hidden;
+            }
+            .progress-bar {
+                height: 100%;
+                border-radius: 4px;
+                transition: width 0.3s ease;
+            }
+            .progress-bar.success {
+                background: #10b981;
+            }
+            .progress-bar.warning {
+                background: #f59e0b;
+            }
+            .progress-bar.danger {
+                background: #ef4444;
+            }
+            .progress-text {
+                font-size: 12px;
+                font-weight: 600;
+                min-width: 36px;
+            }
+            .progress-text.success {
+                color: #10b981;
+            }
+            .progress-text.warning {
+                color: #f59e0b;
+            }
+            .progress-text.danger {
+                color: #ef4444;
+            }
+            
+            .task-list {
+                list-style: none;
+                padding: 0;
+                margin: 8px 0 0 0;
+            }
+            .task-list li {
+                padding: 4px 0;
+                font-size: 13px;
+                color: #374151;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .task-check {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                font-size: 12px;
+                font-weight: 700;
+                flex-shrink: 0;
+            }
+            .task-check.completed {
+                background: #d1fae5;
+                color: #065f46;
+            }
+            .task-check.pending {
+                background: #f3f4f6;
+                color: #9ca3af;
+            }
+            
+            .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                gap: 12px;
+                margin-bottom: 20px;
+            }
+            .stat-box {
+                background: #f8f9fa;
+                padding: 14px 16px;
+                border-radius: 8px;
+                text-align: center;
+            }
+            .stat-box .stat-number {
+                font-size: 24px;
+                font-weight: 700;
+                color: #1a2332;
+            }
+            .stat-box .stat-label {
+                font-size: 11px;
+                color: rgba(26,35,50,0.5);
+                margin-top: 2px;
+            }
+            .stat-box .stat-number.success {
+                color: #10b981;
+            }
+            .stat-box .stat-number.warning {
+                color: #f59e0b;
+            }
+            .stat-box .stat-number.danger {
+                color: #ef4444;
+            }
+            .stat-box .stat-number.primary {
+                color: #0066cc;
+            }
+
+            .no-data-message {
+                text-align: center;
+                color: rgba(26,35,50,0.4);
+                padding: 30px 0;
+            }
+            .no-data-message i {
+                font-size: 48px;
+                color: rgba(26,35,50,0.1);
+                display: block;
+                margin-bottom: 12px;
+            }
+        </style>
     </head>
     <body>
         <div class="page-wrapper">
@@ -90,7 +273,7 @@
                         </thead>
                         <tbody>
                             {% for data in user_completion_data %}
-                            <tr onclick="viewUserDetail({{ data.user.id }})">
+                            <tr onclick="viewUserDetail({{ data.user.id }})" style="cursor: pointer;">
                                 <td class="font-bold">
                                     {{ data.user.full_name|default:data.user.email }}
                                     <div style="font-size: 11px; color: rgba(26,35,50,0.4); font-weight: 400;">
@@ -125,9 +308,9 @@
             </div>
         </div>
 
-        <!-- User Detail Modal -->
+        <!-- User Detail Modal - View Only -->
         <div id="userDetailModal" class="modal">
-            <div class="modal-content">
+            <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
                 <span class="modal-close" onclick="closeModal()">&times;</span>
                 <h2 id="modalUserName">User Checklist Details</h2>
                 <div id="modalBody">
@@ -210,75 +393,84 @@
                 .then(data => {
                     if (data.success) {
                         const user = data.user;
-                        title.textContent = `${user.full_name} - Checklist Details`;
+                        title.textContent = `${user.full_name} - Activity Checklist`;
                         
                         let html = `
-                            <div class="modal-section">
-                                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                                    <div style="background: rgba(0,0,0,0.03); padding: 12px 20px; border-radius: 8px; flex: 1; min-width: 100px; text-align: center;">
-                                        <div style="font-size: 24px; font-weight: 700; color: #1a2332;">${user.completion_rate}%</div>
-                                        <div style="font-size: 12px; color: rgba(26,35,50,0.4);">Overall Completion</div>
-                                    </div>
-                                    <div style="background: rgba(0,0,0,0.03); padding: 12px 20px; border-radius: 8px; flex: 1; min-width: 100px; text-align: center;">
-                                        <div style="font-size: 24px; font-weight: 700; color: #1a2332;">${user.completed_checklists}/${user.total_checklists}</div>
-                                        <div style="font-size: 12px; color: rgba(26,35,50,0.4);">Checklists Completed</div>
-                                    </div>
-                                    <div style="background: rgba(0,0,0,0.03); padding: 12px 20px; border-radius: 8px; flex: 1; min-width: 100px; text-align: center;">
-                                        <div style="font-size: 24px; font-weight: 700; color: #003399;">${user.position}</div>
-                                        <div style="font-size: 12px; color: rgba(26,35,50,0.4);">Position</div>
-                                    </div>
+                            <!-- Stats Summary -->
+                            <div class="stat-grid">
+                                <div class="stat-box">
+                                    <div class="stat-number primary">${user.total_checklists}</div>
+                                    <div class="stat-label">Total Checklists</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-number success">${user.completed_checklists}</div>
+                                    <div class="stat-label">Completed</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-number ${user.completion_rate >= 90 ? 'success' : user.completion_rate >= 50 ? 'warning' : 'danger'}">${user.completion_rate}%</div>
+                                    <div class="stat-label">Completion Rate</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-number primary">${user.position}</div>
+                                    <div class="stat-label">Position</div>
                                 </div>
                             </div>
-                            
-                            <div class="modal-section">
-                                <h4>Checklist Progress</h4>
                         `;
                         
-                        user.checklist_details.forEach(checklist => {
-                            const statusClass = checklist.is_completed ? 'completed' : 'pending';
-                            const statusText = checklist.is_completed ? '✓ Completed' : '⏳ Pending';
-                            const progressClass = checklist.task_completion_rate >= 90 ? 'success' : checklist.task_completion_rate >= 50 ? 'warning' : 'danger';
+                        if (user.checklist_details && user.checklist_details.length > 0) {
+                            html += `<div class="modal-section"><h4>Checklist Progress</h4>`;
                             
-                            html += `
-                                <div class="checklist-item ${statusClass}">
-                                    <div class="checklist-header">
-                                        <span class="checklist-name">${checklist.name}</span>
-                                        <span class="checklist-status ${statusClass}">${statusText}</span>
-                                    </div>
-                                    <div class="checklist-meta">${checklist.frequency} • ${checklist.completed_tasks}/${checklist.total_tasks} tasks completed</div>
-                                    <div class="task-progress">
-                                        <div class="progress-track">
-                                            <div class="progress-bar ${progressClass}" style="width: ${checklist.task_completion_rate}%;"></div>
-                                        </div>
-                                        <span class="progress-text ${progressClass}">${checklist.task_completion_rate}%</span>
-                                    </div>
-                                    <ul class="task-list">
-                            `;
-                            
-                            checklist.tasks.forEach(task => {
-                                const taskStatus = task.is_completed ? 'completed' : 'pending';
-                                const taskIcon = task.is_completed ? '✓' : '○';
+                            user.checklist_details.forEach(checklist => {
+                                const statusClass = checklist.is_completed ? 'completed' : 'pending';
+                                const statusText = checklist.is_completed ? '✓ Completed' : '⏳ Pending';
+                                const progressClass = checklist.task_completion_rate >= 90 ? 'success' : checklist.task_completion_rate >= 50 ? 'warning' : 'danger';
+                                
                                 html += `
-                                    <li>
-                                        <span class="task-check ${taskStatus}">${taskIcon}</span>
-                                        ${task.description}
-                                    </li>
+                                    <div class="checklist-item ${statusClass}">
+                                        <div class="checklist-header">
+                                            <span class="checklist-name">${checklist.name}</span>
+                                            <span class="checklist-status ${statusClass}">${statusText}</span>
+                                        </div>
+                                        <div class="checklist-meta">${checklist.frequency} • ${checklist.completed_tasks}/${checklist.total_tasks} tasks completed</div>
+                                        <div class="task-progress">
+                                            <div class="progress-track">
+                                                <div class="progress-bar ${progressClass}" style="width: ${checklist.task_completion_rate}%;"></div>
+                                            </div>
+                                            <span class="progress-text ${progressClass}">${checklist.task_completion_rate}%</span>
+                                        </div>
+                                        <ul class="task-list">
+                                `;
+                                
+                                checklist.tasks.forEach(task => {
+                                    const taskStatus = task.is_completed ? 'completed' : 'pending';
+                                    const taskIcon = task.is_completed ? '✓' : '○';
+                                    html += `
+                                        <li>
+                                            <span class="task-check ${taskStatus}">${taskIcon}</span>
+                                            ${task.description}
+                                        </li>
+                                    `;
+                                });
+                                
+                                html += `
+                                        </ul>
+                                    </div>
                                 `;
                             });
                             
+                            html += `</div>`;
+                        } else {
                             html += `
-                                    </ul>
+                                <div class="no-data-message">
+                                    <i class="fas fa-clipboard-list"></i>
+                                    <p>No checklists assigned to this user yet.</p>
                                 </div>
                             `;
-                        });
-                        
-                        html += `
-                            </div>
-                        `;
+                        }
                         
                         body.innerHTML = html;
                     } else {
-                        showToast('Error loading user details', 'Error');
+                        showToast(data.error || 'Error loading user details', 'Error');
                         closeModal();
                     }
                 })
@@ -304,6 +496,13 @@
                     closeModal();
                 }
             }
+
+            // Close modal with Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeModal();
+                }
+            });
         </script>
     </body>
 </html>

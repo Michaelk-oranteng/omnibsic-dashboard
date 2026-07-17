@@ -154,26 +154,30 @@
                 <div class="dashboard-split-layout">
                     <div class="dashboard-panel-card">
                         <div class="panel-card-header">
-                            <h4>Team Performance</h4>
+                            <h4>Top 3 Performers</h4>
                             <a href="{% url 'control_dashboard:team_performance' %}" class="panel-header-link">View Full Team <i class="fas fa-arrow-right"></i></a>
                         </div>
                         
                         <table class="users-table simple-clickable-table">
                             <thead>
                                 <tr>
+                                    <th>#</th>
                                     <th>Full Name</th>
                                     <th class="text-center">Submitted</th>
-                                    <th class="text-center">Approved</th>
                                     <th class="text-center">Completion</th>
                                     <th class="text-center" style="width: 60px;">View</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for member in team_performance %}
+                                {% for member in team_performance|slice:":3" %}
                                 <tr>
+                                    <td class="text-center">
+                                        <span class="rank-badge rank-{{ forloop.counter }}">
+                                            {{ forloop.counter }}
+                                        </span>
+                                    </td>
                                     <td class="font-bold">{{ member.user.full_name|default:member.user.email }}</td>
                                     <td class="text-center">{{ member.submitted }}</td>
-                                    <td class="text-center">{{ member.approved }}</td>
                                     <td class="text-center">
                                         <span class="simple-percentage text-{{ member.status }}">
                                             {{ member.percentage }}%
@@ -194,6 +198,14 @@
                                 {% endfor %}
                             </tbody>
                         </table>
+                        
+                        {% if team_performance|length > 3 %}
+                        <div style="text-align: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.05);">
+                            <a href="{% url 'control_dashboard:team_performance' %}" class="panel-header-link">
+                                View all {{ team_performance|length }} team members <i class="fas fa-arrow-right"></i>
+                            </a>
+                        </div>
+                        {% endif %}
                     </div>
 
                     <div class="dashboard-panel-card">
@@ -306,6 +318,36 @@
             </div>
             <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
         </div>
+
+        <style>
+            /* Rank badge styles */
+            .rank-badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 24px;
+                height: 24px;
+                border-radius: 50%;
+                font-size: 12px;
+                font-weight: 700;
+                color: white;
+            }
+            
+            .rank-1 {
+                background: #FFD700;
+                color: #1a1a2e;
+            }
+            
+            .rank-2 {
+                background: #C0C0C0;
+                color: #1a1a2e;
+            }
+            
+            .rank-3 {
+                background: #CD7F32;
+                color: white;
+            }
+        </style>
 
         <script>
             function getCsrfToken() {

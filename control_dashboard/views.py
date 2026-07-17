@@ -3737,3 +3737,168 @@ def api_update_exception(request, exception_id):
         return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+# control_dashboard/views.py
+
+def team_performance(request):
+    """
+    Team Performance view - shows all team members and their performance metrics.
+    """
+    # Check if user is authenticated
+    if not request.user.is_authenticated:
+        return redirect('control_dashboard:login')
+    
+    # Get the current user's profile
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+    except UserProfile.DoesNotExist:
+        user_profile = get_or_create_user_profile(request.user)
+    
+    # Get filter parameters
+    search_query = request.GET.get('search', '')
+    
+    # Get all team members (ONLY users with role 'member' - exclude supervisors and admins)
+    team_members = UserProfile.objects.filter(
+        role='member',  # Only members
+        status='active'  # Only active users
+    )
+    
+    # Apply search filter
+    if search_query:
+        team_members = team_members.filter(
+            Q(full_name__icontains=search_query) |
+            Q(email__icontains=search_query)
+        )
+    
+    # Annotate with performance metrics from drafts
+    team_members = team_members.annotate(
+        total_drafts=Count('drafts'),
+        submitted_drafts=Count('drafts', filter=Q(drafts__status='submitted')),
+        approved_drafts=Count('drafts', filter=Q(drafts__status='approved')),
+        rejected_drafts=Count('drafts', filter=Q(drafts__status='rejected')),
+        in_review_drafts=Count('drafts', filter=Q(drafts__status='in_review')),
+        completed_drafts=Count('drafts', filter=Q(drafts__status__in=['approved', 'rejected'])),
+    )
+    
+    # Calculate performance scores with ad-hoc deductions
+    team_data = []
+    for member in team_members:
+        total = member.total_drafts
+        completed = member.completed_drafts
+        
+        # Calculate base percentage
+        if total > 0:
+            base_percentage = round((completed / total) * 100)
+        else:
+            base_percentage = 0
+        
+        # Get ad-hoc deductions for this user
+        ad_hoc_deductions = ActivityLog.objects.filter(
+            user=member,
+            activity_type='ad_hoc_deduction'
+        )
+        
+        # Calculate total deduction points
+        total_deduction = 0
+        for deduction in ad_hoc_deductions:
+            try:
+                # Parse the points from the details field
+                details = deduction.details
+                if 'Deduction:' in details:
+                    parts = details.split(' - ')
+                    if len(parts) >= 1:
+                        points_part = parts[0].replace('Deduction: ', '').strip()
+                        total_deduction += int(points_part)
+            except (ValueError, IndexError):
+                pass
+        
+        # Apply deduction to the percentage
+        final_percentage = max(0, base_percentage - total_deduction)
+        
+        # Determine status color
+        if final_percentage >= 90:
+            status = 'success'
+            status_text = 'Excellent'
+        elif final_percentage >= 70:
+            status = 'warning'
+            status_text = 'Good'
+        elif final_percentage >= 50:
+            status = 'info'
+            status_text = 'Average'
+        else:
+            status = 'danger'
+            status_text = 'Needs Improvement'
+        
+        team_data.append({
+            'user': member,
+            'total_tasks': total,
+            'submitted': member.submitted_drafts,
+            'approved': member.approved_drafts,
+            'rejected': member.rejected_drafts,
+            'in_review': member.in_review_drafts,
+            'completed': completed,
+            'base_percentage': base_percentage,
+            'total_deduction': total_deduction,
+            'percentage': final_percentage,
+            'status': status,
+            'status_text': status_text,
+        })
+    
+    # Sort by percentage descending
+    team_data.sort(key=lambda x: x['percentage'], reverse=True)
+    
+    # Calculate team statistics
+    total_members = len(team_data)
+    total_tasks = sum(m['total_tasks'] for m in team_data)
+    total_completed = sum(m['completed'] for m in team_data)
+    if total_tasks > 0:
+        overall_completion = round((total_completed / total_tasks) * 100)
+    else:
+        overall_completion = 0
+    
+    context = {
+        'user_profile': user_profile,
+        'team_data': team_data,
+        'total_members': total_members,
+        'total_tasks': total_tasks,
+        'total_completed': total_completed,
+        'overall_completion': overall_completion,
+        'search_query': search_query,
+    }
+    
+    return render(request, 'control_dashboard/team.html', context)
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_upload_exceptions(request):
+    """
+    API endpoint to upload exceptions from Excel.
+    """
+    try:
+        data = json.loads(request.body)
+        exceptions = data.get('exceptions', [])
+        
+        user = UserProfile.objects.get(email=request.user.email)
+        
+        for ex in exceptions:
+            Draft.objects.create(
+                report_type=ex.get('report_type', 'Excel Import'),
+                created_by=user,
+                data={
+                    'header': ex.get('data', {}).get('header', ''),
+                    'details': ex.get('data', {}).get('details', ''),
+                    'unit': ex.get('unit', ''),
+                    'branch': ex.get('unit', ''),
+                },
+                status='draft'
+            )
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{len(exceptions)} exceptions uploaded successfully'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)

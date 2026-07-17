@@ -8,6 +8,8 @@
         <link rel="stylesheet" href="{% static 'stylesheets/member.css' %}" type="text/css">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
         <meta name="csrf-token" content="{{ csrf_token }}">
+        <!-- SheetJS Library for Excel parsing -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     </head>
 
     <body>
@@ -79,6 +81,11 @@
                 </div>
 
                 <div class="top-header-right">
+                    <!-- Excel Upload Button in Header -->
+                    <button class="btn-upload-header" onclick="document.getElementById('excelFileInputHeader').click()" title="Import Excel Data">
+                        <i class="fas fa-file-excel"></i> Import Excel
+                    </button>
+                    <input type="file" id="excelFileInputHeader" accept=".xlsx,.xls,.csv" style="display: none;" onchange="handleExcelFile(this.files[0])">
                     <button class="btn-submit-draft-header" onclick="submitReport()">
                         <i class="fas fa-paper-plane"></i> Submit for Review
                     </button>
@@ -99,10 +106,32 @@
 
             <!-- ==================== MAIN CONTENT ==================== -->
             <div class="main-content">
+                <!-- Upload Progress and Stats -->
+                <div id="uploadProgress" style="display: none; margin-bottom: 15px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="progress-track" style="flex: 1; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                            <div class="progress-bar success" id="uploadProgressBar" style="width: 0%; height: 100%; background: #10b981; transition: width 0.3s ease;"></div>
+                        </div>
+                        <span id="uploadStatus" style="font-size: 13px; color: #6b7280; min-width: 120px;">Processing...</span>
+                    </div>
+                </div>
+                
+                <div id="uploadStats" style="display: none; margin-bottom: 15px; padding: 12px 16px; background: #f0fdf4; border-radius: 8px; border-left: 4px solid #10b981;">
+                    <span id="uploadResult" style="font-size: 14px; color: #065f46;">
+                        <i class="fas fa-check-circle"></i> Import successful!
+                    </span>
+                    <button class="btn-clear-upload-sm" onclick="clearUploadedData()" style="margin-left: 12px; padding: 4px 12px; background: #fee2e2; color: #dc2626; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        <i class="fas fa-trash"></i> Clear
+                    </button>
+                </div>
+
                 <div class="checklist-container">
                     <div class="glass-card">
                         <h2>New Submission</h2>
                         <p>Select a report type from the dropdown to load its template, fill in the details, and submit directly to the reports section for review.</p>
+                        <p style="color: #217346; margin-top: 4px;">
+                            <i class="fas fa-file-excel"></i> Or click "Import Excel" in the top header to bulk upload exceptions.
+                        </p>
 
                         <div id="template-container" style="margin-top: 20px; display: none;">
                             <div class="template-header">
@@ -135,6 +164,110 @@
             <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
         </div>
 
+        <style>
+            /* Header Upload Button */
+            .btn-upload-header {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 16px;
+                background: #217346;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 500;
+                transition: all 0.2s ease;
+                margin-right: 8px;
+            }
+
+            .btn-upload-header:hover {
+                background: #1a5c38;
+                transform: translateY(-1px);
+                box-shadow: 0 2px 8px rgba(33, 115, 70, 0.3);
+            }
+
+            .btn-upload-header i {
+                font-size: 16px;
+            }
+
+            .btn-upload-header.loading {
+                background: #6b7280;
+                cursor: wait;
+                opacity: 0.7;
+            }
+
+            .btn-upload-header.loading:hover {
+                background: #6b7280;
+                transform: none;
+                box-shadow: none;
+            }
+
+            .btn-clear-upload-sm {
+                padding: 4px 12px;
+                background: #fee2e2;
+                color: #dc2626;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: 500;
+                transition: background 0.2s ease;
+                margin-left: 12px;
+            }
+
+            .btn-clear-upload-sm:hover {
+                background: #fecaca;
+            }
+
+            .progress-track {
+                height: 8px;
+                background: #e5e7eb;
+                border-radius: 4px;
+                overflow: hidden;
+                flex: 1;
+            }
+
+            .progress-bar {
+                height: 100%;
+                border-radius: 4px;
+                transition: width 0.3s ease;
+            }
+
+            .progress-bar.success {
+                background: #10b981;
+            }
+
+            .top-header-right {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            /* Responsive adjustments */
+            @media (max-width: 768px) {
+                .top-header {
+                    flex-wrap: wrap;
+                    gap: 10px;
+                }
+                .top-header-center {
+                    order: 3;
+                    width: 100%;
+                }
+                .top-header-right {
+                    flex-wrap: wrap;
+                }
+                .btn-upload-header {
+                    font-size: 12px;
+                    padding: 6px 12px;
+                }
+                .btn-upload-header span {
+                    display: none;
+                }
+            }
+        </style>
+
         <script>
             function getCsrfToken() {
                 return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -165,6 +298,268 @@
                     window.toastTimeout = null;
                 }
             };
+
+            // ============================================
+            // EXCEL UPLOAD FUNCTIONALITY
+            // ============================================
+
+            let uploadedData = [];
+
+            function handleExcelFile(file) {
+                if (!file) return;
+
+                const validTypes = [
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'application/vnd.ms-excel',
+                    'text/csv'
+                ];
+
+                if (!validTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls|csv)$/i)) {
+                    showToast('Please upload a valid Excel file (.xlsx, .xls, or .csv)', 'Error');
+                    return;
+                }
+
+                // Show progress
+                const progressDiv = document.getElementById('uploadProgress');
+                const statsDiv = document.getElementById('uploadStats');
+                const progressBar = document.getElementById('uploadProgressBar');
+                const statusText = document.getElementById('uploadStatus');
+
+                progressDiv.style.display = 'block';
+                statsDiv.style.display = 'none';
+                progressBar.style.width = '30%';
+                statusText.textContent = 'Reading file...';
+
+                // Update button state
+                const uploadBtn = document.querySelector('.btn-upload-header');
+                uploadBtn.classList.add('loading');
+                uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
+
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    try {
+                        progressBar.style.width = '60%';
+                        statusText.textContent = 'Parsing data...';
+
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                        progressBar.style.width = '80%';
+                        statusText.textContent = 'Processing data...';
+
+                        // Parse the Excel data
+                        const parsedData = parseExcelData(jsonData);
+
+                        if (parsedData.length === 0) {
+                            showToast('No valid data found in the Excel file. Please check the format.', 'Warning');
+                            progressDiv.style.display = 'none';
+                            uploadBtn.classList.remove('loading');
+                            uploadBtn.innerHTML = '<i class="fas fa-file-excel"></i> Import Excel';
+                            return;
+                        }
+
+                        uploadedData = parsedData;
+
+                        // Auto-fill the form fields with Excel data
+                        autoFillForm(parsedData);
+
+                        progressBar.style.width = '100%';
+                        statusText.textContent = 'Complete!';
+
+                        // Show stats
+                        statsDiv.style.display = 'block';
+                        document.getElementById('uploadResult').innerHTML = `
+                            <i class="fas fa-check-circle"></i> 
+                            Successfully imported <strong>${parsedData.length}</strong> records from <strong>${file.name}</strong>
+                            <button class="btn-clear-upload-sm" onclick="clearUploadedData()">
+                                <i class="fas fa-trash"></i> Clear
+                            </button>
+                        `;
+
+                        setTimeout(() => {
+                            progressDiv.style.display = 'none';
+                        }, 2000);
+
+                        showToast(`Successfully imported ${parsedData.length} records!`, 'Success');
+
+                        // Reset button
+                        uploadBtn.classList.remove('loading');
+                        uploadBtn.innerHTML = '<i class="fas fa-file-excel"></i> Import Excel';
+
+                    } catch (error) {
+                        console.error('Excel parsing error:', error);
+                        showToast('Error parsing Excel file: ' + error.message, 'Error');
+                        progressDiv.style.display = 'none';
+                        uploadBtn.classList.remove('loading');
+                        uploadBtn.innerHTML = '<i class="fas fa-file-excel"></i> Import Excel';
+                    }
+                };
+
+                reader.onerror = function() {
+                    showToast('Error reading file. Please try again.', 'Error');
+                    progressDiv.style.display = 'none';
+                    const uploadBtn = document.querySelector('.btn-upload-header');
+                    uploadBtn.classList.remove('loading');
+                    uploadBtn.innerHTML = '<i class="fas fa-file-excel"></i> Import Excel';
+                };
+
+                reader.readAsArrayBuffer(file);
+            }
+
+            function parseExcelData(jsonData) {
+                const data = [];
+
+                jsonData.forEach((row, index) => {
+                    try {
+                        // Try to find values from various column names
+                        const unit = findValue(row, ['Unit', 'Branch', 'Department', 'Dept']);
+                        const header = findValue(row, ['Header', 'Exception Header', 'Title', 'Subject']);
+                        const details = findValue(row, ['Details', 'Description', 'Exception Details', 'Comments']);
+                        const date = findValue(row, ['Date', 'Date Noted', 'Created Date']);
+                        const reportType = findValue(row, ['Category', 'Report Type', 'Type', 'Exception Type']);
+
+                        if (header || details || unit) {
+                            data.push({
+                                unit: unit || 'N/A',
+                                header: header || 'Excel Imported Record',
+                                details: details || 'No details provided',
+                                date: date || new Date().toLocaleDateString(),
+                                report_type: reportType || 'Excel Import'
+                            });
+                        }
+                    } catch (e) {
+                        console.warn('Error parsing row:', row, e);
+                    }
+                });
+
+                return data;
+            }
+
+            function findValue(row, possibleKeys) {
+                for (const key of possibleKeys) {
+                    if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+                        return String(row[key]).trim();
+                    }
+                    for (const rowKey of Object.keys(row)) {
+                        if (rowKey.toLowerCase() === key.toLowerCase()) {
+                            const value = row[rowKey];
+                            if (value !== undefined && value !== null && String(value).trim() !== '') {
+                                return String(value).trim();
+                            }
+                        }
+                    }
+                }
+                return null;
+            }
+
+            function autoFillForm(data) {
+                if (!data || data.length === 0) return;
+
+                // Get the first record to fill the form
+                const record = data[0];
+
+                // Try to find and fill matching fields in the form
+                const fields = document.querySelectorAll('#template-fields .form-field-group');
+                fields.forEach(group => {
+                    const input = group.querySelector('input, select, textarea');
+                    if (!input) return;
+
+                    const label = group.querySelector('label')?.textContent?.toLowerCase() || '';
+                    const inputId = input.id;
+
+                    // Try to match based on label
+                    let value = null;
+
+                    // Check if any of the Excel data keys match the label
+                    for (const [key, val] of Object.entries(record)) {
+                        if (label.includes(key.toLowerCase()) || key.toLowerCase().includes(label)) {
+                            value = val;
+                            break;
+                        }
+                    }
+
+                    // If no match found, try to match based on common patterns
+                    if (!value) {
+                        if (label.includes('unit') || label.includes('branch')) {
+                            value = record.unit;
+                        } else if (label.includes('header') || label.includes('title') || label.includes('subject')) {
+                            value = record.header;
+                        } else if (label.includes('detail') || label.includes('description') || label.includes('comment')) {
+                            value = record.details;
+                        } else if (label.includes('date')) {
+                            value = record.date;
+                        } else if (label.includes('type') || label.includes('category')) {
+                            value = record.report_type;
+                        }
+                    }
+
+                    if (value !== null && value !== undefined) {
+                        if (input.type === 'checkbox') {
+                            input.checked = value === 'true' || value === 'yes' || value === '1';
+                        } else if (input.tagName === 'SELECT') {
+                            // Try to find matching option
+                            const options = input.querySelectorAll('option');
+                            let found = false;
+                            options.forEach(opt => {
+                                if (opt.value.toLowerCase() === value.toLowerCase()) {
+                                    input.value = opt.value;
+                                    found = true;
+                                }
+                            });
+                            if (!found) {
+                                // Try partial match
+                                options.forEach(opt => {
+                                    if (opt.value.toLowerCase().includes(value.toLowerCase()) || 
+                                        value.toLowerCase().includes(opt.value.toLowerCase())) {
+                                        input.value = opt.value;
+                                    }
+                                });
+                            }
+                        } else {
+                            input.value = value;
+                        }
+
+                        // Trigger change event
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+
+                showToast('Form auto-filled from Excel data!', 'Info');
+            }
+
+            function clearUploadedData() {
+                if (!confirm('Are you sure you want to clear all imported Excel data?')) {
+                    return;
+                }
+
+                uploadedData = [];
+                document.getElementById('uploadStats').style.display = 'none';
+                document.getElementById('excelFileInputHeader').value = '';
+
+                // Clear form fields
+                const fields = document.querySelectorAll('#template-fields .form-field-group');
+                fields.forEach(group => {
+                    const input = group.querySelector('input, select, textarea');
+                    if (input) {
+                        if (input.type === 'checkbox') {
+                            input.checked = false;
+                        } else if (input.tagName === 'SELECT') {
+                            input.selectedIndex = 0;
+                        } else {
+                            input.value = '';
+                        }
+                    }
+                });
+
+                showToast('Uploaded data cleared successfully.', 'Success');
+            }
+
+            // ============================================
+            // TEMPLATE LOADING AND FORM SUBMISSION
+            // ============================================
 
             function loadTemplate() {
                 const reportType = document.getElementById('report-type-filter').value;
@@ -199,6 +594,13 @@
                         
                         container.style.display = 'block';
                         noTemplateMsg.style.display = 'none';
+
+                        // If there's uploaded data, auto-fill after template loads
+                        if (uploadedData.length > 0) {
+                            setTimeout(() => {
+                                autoFillForm(uploadedData);
+                            }, 500);
+                        }
                     } else {
                         showToast('Error: ' + data.error, 'Error');
                     }
@@ -274,6 +676,11 @@
                     }
                 });
 
+                // Include Excel uploaded data if available
+                if (uploadedData.length > 0) {
+                    formData.excel_data = uploadedData;
+                }
+
                 fetch("{% url 'control_dashboard:api_save_draft' %}", {
                     method: 'POST',
                     headers: {
@@ -283,13 +690,16 @@
                     body: JSON.stringify({
                         report_type: reportType,
                         form_data: formData,
-                        submit: true // Forces the backend to process it directly as a submission
+                        submit: true
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
                         showToast('Report submitted for review successfully!', 'Submitted');
+                        // Clear uploaded data after successful submission
+                        uploadedData = [];
+                        document.getElementById('uploadStats').style.display = 'none';
                         setTimeout(() => {
                             window.location.href = "{% url 'control_dashboard:reports_page' %}";
                         }, 1500);

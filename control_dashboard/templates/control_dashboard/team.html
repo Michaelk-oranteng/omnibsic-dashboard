@@ -114,6 +114,7 @@
                                 <th>Full Name</th>
                                 <th class="text-center">Total Tasks</th>
                                 <th>Performance Score</th>
+                                <th class="text-center">Deduction</th>
                                 <th class="text-center">Status</th>
                                 <th class="text-center">Action</th>
                             </tr>
@@ -141,6 +142,17 @@
                                     </div>
                                 </td>
                                 <td class="text-center">
+                                    {% if member.total_deduction > 0 %}
+                                    <span class="deduction-badge high">
+                                        -{{ member.total_deduction }}%
+                                    </span>
+                                    {% else %}
+                                    <span class="deduction-badge low">
+                                        0%
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
                                     <span class="status-text {{ member.status }}">
                                         {{ member.status_text }}
                                     </span>
@@ -153,7 +165,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5" class="text-center">
+                                <td colspan="6" class="text-center">
                                     <i class="fas fa-users"></i>
                                     No team members found.
                                 </td>
@@ -189,6 +201,28 @@
             </div>
             <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
         </div>
+
+        <style>
+            .deduction-badge {
+                display: inline-block;
+                padding: 2px 12px;
+                border-radius: 12px;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            .deduction-badge.high {
+                background: #fef2f2;
+                color: #dc2626;
+            }
+            .deduction-badge.medium {
+                background: #fffbeb;
+                color: #d97706;
+            }
+            .deduction-badge.low {
+                background: #f0fdf4;
+                color: #16a34a;
+            }
+        </style>
 
         <script>
             function getCsrfToken() {
