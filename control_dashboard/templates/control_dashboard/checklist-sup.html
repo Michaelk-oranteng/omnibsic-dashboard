@@ -79,30 +79,6 @@
 
             <!-- ==================== MAIN CONTENT ==================== -->
             <div class="main-content">
-                <div class="stat-summary">
-                    <div class="stat-card">
-                        <div class="stat-value text-primary">{{ total_users }}</div>
-                        <div class="stat-label">Team Members</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value text-success">{{ avg_completion }}%</div>
-                        <div class="stat-label">Average Completion</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value text-warning">
-                            {% with completed=0 %}
-                                {% for user in user_completion_data %}
-                                    {% if user.completion_rate >= 90 %}
-                                        {% with completed=completed|add:1 %}{% endwith %}
-                                    {% endif %}
-                                {% endfor %}
-                                {{ completed }}
-                            {% endwith %}
-                        </div>
-                        <div class="stat-label">Top Performers</div>
-                    </div>
-                </div>
-                
                 <div class="table-container">
                     <table class="users-table simple-clickable-table">
                         <thead>

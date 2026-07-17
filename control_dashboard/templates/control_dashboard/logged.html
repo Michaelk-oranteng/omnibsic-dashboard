@@ -138,33 +138,6 @@
 
             <!-- ==================== MAIN CONTENT ==================== -->
             <div class="main-content">
-                <div class="stat-summary">
-                    <div class="stat-card">
-                        <div class="stat-value text-primary">{{ total_exceptions }}</div>
-                        <div class="stat-label">Total Exceptions</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value text-danger">{{ status_counts.draft|default:0 }}</div>
-                        <div class="stat-label">Draft</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value text-warning">{{ status_counts.submitted|default:0 }}</div>
-                        <div class="stat-label">Submitted</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value text-purple">{{ status_counts.in_review|default:0 }}</div>
-                        <div class="stat-label">In Review</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value text-success">{{ status_counts.approved|default:0 }}</div>
-                        <div class="stat-label">Approved</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value text-danger">{{ status_counts.rejected|default:0 }}</div>
-                        <div class="stat-label">Rejected</div>
-                    </div>
-                </div>
-                
                 <div class="table-container">
                     <table class="users-table">
                         <thead>
@@ -296,59 +269,75 @@
             </div>
         </div>
 
-        <div id="toastNotification" class="toast-notification">
-            <div class="toast-icon"><i class="fas fa-check"></i></div>
-            <div class="toast-content">
-                <p class="toast-title">Success!</p>
-                <p class="toast-message" id="toastMessage">Action completed successfully.</p>
-            </div>
-            <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
-        </div>
-
         <script>
             function getCsrfToken() {
                 return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             }
 
-            function showToast(message, title = 'Success!') {
+            function showToast(message, title = 'Success!', type = 'success') {
                 const toast = document.getElementById('toastNotification');
                 const msgEl = document.getElementById('toastMessage');
                 const titleEl = toast.querySelector('.toast-title');
+                const icon = toast.querySelector('.toast-icon i');
                 
+                // Remove existing classes
+                toast.classList.remove('success', 'error', 'warning', 'info', 'show', 'hiding');
+                
+                // Set content
                 msgEl.textContent = message || 'Action completed successfully.';
                 titleEl.textContent = title;
                 
-                const icon = toast.querySelector('.toast-icon i');
-                if (title.toLowerCase().includes('error') || title.toLowerCase().includes('warning')) {
-                    icon.className = 'fas fa-exclamation-circle';
-                    toast.style.borderLeftColor = '#ef4444';
-                    toast.querySelector('.toast-icon').style.color = '#ef4444';
-                    toast.querySelector('.toast-icon').style.background = 'rgba(239, 68, 68, 0.1)';
-                } else {
-                    icon.className = 'fas fa-check';
-                    toast.style.borderLeftColor = '#10b981';
-                    toast.querySelector('.toast-icon').style.color = '#10b981';
-                    toast.querySelector('.toast-icon').style.background = 'rgba(16, 185, 129, 0.1)';
-                }
+                // Set type
+                toast.classList.add(type);
                 
+                // Set icon based on type
+                const iconMap = {
+                    success: 'fa-check',
+                    error: 'fa-exclamation-circle',
+                    warning: 'fa-exclamation-triangle',
+                    info: 'fa-info-circle'
+                };
+                
+                icon.className = 'fas ' + (iconMap[type] || iconMap.success);
+                
+                // Reset border color
+                const colorMap = {
+                    success: '#10b981',
+                    error: '#ef4444',
+                    warning: '#f59e0b',
+                    info: '#3b82f6'
+                };
+                toast.style.borderLeftColor = colorMap[type] || colorMap.success;
+                
+                // Show toast
                 toast.classList.add('show');
                 
+                // Clear existing timeout
                 if (window.toastTimeout) {
                     clearTimeout(window.toastTimeout);
+                    window.toastTimeout = null;
                 }
                 
-                window.toastTimeout = setTimeout(() => {
-                    toast.classList.remove('show');
-                }, 3000);
+                // Auto-hide after 4 seconds
+                window.toastTimeout = setTimeout(function() {
+                    closeToast();
+                }, 4000);
             }
 
             window.closeToast = function() {
                 const toast = document.getElementById('toastNotification');
                 toast.classList.remove('show');
+                toast.classList.add('hiding');
+                
                 if (window.toastTimeout) {
                     clearTimeout(window.toastTimeout);
                     window.toastTimeout = null;
                 }
+                
+                // Remove hiding class after animation
+                setTimeout(function() {
+                    toast.classList.remove('hiding');
+                }, 300);
             };
 
             function applyFilters() {
@@ -360,12 +349,12 @@
                 const search = document.getElementById('search-input').value;
                 
                 let url = window.location.pathname + '?';
-                if (branch && branch !== 'all') url += `branch=${encodeURIComponent(branch)}&`;
-                if (category && category !== 'all') url += `category=${encodeURIComponent(category)}&`;
-                if (status && status !== 'all') url += `status=${status}&`;
-                if (startDate) url += `start_date=${startDate}&`;
-                if (endDate) url += `end_date=${endDate}&`;
-                if (search) url += `search=${encodeURIComponent(search)}`;
+                if (branch && branch !== 'all') url += 'branch=' + encodeURIComponent(branch) + '&';
+                if (category && category !== 'all') url += 'category=' + encodeURIComponent(category) + '&';
+                if (status && status !== 'all') url += 'status=' + status + '&';
+                if (startDate) url += 'start_date=' + startDate + '&';
+                if (endDate) url += 'end_date=' + endDate + '&';
+                if (search) url += 'search=' + encodeURIComponent(search);
                 
                 window.location.href = url;
             }
@@ -383,80 +372,53 @@
                 body.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin" style="font-size: 32px;"></i><p>Loading exception details...</p></div>';
                 modal.style.display = 'block';
                 
-                fetch(`/adminboard/api/exception/${exceptionId}/`, {
+                fetch('/adminboard/api/exception/' + exceptionId + '/', {
                     method: 'GET',
                     headers: {
                         'X-CSRFToken': getCsrfToken()
                     }
                 })
-                .then(response => response.json())
-                .then(data => {
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
                     if (data.success) {
-                        const e = data.exception;
-                        title.textContent = `Exception: ${e.data.header || e.report_type}`;
+                        var e = data.exception;
+                        title.textContent = 'Exception: ' + (e.data.header || e.report_type);
                         
-                        let html = `
-                            <div class="modal-section">
-                                <div class="field-label">Branch / Unit</div>
-                                <div class="field-value"><strong>${e.data.branch || e.data.unit || 'N/A'}</strong></div>
-                            </div>
-                            <div class="modal-section">
-                                <div class="field-label">Exception Header</div>
-                                <div class="field-value">${e.data.header || e.report_type}</div>
-                            </div>
-                            <div class="modal-section">
-                                <div class="field-label">Details</div>
-                                <div class="field-value">${e.data.details || 'No details provided'}</div>
-                            </div>
-                            <div class="modal-section">
-                                <div class="field-label">Status</div>
-                                <div class="field-value"><span class="status-badge ${e.status}">${e.status_display}</span></div>
-                            </div>
-                            <div class="modal-section">
-                                <div class="field-label">Submitted By</div>
-                                <div class="field-value">${e.created_by.name} (${e.created_by.email})</div>
-                            </div>
-                            <div class="modal-section">
-                                <div class="field-label">Created</div>
-                                <div class="field-value">${e.created_at}</div>
-                            </div>
-                            ${e.submitted_at ? `
-                            <div class="modal-section">
-                                <div class="field-label">Submitted</div>
-                                <div class="field-value">${e.submitted_at}</div>
-                            </div>
-                            ` : ''}
-                            ${e.review_comments ? `
-                            <div class="modal-section">
-                                <div class="field-label">Review Comments</div>
-                                <div class="field-value">${e.review_comments}</div>
-                            </div>
-                            ` : ''}
-                            ${e.reviews && e.reviews.length > 0 ? `
-                            <div class="modal-section">
-                                <div class="field-label">Review History</div>
-                                <div class="review-timeline">
-                                    ${e.reviews.map(r => `
-                                    <div class="review-item">
-                                        <div class="review-action">${r.action}</div>
-                                        <div class="review-meta">By ${r.performed_by} on ${r.created_at}</div>
-                                        ${r.comments ? `<div class="review-comments">${r.comments}</div>` : ''}
-                                    </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            ` : ''}
-                        `;
+                        var html = '';
+                        html += '<div class="modal-section"><div class="field-label">Branch / Unit</div><div class="field-value"><strong>' + (e.data.branch || e.data.unit || 'N/A') + '</strong></div></div>';
+                        html += '<div class="modal-section"><div class="field-label">Exception Header</div><div class="field-value">' + (e.data.header || e.report_type) + '</div></div>';
+                        html += '<div class="modal-section"><div class="field-label">Details</div><div class="field-value">' + (e.data.details || 'No details provided') + '</div></div>';
+                        html += '<div class="modal-section"><div class="field-label">Status</div><div class="field-value"><span class="status-badge ' + e.status + '">' + e.status_display + '</span></div></div>';
+                        html += '<div class="modal-section"><div class="field-label">Submitted By</div><div class="field-value">' + e.created_by.name + ' (' + e.created_by.email + ')</div></div>';
+                        html += '<div class="modal-section"><div class="field-label">Created</div><div class="field-value">' + e.created_at + '</div></div>';
+                        if (e.submitted_at) {
+                            html += '<div class="modal-section"><div class="field-label">Submitted</div><div class="field-value">' + e.submitted_at + '</div></div>';
+                        }
+                        if (e.review_comments) {
+                            html += '<div class="modal-section"><div class="field-label">Review Comments</div><div class="field-value">' + e.review_comments + '</div></div>';
+                        }
+                        if (e.reviews && e.reviews.length > 0) {
+                            html += '<div class="modal-section"><div class="field-label">Review History</div><div class="review-timeline">';
+                            for (var i = 0; i < e.reviews.length; i++) {
+                                var r = e.reviews[i];
+                                html += '<div class="review-item"><div class="review-action">' + r.action + '</div><div class="review-meta">By ' + r.performed_by + ' on ' + r.created_at + '</div>';
+                                if (r.comments) {
+                                    html += '<div class="review-comments">' + r.comments + '</div>';
+                                }
+                                html += '</div>';
+                            }
+                            html += '</div></div>';
+                        }
                         
                         body.innerHTML = html;
                     } else {
-                        showToast('Error loading exception details', 'Error');
+                        showToast('Error loading exception details', 'Error', 'error');
                         closeViewModal();
                     }
                 })
-                .catch(error => {
+                .catch(function(error) {
                     console.error('Error:', error);
-                    showToast('An error occurred while loading the exception.', 'Error');
+                    showToast('An error occurred while loading the exception.', 'Error', 'error');
                     closeViewModal();
                 });
             }
@@ -466,23 +428,23 @@
             }
 
             function editException(exceptionId) {
-                const modal = document.getElementById('editModal');
+                var modal = document.getElementById('editModal');
                 modal.style.display = 'block';
                 
                 document.getElementById('edit-exception-id').value = exceptionId;
                 document.getElementById('editSubmitBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
                 document.getElementById('editSubmitBtn').disabled = true;
                 
-                fetch(`/adminboard/api/exception/${exceptionId}/`, {
+                fetch('/adminboard/api/exception/' + exceptionId + '/', {
                     method: 'GET',
                     headers: {
                         'X-CSRFToken': getCsrfToken()
                     }
                 })
-                .then(response => response.json())
-                .then(data => {
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
                     if (data.success) {
-                        const e = data.exception;
+                        var e = data.exception;
                         document.getElementById('edit-branch').value = e.data.branch || e.data.unit || '';
                         document.getElementById('edit-header').value = e.data.header || e.report_type || '';
                         document.getElementById('edit-details').value = e.data.details || '';
@@ -492,13 +454,13 @@
                         document.getElementById('editSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Changes';
                         document.getElementById('editSubmitBtn').disabled = false;
                     } else {
-                        showToast('Error loading exception details', 'Error');
+                        showToast('Error loading exception details', 'Error', 'error');
                         closeEditModal();
                     }
                 })
-                .catch(error => {
+                .catch(function(error) {
                     console.error('Error:', error);
-                    showToast('An error occurred while loading the exception.', 'Error');
+                    showToast('An error occurred while loading the exception.', 'Error', 'error');
                     closeEditModal();
                 });
             }
@@ -510,18 +472,18 @@
             function saveException(event) {
                 event.preventDefault();
                 
-                const exceptionId = document.getElementById('edit-exception-id').value;
-                const branch = document.getElementById('edit-branch').value;
-                const header = document.getElementById('edit-header').value;
-                const details = document.getElementById('edit-details').value;
-                const status = document.getElementById('edit-status').value;
-                const comments = document.getElementById('edit-comments').value;
+                var exceptionId = document.getElementById('edit-exception-id').value;
+                var branch = document.getElementById('edit-branch').value;
+                var header = document.getElementById('edit-header').value;
+                var details = document.getElementById('edit-details').value;
+                var status = document.getElementById('edit-status').value;
+                var comments = document.getElementById('edit-comments').value;
                 
-                const btn = document.getElementById('editSubmitBtn');
+                var btn = document.getElementById('editSubmitBtn');
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
                 
-                const data = {
+                var data = {
                     data: {
                         branch: branch,
                         header: header,
@@ -531,7 +493,7 @@
                     review_comments: comments
                 };
                 
-                fetch(`/adminboard/api/exception/${exceptionId}/update/`, {
+                fetch('/adminboard/api/exception/' + exceptionId + '/update/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -539,41 +501,41 @@
                     },
                     body: JSON.stringify(data)
                 })
-                .then(response => response.json())
-                .then(data => {
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
                     
                     if (data.success) {
-                        showToast('Exception updated successfully!', 'Success');
+                        showToast('Exception updated successfully!', 'Success', 'success');
                         closeEditModal();
-                        setTimeout(() => location.reload(), 1500);
+                        setTimeout(function() { location.reload(); }, 1500);
                     } else {
-                        showToast('Error: ' + data.error, 'Error');
+                        showToast('Error: ' + data.error, 'Error', 'error');
                     }
                 })
-                .catch(error => {
+                .catch(function(error) {
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
                     console.error('Error:', error);
-                    showToast('An error occurred while saving.', 'Error');
+                    showToast('An error occurred while saving.', 'Error', 'error');
                 });
             }
 
             window.onclick = function(event) {
-                const viewModal = document.getElementById('viewModal');
-                const editModal = document.getElementById('editModal');
+                var viewModal = document.getElementById('viewModal');
+                var editModal = document.getElementById('editModal');
                 if (event.target == viewModal) {
                     closeViewModal();
                 }
                 if (event.target == editModal) {
                     closeEditModal();
                 }
-            }
+            };
 
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
-                    const target = e.target;
+                    var target = e.target;
                     if (target.id === 'search-input' || target.id === 'start-date' || target.id === 'end-date') {
                         applyFilters();
                     }
