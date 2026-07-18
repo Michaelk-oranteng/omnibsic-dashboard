@@ -4,7 +4,8 @@
     <head>
         <meta charset="UTF-8">
         <title>Logged Exceptions</title>
-        <link rel="stylesheet" href="{% static 'stylesheets/profile.css' %}" type="text/css">
+        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
+        <link rel="stylesheet" href="{% static 'stylesheets/supervisor.css' %}" type="text/css">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
         <meta name="csrf-token" content="{{ csrf_token }}">
     </head>
@@ -73,30 +74,19 @@
             <div class="top-header">
                 <div class="top-header-left">
                     <span class="page-title">Exception Logs</span>
+                    <span class="exception-count-badge" style="margin-left: 12px; background: #e5e7eb; padding: 2px 12px; border-radius: 12px; font-size: 13px; color: #6b7280;">
+                        {{ exceptions|length }} Total
+                    </span>
                 </div>
 
                 <div class="top-header-center">
                     <div class="header-filter-group">
-                        <label for="branch-filter">Branch / Unit</label>
-                        <select id="branch-filter" class="header-select" onchange="applyFilters()">
-                            <option value="all">All Branches</option>
-                            {% for branch in branches %}
-                            <option value="{{ branch }}" {% if branch_filter == branch %}selected{% endif %}>
-                                {{ branch }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="header-divider"></div>
-
-                    <div class="header-filter-group">
-                        <label for="category-filter">Category</label>
-                        <select id="category-filter" class="header-select" onchange="applyFilters()">
-                            <option value="all">All Categories</option>
-                            {% for category in categories %}
-                            <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>
-                                {{ category }}
+                        <label for="type-filter">Report Type</label>
+                        <select id="type-filter" class="header-select" onchange="applyFilters()">
+                            <option value="all">All Types</option>
+                            {% for report_type in report_types %}
+                            <option value="{{ report_type }}" {% if type_filter == report_type %}selected{% endif %}>
+                                {{ report_type }}
                             </option>
                             {% endfor %}
                         </select>
@@ -146,77 +136,129 @@
             <!-- ==================== MAIN CONTENT ==================== -->
             <div class="main-content">
                 <div class="table-container">
-                    <table class="users-table">
-                        <thead>
-                            <tr>
-                                <th>Branch/Unit</th>
-                                <th>Exception Header</th>
-                                <th>Exception Details</th>
-                                <th>Date Noted</th>
-                                <th>Status</th>
-                                <th class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for exception in exceptions %}
-                            <tr>
-                                <td class="font-bold">
-                                    {{ exception.data.branch|default:exception.data.unit|default:"N/A" }}
-                                </td>
-                                <td class="exception-header-text">
-                                    {{ exception.data.header|default:exception.report_type }}
-                                </td>
-                                <td>
-                                    <div class="exception-details-cell">
-                                        {% if exception.data.details %}
-                                            <p>{{ exception.data.details|truncatechars:150 }}</p>
-                                        {% else %}
-                                            <p>No details provided</p>
-                                        {% endif %}
-                                        
-                                        {% if exception.review_comments %}
-                                        <div class="recommendation-block">
-                                            <h5>Review Comments:</h5>
-                                            <ul>
-                                                <li>{{ exception.review_comments|truncatechars:80 }}</li>
-                                            </ul>
-                                        </div>
-                                        {% endif %}
+                    <div class="table-header">
+                        <h4>All Exceptions</h4>
+                    </div>
+
+                    <!-- Group by Report Type -->
+                    {% if exceptions %}
+                        {% regroup exceptions by report_type as exception_groups %}
+                        
+                        {% for group in exception_groups %}
+                            <div class="report-type-group">
+                                <div class="report-type-header" onclick="toggleReportType(this)">
+                                    <div class="report-type-left">
+                                        <i class="fas fa-file-alt report-type-icon"></i>
+                                        <h3 class="report-type-title">{{ group.grouper|default:"Uncategorized" }}</h3>
+                                        <span class="report-type-count">{{ group.list|length }} exceptions</span>
                                     </div>
-                                </td>
-                                <td><span class="time-stamp">{{ exception.created_at|date:"M d, Y" }}</span></td>
-                                <td>
-                                    <span class="status-badge {{ exception.status }}">
-                                        {{ exception.get_status_display }}
-                                    </span>
-                                </td>
-                                <td class="text-center">
-                                    <div class="table-actions-cluster">
-                                        <button class="btn-view" onclick="viewException({{ exception.id }})" title="View Full Exception">
-                                            <i class="fas fa-eye"></i> View
-                                        </button>
-                                        <button class="btn-edit-row" onclick="editException({{ exception.id }})" title="Edit Exception">
-                                            <i class="fas fa-edit"></i> Edit
-                                        </button>
+                                    <div class="report-type-toggle">
+                                        <i class="fas fa-chevron-down"></i>
                                     </div>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="6" class="text-center">
-                                    <i class="fas fa-check-circle"></i>
-                                    No exceptions found. Everything looks good!
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                                </div>
+                                
+                                <div class="report-type-body">
+                                    <table class="report-details-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Branch/Unit</th>
+                                                <th>Exception Header</th>
+                                                <th>Exception Details</th>
+                                                <th>Submitted By</th>
+                                                <th>Date Noted</th>
+                                                <th>Status</th>
+                                                <th class="text-center">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for exception in group.list %}
+                                            <tr>
+                                                <td class="font-bold">
+                                                    {% if exception.data.BRANCH_UNIT %}
+                                                        {{ exception.data.BRANCH_UNIT }}
+                                                    {% elif exception.data.branch %}
+                                                        {{ exception.data.branch }}
+                                                    {% elif exception.data.unit %}
+                                                        {{ exception.data.unit }}
+                                                    {% else %}
+                                                        N/A
+                                                    {% endif %}
+                                                </td>
+                                                <td class="exception-header-text">
+                                                    {% if exception.data.Exception_Header %}
+                                                        {{ exception.data.Exception_Header }}
+                                                    {% elif exception.data.header %}
+                                                        {{ exception.data.header }}
+                                                    {% else %}
+                                                        {{ exception.report_type }}
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <div class="exception-details-cell">
+                                                        {% if exception.data.Exception_Details %}
+                                                            <p>{{ exception.data.Exception_Details|truncatechars:150 }}</p>
+                                                        {% elif exception.data.details %}
+                                                            <p>{{ exception.data.details|truncatechars:150 }}</p>
+                                                        {% elif exception.data.OBSERVATION %}
+                                                            <p>{{ exception.data.OBSERVATION|truncatechars:150 }}</p>
+                                                        {% else %}
+                                                            <p>No details provided</p>
+                                                        {% endif %}
+                                                        
+                                                        {% if exception.review_comments %}
+                                                        <div class="recommendation-block">
+                                                            <h5>Review Comments:</h5>
+                                                            <ul>
+                                                                <li>{{ exception.review_comments|truncatechars:80 }}</li>
+                                                            </ul>
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="user-name">{{ exception.created_by.full_name|default:exception.created_by.email }}</span>
+                                                </td>
+                                                <td>
+                                                    {% if exception.data.DATE %}
+                                                        <span class="time-stamp">{{ exception.data.DATE }}</span>
+                                                    {% else %}
+                                                        <span class="time-stamp">{{ exception.created_at|date:"M d, Y" }}</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <span class="status-badge {{ exception.status }}">
+                                                        {{ exception.get_status_display }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="table-actions-cluster">
+                                                        <button class="btn-view" onclick="viewException({{ exception.id }})" title="View Full Exception">
+                                                            <i class="fas fa-eye"></i> View
+                                                        </button>
+                                                        <button class="btn-edit-row" onclick="editException({{ exception.id }})" title="Edit Exception">
+                                                            <i class="fas fa-edit"></i> Edit
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-check-circle"></i>
+                            <p>No exceptions found. Everything looks good!</p>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
 
         <!-- View Exception Modal -->
-        <div id="viewModal" class="modal">
+        <div id="viewModal" class="modal" style="display: none;">
             <div class="modal-content">
                 <span class="modal-close" onclick="closeViewModal()">&times;</span>
                 <h2 id="viewModalTitle">Exception Details</h2>
@@ -227,7 +269,7 @@
         </div>
 
         <!-- Edit Exception Modal -->
-        <div id="editModal" class="modal">
+        <div id="editModal" class="modal" style="display: none;">
             <div class="modal-content">
                 <span class="modal-close" onclick="closeEditModal()">&times;</span>
                 <h2>Edit Exception</h2>
@@ -298,7 +340,7 @@
         </div>
 
         <!-- Toast Notification -->
-        <div id="toastNotification" class="toast-notification success">
+        <div id="toastNotification" class="toast-notification">
             <div class="toast-icon"><i class="fas fa-check"></i></div>
             <div class="toast-content">
                 <p class="toast-title">Success!</p>
@@ -347,6 +389,135 @@
 
             .nav-user-role i {
                 color: #ef4444;
+            }
+
+            .exception-count-badge {
+                display: inline-block;
+                padding: 2px 12px;
+                background: #e5e7eb;
+                border-radius: 12px;
+                font-size: 13px;
+                color: #6b7280;
+            }
+
+            /* Report Type Group Styles */
+            .report-type-group {
+                margin-bottom: 16px;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                overflow: hidden;
+                background: white;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            }
+
+            .report-type-header {
+                padding: 14px 20px;
+                background: #f8fafc;
+                border-bottom: 2px solid #e5e7eb;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                cursor: pointer;
+                transition: background 0.2s ease;
+            }
+
+            .report-type-header:hover {
+                background: #f1f5f9;
+            }
+
+            .report-type-left {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .report-type-icon {
+                color: #0066cc;
+                font-size: 18px;
+            }
+
+            .report-type-title {
+                margin: 0;
+                font-size: 15px;
+                font-weight: 600;
+                color: #1a2332;
+            }
+
+            .report-type-count {
+                font-size: 12px;
+                color: #6b7280;
+                background: #e5e7eb;
+                padding: 2px 12px;
+                border-radius: 12px;
+                font-weight: 500;
+            }
+
+            .report-type-toggle {
+                color: #9ca3af;
+                transition: transform 0.3s ease;
+            }
+
+            .report-type-toggle.collapsed {
+                transform: rotate(-90deg);
+            }
+
+            .report-type-body {
+                overflow: hidden;
+                transition: max-height 0.3s ease;
+            }
+
+            .report-type-body.collapsed {
+                display: none;
+            }
+
+            /* Report Details Table */
+            .report-details-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 13px;
+            }
+
+            .report-details-table thead {
+                background: #f8fafc;
+            }
+
+            .report-details-table thead th {
+                padding: 10px 14px;
+                text-align: left;
+                font-weight: 600;
+                color: #374151;
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e5e7eb;
+            }
+
+            .report-details-table tbody td {
+                padding: 10px 14px;
+                border-bottom: 1px solid #f3f4f6;
+                vertical-align: middle;
+                color: #1a2332;
+            }
+
+            .report-details-table tbody tr:hover {
+                background: #f8fafc;
+            }
+
+            .report-details-table tbody tr:last-child td {
+                border-bottom: none;
+            }
+
+            .empty-state {
+                text-align: center;
+                padding: 40px;
+                color: #6b7280;
+            }
+
+            .empty-state i {
+                font-size: 48px;
+                color: #d1d5db;
+                display: block;
+                margin-bottom: 12px;
             }
 
             /* Modal styles */
@@ -407,6 +578,16 @@
                 margin-bottom: 4px;
                 font-size: 14px;
                 color: #374151;
+            }
+
+            .modal-section .field-value {
+                padding: 8px 12px;
+                background: #f8fafc;
+                border-radius: 6px;
+                border: 1px solid #e5e7eb;
+                font-size: 14px;
+                color: #1a2332;
+                word-wrap: break-word;
             }
 
             .modal-section input,
@@ -473,7 +654,166 @@
                 cursor: not-allowed;
             }
 
+            .review-timeline {
+                margin-top: 8px;
+            }
+
+            .review-item {
+                padding: 8px 12px;
+                background: #f8fafc;
+                border-radius: 6px;
+                margin-bottom: 8px;
+                border-left: 3px solid #0066cc;
+            }
+
+            .review-action {
+                font-weight: 600;
+                color: #1a2332;
+            }
+
+            .review-meta {
+                font-size: 12px;
+                color: #6b7280;
+            }
+
+            .review-comments {
+                margin-top: 4px;
+                font-size: 14px;
+                color: #1a2332;
+            }
+
+            /* Toast Notification */
+            .toast-notification {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+                padding: 16px 20px;
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                max-width: 400px;
+                z-index: 10000;
+                transform: translateX(120%);
+                transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+                border-left: 4px solid #0066cc;
+            }
+
+            .toast-notification.show {
+                transform: translateX(0);
+            }
+
+            .toast-notification.success {
+                border-left-color: #10b981;
+            }
+
+            .toast-notification.error {
+                border-left-color: #ef4444;
+            }
+
+            .toast-notification.warning {
+                border-left-color: #f59e0b;
+            }
+
+            .toast-notification.info {
+                border-left-color: #3b82f6;
+            }
+
+            .toast-icon {
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 18px;
+                flex-shrink: 0;
+            }
+
+            .toast-notification.success .toast-icon {
+                background: rgba(16, 185, 129, 0.1);
+                color: #10b981;
+            }
+
+            .toast-notification.error .toast-icon {
+                background: rgba(239, 68, 68, 0.1);
+                color: #ef4444;
+            }
+
+            .toast-notification.warning .toast-icon {
+                background: rgba(245, 158, 11, 0.1);
+                color: #f59e0b;
+            }
+
+            .toast-notification.info .toast-icon {
+                background: rgba(59, 130, 246, 0.1);
+                color: #3b82f6;
+            }
+
+            .toast-content {
+                flex: 1;
+            }
+
+            .toast-title {
+                margin: 0;
+                font-weight: 600;
+                font-size: 14px;
+                color: #1a2332;
+            }
+
+            .toast-message {
+                margin: 4px 0 0 0;
+                font-size: 13px;
+                color: #6b7280;
+            }
+
+            .toast-close {
+                background: none;
+                border: none;
+                color: #9ca3af;
+                cursor: pointer;
+                font-size: 16px;
+                padding: 4px;
+                transition: color 0.2s;
+            }
+
+            .toast-close:hover {
+                color: #1a2332;
+            }
+
             /* Responsive */
+            @media (max-width: 768px) {
+                .top-header {
+                    flex-wrap: wrap;
+                    gap: 10px;
+                }
+                .top-header-center {
+                    flex-wrap: wrap;
+                }
+                .top-header-right {
+                    flex-wrap: wrap;
+                }
+                .report-details-table {
+                    font-size: 12px;
+                }
+                .report-details-table thead th,
+                .report-details-table tbody td {
+                    padding: 6px 8px;
+                }
+                .report-type-header {
+                    padding: 10px 14px;
+                }
+                .report-type-title {
+                    font-size: 14px;
+                }
+                .report-type-left {
+                    gap: 8px;
+                    flex-wrap: wrap;
+                }
+            }
+
             @media (max-width: 480px) {
                 .modal-content {
                     margin: 20px;
@@ -488,12 +828,36 @@
                 .modal-actions button {
                     width: 100%;
                 }
+                .report-type-header {
+                    flex-wrap: wrap;
+                }
+                .report-type-count {
+                    font-size: 10px;
+                }
             }
         </style>
 
         <script>
             function getCsrfToken() {
                 return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            }
+
+            // ============================================
+            // TOGGLE REPORT TYPE
+            // ============================================
+
+            function toggleReportType(headerElement) {
+                const group = headerElement.closest('.report-type-group');
+                const body = group.querySelector('.report-type-body');
+                const toggle = group.querySelector('.report-type-toggle');
+
+                if (body.classList.contains('collapsed')) {
+                    body.classList.remove('collapsed');
+                    toggle.classList.remove('collapsed');
+                } else {
+                    body.classList.add('collapsed');
+                    toggle.classList.add('collapsed');
+                }
             }
 
             // ============================================
@@ -509,13 +873,10 @@
             }
 
             function confirmLogout() {
-                // Show loading state
                 const btn = document.querySelector('#logoutModal .btn-create');
                 const originalText = btn.innerHTML;
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
                 btn.disabled = true;
-
-                // Redirect to logout URL
                 window.location.href = "{% url 'control_dashboard:logout' %}";
             }
 
@@ -535,7 +896,7 @@
             });
 
             // ============================================
-            // EXISTING FUNCTIONS
+            // TOAST NOTIFICATION
             // ============================================
 
             function showToast(message, title = 'Success!', type = 'success') {
@@ -544,7 +905,8 @@
                 const titleEl = toast.querySelector('.toast-title');
                 const icon = toast.querySelector('.toast-icon i');
                 
-                toast.classList.remove('success', 'error', 'warning', 'info', 'show', 'hiding');
+                // Remove all type classes
+                toast.classList.remove('success', 'error', 'warning', 'info', 'show');
                 
                 msgEl.textContent = message || 'Action completed successfully.';
                 titleEl.textContent = title;
@@ -560,52 +922,39 @@
                 
                 icon.className = 'fas ' + (iconMap[type] || iconMap.success);
                 
-                const colorMap = {
-                    success: '#10b981',
-                    error: '#ef4444',
-                    warning: '#f59e0b',
-                    info: '#3b82f6'
-                };
-                toast.style.borderLeftColor = colorMap[type] || colorMap.success;
-                
                 toast.classList.add('show');
                 
                 if (window.toastTimeout) {
                     clearTimeout(window.toastTimeout);
-                    window.toastTimeout = null;
                 }
                 
-                window.toastTimeout = setTimeout(function() {
-                    closeToast();
-                }, 4000);
+                window.toastTimeout = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
             }
 
             window.closeToast = function() {
                 const toast = document.getElementById('toastNotification');
                 toast.classList.remove('show');
-                toast.classList.add('hiding');
-                
                 if (window.toastTimeout) {
                     clearTimeout(window.toastTimeout);
                     window.toastTimeout = null;
                 }
-                
-                setTimeout(function() {
-                    toast.classList.remove('hiding');
-                }, 300);
             };
 
+            // ============================================
+            // FILTER FUNCTIONS
+            // ============================================
+
             function applyFilters() {
-                const branch = document.getElementById('branch-filter').value;
-                const category = document.getElementById('category-filter').value;
+                const type = document.getElementById('type-filter').value;
                 const status = document.getElementById('status-filter').value;
                 const startDate = document.getElementById('start-date').value;
                 const endDate = document.getElementById('end-date').value;
                 const search = document.getElementById('search-input').value;
                 
                 let url = window.location.pathname + '?';
-                if (branch && branch !== 'all') url += 'branch=' + encodeURIComponent(branch) + '&';
-                if (category && category !== 'all') url += 'category=' + encodeURIComponent(category) + '&';
+                if (type && type !== 'all') url += 'type=' + encodeURIComponent(type) + '&';
                 if (status && status !== 'all') url += 'status=' + status + '&';
                 if (startDate) url += 'start_date=' + startDate + '&';
                 if (endDate) url += 'end_date=' + endDate + '&';
@@ -618,14 +967,18 @@
                 window.location.href = window.location.pathname;
             }
 
+            // ============================================
+            // VIEW EXCEPTION
+            // ============================================
+
             function viewException(exceptionId) {
                 const modal = document.getElementById('viewModal');
                 const title = document.getElementById('viewModalTitle');
                 const body = document.getElementById('viewModalBody');
                 
+                modal.style.display = 'block';
                 title.textContent = 'Loading...';
                 body.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin" style="font-size: 32px;"></i><p>Loading exception details...</p></div>';
-                modal.style.display = 'block';
                 
                 fetch('/adminboard/api/exception/' + exceptionId + '/', {
                     method: 'GET',
@@ -633,16 +986,16 @@
                         'X-CSRFToken': getCsrfToken()
                     }
                 })
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
+                .then(response => response.json())
+                .then(data => {
                     if (data.success) {
-                        var e = data.exception;
+                        const e = data.exception;
                         title.textContent = 'Exception: ' + (e.data.header || e.report_type);
                         
-                        var html = '';
-                        html += '<div class="modal-section"><div class="field-label">Branch / Unit</div><div class="field-value"><strong>' + (e.data.branch || e.data.unit || 'N/A') + '</strong></div></div>';
-                        html += '<div class="modal-section"><div class="field-label">Exception Header</div><div class="field-value">' + (e.data.header || e.report_type) + '</div></div>';
-                        html += '<div class="modal-section"><div class="field-label">Details</div><div class="field-value">' + (e.data.details || 'No details provided') + '</div></div>';
+                        let html = '';
+                        html += '<div class="modal-section"><div class="field-label">Branch / Unit</div><div class="field-value"><strong>' + (e.data.branch || e.data.unit || e.data.BRANCH_UNIT || 'N/A') + '</strong></div></div>';
+                        html += '<div class="modal-section"><div class="field-label">Exception Header</div><div class="field-value">' + (e.data.header || e.data.Exception_Header || e.report_type) + '</div></div>';
+                        html += '<div class="modal-section"><div class="field-label">Details</div><div class="field-value">' + (e.data.details || e.data.Exception_Details || e.data.OBSERVATION || 'No details provided') + '</div></div>';
                         html += '<div class="modal-section"><div class="field-label">Status</div><div class="field-value"><span class="status-badge ' + e.status + '">' + e.status_display + '</span></div></div>';
                         html += '<div class="modal-section"><div class="field-label">Submitted By</div><div class="field-value">' + e.created_by.name + ' (' + e.created_by.email + ')</div></div>';
                         html += '<div class="modal-section"><div class="field-label">Created</div><div class="field-value">' + e.created_at + '</div></div>';
@@ -654,8 +1007,8 @@
                         }
                         if (e.reviews && e.reviews.length > 0) {
                             html += '<div class="modal-section"><div class="field-label">Review History</div><div class="review-timeline">';
-                            for (var i = 0; i < e.reviews.length; i++) {
-                                var r = e.reviews[i];
+                            for (let i = 0; i < e.reviews.length; i++) {
+                                const r = e.reviews[i];
                                 html += '<div class="review-item"><div class="review-action">' + r.action + '</div><div class="review-meta">By ' + r.performed_by + ' on ' + r.created_at + '</div>';
                                 if (r.comments) {
                                     html += '<div class="review-comments">' + r.comments + '</div>';
@@ -667,11 +1020,11 @@
                         
                         body.innerHTML = html;
                     } else {
-                        showToast('Error loading exception details', 'Error', 'error');
+                        showToast('Error loading exception details: ' + data.error, 'Error', 'error');
                         closeViewModal();
                     }
                 })
-                .catch(function(error) {
+                .catch(error => {
                     console.error('Error:', error);
                     showToast('An error occurred while loading the exception.', 'Error', 'error');
                     closeViewModal();
@@ -682,8 +1035,12 @@
                 document.getElementById('viewModal').style.display = 'none';
             }
 
+            // ============================================
+            // EDIT EXCEPTION
+            // ============================================
+
             function editException(exceptionId) {
-                var modal = document.getElementById('editModal');
+                const modal = document.getElementById('editModal');
                 modal.style.display = 'block';
                 
                 document.getElementById('edit-exception-id').value = exceptionId;
@@ -696,24 +1053,24 @@
                         'X-CSRFToken': getCsrfToken()
                     }
                 })
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
+                .then(response => response.json())
+                .then(data => {
                     if (data.success) {
-                        var e = data.exception;
-                        document.getElementById('edit-branch').value = e.data.branch || e.data.unit || '';
-                        document.getElementById('edit-header').value = e.data.header || e.report_type || '';
-                        document.getElementById('edit-details').value = e.data.details || '';
+                        const e = data.exception;
+                        document.getElementById('edit-branch').value = e.data.branch || e.data.unit || e.data.BRANCH_UNIT || '';
+                        document.getElementById('edit-header').value = e.data.header || e.data.Exception_Header || e.report_type || '';
+                        document.getElementById('edit-details').value = e.data.details || e.data.Exception_Details || e.data.OBSERVATION || '';
                         document.getElementById('edit-status').value = e.status;
                         document.getElementById('edit-comments').value = e.review_comments || '';
                         
                         document.getElementById('editSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Changes';
                         document.getElementById('editSubmitBtn').disabled = false;
                     } else {
-                        showToast('Error loading exception details', 'Error', 'error');
+                        showToast('Error loading exception details: ' + data.error, 'Error', 'error');
                         closeEditModal();
                     }
                 })
-                .catch(function(error) {
+                .catch(error => {
                     console.error('Error:', error);
                     showToast('An error occurred while loading the exception.', 'Error', 'error');
                     closeEditModal();
@@ -727,18 +1084,18 @@
             function saveException(event) {
                 event.preventDefault();
                 
-                var exceptionId = document.getElementById('edit-exception-id').value;
-                var branch = document.getElementById('edit-branch').value;
-                var header = document.getElementById('edit-header').value;
-                var details = document.getElementById('edit-details').value;
-                var status = document.getElementById('edit-status').value;
-                var comments = document.getElementById('edit-comments').value;
+                const exceptionId = document.getElementById('edit-exception-id').value;
+                const branch = document.getElementById('edit-branch').value;
+                const header = document.getElementById('edit-header').value;
+                const details = document.getElementById('edit-details').value;
+                const status = document.getElementById('edit-status').value;
+                const comments = document.getElementById('edit-comments').value;
                 
-                var btn = document.getElementById('editSubmitBtn');
+                const btn = document.getElementById('editSubmitBtn');
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
                 
-                var data = {
+                const data = {
                     data: {
                         branch: branch,
                         header: header,
@@ -756,20 +1113,20 @@
                     },
                     body: JSON.stringify(data)
                 })
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
+                .then(response => response.json())
+                .then(data => {
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
                     
                     if (data.success) {
                         showToast('Exception updated successfully!', 'Success', 'success');
                         closeEditModal();
-                        setTimeout(function() { location.reload(); }, 1500);
+                        setTimeout(() => location.reload(), 1500);
                     } else {
                         showToast('Error: ' + data.error, 'Error', 'error');
                     }
                 })
-                .catch(function(error) {
+                .catch(error => {
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
                     console.error('Error:', error);
@@ -777,23 +1134,31 @@
                 });
             }
 
+            // ============================================
+            // MODAL CLOSE HANDLERS
+            // ============================================
+
             window.onclick = function(event) {
-                var viewModal = document.getElementById('viewModal');
-                var editModal = document.getElementById('editModal');
-                if (event.target == viewModal) {
+                const viewModal = document.getElementById('viewModal');
+                const editModal = document.getElementById('editModal');
+                if (event.target === viewModal) {
                     closeViewModal();
                 }
-                if (event.target == editModal) {
+                if (event.target === editModal) {
                     closeEditModal();
                 }
             };
 
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
-                    var target = e.target;
+                    const target = e.target;
                     if (target.id === 'search-input' || target.id === 'start-date' || target.id === 'end-date') {
                         applyFilters();
                     }
+                }
+                if (e.key === 'Escape') {
+                    closeViewModal();
+                    closeEditModal();
                 }
             });
         </script>

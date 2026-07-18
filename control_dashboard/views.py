@@ -1172,6 +1172,8 @@ def supervisor_exceptions(request):
 
 # ==================== TEAM PERFORMANCE ====================
 
+# ==================== TEAM PERFORMANCE ====================
+
 def team_performance(request):
     """
     Team Performance view - shows all team members and their performance metrics.
@@ -1186,11 +1188,19 @@ def team_performance(request):
     
     search_query = request.GET.get('search', '')
     
-    # Get all team members (ONLY users with role 'member' - exclude supervisors and admins)
+    # Get all team members - include all active users except the current user
+    # Or you can include all users with role 'member' or 'supervisor'
     team_members = UserProfile.objects.filter(
-        role='member',
         status='active'
+    ).exclude(
+        id=user_profile.id  # Exclude the current user
     )
+    
+    # Alternative: If you only want members and supervisors:
+    # team_members = UserProfile.objects.filter(
+    #     role__in=['member', 'supervisor'],
+    #     status='active'
+    # )
     
     if search_query:
         team_members = team_members.filter(
@@ -1217,6 +1227,7 @@ def team_performance(request):
         else:
             base_percentage = 0
         
+        # Get ad-hoc deductions
         ad_hoc_deductions = ActivityLog.objects.filter(
             user=member,
             activity_type='ad_hoc_deduction'
