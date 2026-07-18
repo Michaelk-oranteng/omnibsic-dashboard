@@ -197,7 +197,6 @@
                                 <th>Report Frequency</th>
                                 <th>Deadline Date</th>
                                 <th>Deadline Time</th>
-                                <th>Status</th>
                                 <th>Assigned To</th>
                                 <th class="text-center">Actions</th>
                             </tr>
@@ -209,19 +208,6 @@
                                 <td><span class="frequency-tag {{ report.frequency }}">{{ report.get_frequency_display }}</span></td>
                                 <td>{{ report.deadline_date|date:"M d, Y"|default:"-" }}</td>
                                 <td><span class="time-stamp">{{ report.deadline_time|time:"h:i A"|default:"-" }}</span></td>
-                                <td>
-                                    <div class="status-toggle-container">
-                                        <label class="switch">
-                                            <input type="checkbox" 
-                                                   {% if report.status == 'active' %}checked{% endif %}
-                                                   onchange="toggleReportStatus('{{ report.id }}', this.checked)">
-                                            <span class="slider round"></span>
-                                        </label>
-                                        <span class="status-text" id="status-text-{{ report.id }}">
-                                            {{ report.get_status_display }}
-                                        </span>
-                                    </div>
-                                </td>
                                 <td>
                                     {% if report.is_assigned_to_all %}
                                         <span class="assignment-tag-all">All Users</span>
@@ -246,7 +232,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="7" class="text-center">
+                                <td colspan="6" class="text-center">
                                     <i class="fas fa-file-alt"></i>
                                     No reports found. Create your first report!
                                 </td>
@@ -287,14 +273,6 @@
                     <div class="form-group">
                         <label>Description</label>
                         <textarea id="editDescription" class="form-control" rows="3" placeholder="Enter report description..."></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Status</label>
-                        <select id="editStatus" class="form-control">
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
                     </div>
 
                     <div class="form-group">
@@ -478,6 +456,29 @@
                 background: #004e8c;
             }
 
+            /* Assigned Users List */
+            .assigned-users-list {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+                font-size: 13px;
+            }
+
+            .assigned-users-list li {
+                padding: 2px 0;
+                color: #1a2332;
+            }
+
+            .assignment-tag-all {
+                display: inline-block;
+                padding: 4px 12px;
+                background: #dbeafe;
+                color: #2563eb;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+
             /* Responsive */
             @media (max-width: 480px) {
                 .modal-content {
@@ -508,17 +509,13 @@
             }
 
             function confirmLogout() {
-                // Show loading state
                 const btn = document.querySelector('#logoutModal .btn-create');
                 const originalText = btn.innerHTML;
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
                 btn.disabled = true;
-
-                // Redirect to logout URL
                 window.location.href = "{% url 'control_dashboard:logout' %}";
             }
 
-            // Close modal on background click
             document.addEventListener('click', function(event) {
                 const modal = document.getElementById('logoutModal');
                 if (event.target === modal) {
@@ -526,7 +523,6 @@
                 }
             });
 
-            // Close modal on Escape key
             document.addEventListener('keydown', function(event) {
                 if (event.key === 'Escape') {
                     closeLogoutModal();
@@ -537,7 +533,6 @@
             // EXISTING FUNCTIONS
             // ============================================
 
-            // Interactive "All Users" select monitor
             function handleAllUsersSelection(selectElement) {
                 const selectedOptions = Array.from(selectElement.selectedOptions).map(opt => opt.value);
                 if (selectedOptions.includes('all')) {
@@ -643,7 +638,6 @@
                         document.getElementById('editReportType').value = report.report_type;
                         document.getElementById('editReportFrequency').value = report.frequency;
                         document.getElementById('editDescription').value = report.description || '';
-                        document.getElementById('editStatus').value = report.status;
                         document.getElementById('editDeadlineDate').value = report.deadline_date || '';
                         document.getElementById('editDeadlineTime').value = report.deadline_time || '';
                         
@@ -656,17 +650,14 @@
                             {% endfor %}
                         ];
                         
-                        // Populate with the "All Users" option first
                         const allOption = document.createElement('option');
                         allOption.value = 'all';
                         allOption.textContent = 'All Users';
-                        // If the report is assigned to all, select the "All Users" option
                         if (report.is_assigned_to_all) {
                             allOption.selected = true;
                         }
                         editSelect.appendChild(allOption);
 
-                        // Populate user options
                         allUsers.forEach(user => {
                             const option = document.createElement('option');
                             option.value = user.id;
@@ -695,7 +686,6 @@
                 const reportType = document.getElementById('editReportType').value;
                 const frequency = document.getElementById('editReportFrequency').value;
                 const description = document.getElementById('editDescription').value;
-                const status = document.getElementById('editStatus').value;
                 const deadlineDate = document.getElementById('editDeadlineDate').value;
                 const deadlineTime = document.getElementById('editDeadlineTime').value;
                 
@@ -720,7 +710,6 @@
                         report_type: reportType,
                         frequency: frequency,
                         description: description,
-                        status: status,
                         deadline_date: deadlineDate,
                         deadline_time: deadlineTime,
                         assigned_users: assignedUsers,
@@ -760,33 +749,6 @@
                         location.reload();
                     } else {
                         alert('Error: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred. Please try again.');
-                });
-            }
-
-            function toggleReportStatus(reportId, isChecked) {
-                const status = isChecked ? 'active' : 'inactive';
-                
-                fetch("{% url 'control_dashboard:api_update_status' 0 %}".replace('0', reportId), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({ status: status })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const statusText = document.getElementById('status-text-' + reportId);
-                        statusText.textContent = isChecked ? 'Active' : 'Inactive';
-                    } else {
-                        alert('Error: ' + data.error);
-                        location.reload();
                     }
                 })
                 .catch(error => {

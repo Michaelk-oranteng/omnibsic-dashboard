@@ -118,48 +118,6 @@
                 <div class="template-builder-grid">
                     <div class="builder-card">
                         <h4>Template Setup</h4>
-                        
-                        <!-- Excel Format Info -->
-                        <div style="background: #f0f7ff; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; border-left: 4px solid #0066cc;">
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                                <i class="fas fa-file-excel" style="color: #217346;"></i>
-                                <strong style="font-size: 13px;">Excel Template Format:</strong>
-                            </div>
-                            <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
-                                <thead>
-                                    <tr style="background: #e5e7eb;">
-                                        <th style="padding: 4px 8px; text-align: left;">Column A</th>
-                                        <th style="padding: 4px 8px; text-align: left;">Column B</th>
-                                        <th style="padding: 4px 8px; text-align: left;">Column C</th>
-                                        <th style="padding: 4px 8px; text-align: left;">Column D</th>
-                                        <th style="padding: 4px 8px; text-align: left;">Column E</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td style="padding: 4px 8px;"><strong>Field Name</strong></td>
-                                        <td style="padding: 4px 8px;"><strong>Field Type</strong></td>
-                                        <td style="padding: 4px 8px;"><strong>Data Source</strong></td>
-                                        <td style="padding: 4px 8px;"><strong>Required</strong></td>
-                                        <td style="padding: 4px 8px;"><strong>Options</strong></td>
-                                    </tr>
-                                    <tr style="color: #6b7280;">
-                                        <td style="padding: 4px 8px;">Branch/Unit</td>
-                                        <td style="padding: 4px 8px;">text</td>
-                                        <td style="padding: 4px 8px;">manual</td>
-                                        <td style="padding: 4px 8px;">true</td>
-                                        <td style="padding: 4px 8px;">-</td>
-                                    </tr>
-                                    <tr style="color: #6b7280;">
-                                        <td style="padding: 4px 8px;">Severity</td>
-                                        <td style="padding: 4px 8px;">dropdown</td>
-                                        <td style="padding: 4px 8px;">options</td>
-                                        <td style="padding: 4px 8px;">true</td>
-                                        <td style="padding: 4px 8px;">High, Medium, Low</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
 
                         <div class="form-row">
                             <label for="report-type">Report Type</label>
@@ -480,17 +438,13 @@
             }
 
             function confirmLogout() {
-                // Show loading state
                 const btn = document.querySelector('#logoutModal .btn-create');
                 const originalText = btn.innerHTML;
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
                 btn.disabled = true;
-
-                // Redirect to logout URL
                 window.location.href = "{% url 'control_dashboard:logout' %}";
             }
 
-            // Close modal on background click
             document.addEventListener('click', function(event) {
                 const modal = document.getElementById('logoutModal');
                 if (event.target === modal) {
@@ -498,7 +452,6 @@
                 }
             });
 
-            // Close modal on Escape key
             document.addEventListener('keydown', function(event) {
                 if (event.key === 'Escape') {
                     closeLogoutModal();
@@ -523,7 +476,6 @@
                     return;
                 }
 
-                // Show progress
                 const progressDiv = document.getElementById('uploadProgress');
                 const progressBar = document.getElementById('uploadProgressBar');
                 const statusText = document.getElementById('uploadStatus');
@@ -532,7 +484,6 @@
                 progressBar.style.width = '30%';
                 statusText.textContent = 'Reading file...';
 
-                // Update button state
                 const uploadBtn = document.querySelector('.btn-upload-header');
                 uploadBtn.classList.add('loading');
                 uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
@@ -552,7 +503,6 @@
                         progressBar.style.width = '80%';
                         statusText.textContent = 'Processing fields...';
 
-                        // Parse the Excel data
                         const fields = parseExcelTemplate(jsonData);
 
                         if (fields.length === 0) {
@@ -563,7 +513,6 @@
                             return;
                         }
 
-                        // Add all fields to the template
                         fields.forEach(field => {
                             addFieldToUI(field, true);
                         });
@@ -577,7 +526,6 @@
 
                         alert(`Successfully imported ${fields.length} fields from ${file.name}!`);
 
-                        // Reset button
                         uploadBtn.classList.remove('loading');
                         uploadBtn.innerHTML = '<i class="fas fa-file-excel"></i> Import Excel';
 
@@ -604,46 +552,30 @@
             function parseExcelTemplate(data) {
                 const fields = [];
                 
-                // Skip header row (row 0)
-                // Row 0: Field Name, Field Type, Data Source, Required, Options
-                // Row 1+: Field data
-                
                 for (let rowIndex = 1; rowIndex < data.length; rowIndex++) {
                     const row = data[rowIndex];
                     if (!row || row.length === 0) continue;
                     
-                    // Column A (index 0): Field Name/Label
                     const label = row[0] ? String(row[0]).trim() : '';
-                    
-                    // Column B (index 1): Field Type
                     const fieldType = row[1] ? String(row[1]).trim().toLowerCase() : '';
-                    
-                    // Column C (index 2): Data Source
                     const dataSource = row[2] ? String(row[2]).trim().toLowerCase() : '';
-                    
-                    // Column D (index 3): Required (true/false)
                     const required = row[3] ? String(row[3]).trim().toLowerCase() : '';
-                    
-                    // Column E (index 4): Options (optional, for dropdown/checkbox)
                     const options = row[4] ? String(row[4]).trim() : '';
                     
                     if (!label) continue;
                     
-                    // Map field type to valid values
                     let mappedFieldType = 'text';
                     const validFieldTypes = ['text', 'number', 'date', 'dropdown', 'checkbox', 'textarea'];
                     if (validFieldTypes.includes(fieldType)) {
                         mappedFieldType = fieldType;
                     }
                     
-                    // Map data source to valid values
                     let mappedDataSource = 'manual';
                     const validDataSources = ['manual', 'database', 'options'];
                     if (validDataSources.includes(dataSource)) {
                         mappedDataSource = dataSource;
                     }
                     
-                    // Map required to boolean
                     const isRequired = required === 'true' || required === 'yes' || required === '1' || required === 'required';
                     
                     fields.push({
