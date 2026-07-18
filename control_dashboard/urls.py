@@ -103,4 +103,5 @@ urlpatterns = [
     path('api/exceptions/<int:exception_id>/update/', views.api_update_exception, name='api_update_exception'),
     path('api/draft/<int:draft_id>/', views.api_get_draft, name='api_get_draft'),
     path('api/draft/<int:draft_id>/edit/', views.api_edit_draft, name='api_edit_draft'),
+    path('api/checklist/detail/<int:user_id>/', views.api_user_checklist_detail, name='api_user_checklist_detail'),
 ]

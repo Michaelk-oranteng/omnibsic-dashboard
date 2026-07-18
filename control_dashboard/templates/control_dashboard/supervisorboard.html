@@ -73,7 +73,7 @@
             <!-- ==================== TOP HEADER ==================== -->
             <div class="top-header">
                 <div class="top-header-left">
-                    <span class="page-title">Supervisors Dashboard</span>
+                    <span class="page-title">Supervisor Dashboard</span>
                     <span class="week-range">Week of {{ week_start|date:"M d" }} - {{ week_end|date:"M d, Y" }}</span>
                 </div>
 
@@ -81,7 +81,7 @@
 
                 <div class="top-header-right">
                     <button class="btn-sync-header" onclick="syncDashboard()">
-                        <i class="fas fa-sync-alt"></i> Sync Dashboard
+                        <i class="fas fa-sync-alt"></i> Refresh
                     </button>
                 </div>
             </div>
@@ -101,48 +101,51 @@
             <!-- ==================== MAIN CONTENT ==================== -->
             <div class="main-content">
                 <div class="analytics-metrics-grid">
-                    <div class="metric-card border-left-danger">
+                    <div class="metric-card border-left-danger" onclick="window.location.href='{% url 'control_dashboard:logged_exceptions' %}'" style="cursor: pointer;">
                         <div class="metric-card-content">
-                            <span class="card-metric-label">Logged Exceptions <span style="font-weight: 400; text-transform: none;">(This Week)</span></span>
+                            <span class="card-metric-label">Total Exceptions</span>
                             <h3 class="card-metric-value text-danger">{{ total_exceptions }}</h3>
                             <span class="card-metric-subtext">
                                 <span class="badge-danger-dim">
-                                    <i class="fas fa-calendar-day"></i> {{ today_exceptions }} logged today
+                                    <i class="fas fa-calendar-day"></i> {{ today_exceptions }} new today
                                 </span>
                             </span>
                         </div>
                         <div class="metric-card-icon text-danger-dim"><i class="fas fa-exclamation-triangle"></i></div>
+                        <div class="metric-card-hover">View All Exceptions →</div>
                     </div>
 
-                    <div class="metric-card border-left-warning">
+                    <div class="metric-card border-left-warning" onclick="window.location.href='{% url 'control_dashboard:submitted_reports' %}'" style="cursor: pointer;">
                         <div class="metric-card-content">
-                            <span class="card-metric-label">Pending Reviews</span>
-                            <h3 class="card-metric-value text-warning">{{ pending_reviews }}</h3>
+                            <span class="card-metric-label">Submitted Reports</span>
+                            <h3 class="card-metric-value text-warning">{{ submitted_reports_count|default:0 }}</h3>
                             <span class="card-metric-subtext">
-                                {% if pending_reviews > 0 %}
-                                <span class="badge-warning-dim"><i class="fas fa-clock"></i> Awaiting your review</span>
+                                {% if submitted_reports_count|default:0 > 0 %}
+                                <span class="badge-warning-dim"><i class="fas fa-file-alt"></i> Submitted this week</span>
                                 {% else %}
-                                <span class="badge-success-dim"><i class="fas fa-check"></i> All clear</span>
+                                <span class="badge-success-dim"><i class="fas fa-check"></i> No submissions</span>
                                 {% endif %}
                             </span>
                         </div>
                         <div class="metric-card-icon text-warning-dim"><i class="fas fa-file-invoice"></i></div>
+                        <div class="metric-card-hover">View Submitted Reports →</div>
                     </div>
 
-                    <div class="metric-card border-left-purple">
+                    <div class="metric-card border-left-purple" onclick="window.location.href='{% url 'control_dashboard:team_performance' %}'" style="cursor: pointer;">
                         <div class="metric-card-content">
-                            <span class="card-metric-label">In Review</span>
-                            <h3 class="card-metric-value text-purple">{{ in_review }}</h3>
+                            <span class="card-metric-label">Team Members</span>
+                            <h3 class="card-metric-value text-purple">{{ team_performance|length }}</h3>
                             <span class="card-metric-subtext">
-                                <span class="badge-purple-dim"><i class="fas fa-spinner"></i> Being assessed</span>
+                                <span class="badge-purple-dim"><i class="fas fa-users"></i> Active members</span>
                             </span>
                         </div>
-                        <div class="metric-card-icon text-purple-dim"><i class="fas fa-search"></i></div>
+                        <div class="metric-card-icon text-purple-dim"><i class="fas fa-users"></i></div>
+                        <div class="metric-card-hover">View Team Performance →</div>
                     </div>
 
-                    <div class="metric-card border-left-success">
+                    <div class="metric-card border-left-success" onclick="window.location.href='{% url 'control_dashboard:supervisor_checklist' %}'" style="cursor: pointer;">
                         <div class="metric-card-content">
-                            <span class="card-metric-label">Team Completion Rate</span>
+                            <span class="card-metric-label">Team Completion</span>
                             <h3 class="card-metric-value text-success">{{ completion_rate }}%</h3>
                             <span class="card-metric-subtext">
                                 {% if completion_rate >= 90 %}
@@ -155,13 +158,14 @@
                             </span>
                         </div>
                         <div class="metric-card-icon text-success-dim"><i class="fas fa-chart-line"></i></div>
+                        <div class="metric-card-hover">View Checklist →</div>
                     </div>
                 </div>
 
                 <div class="dashboard-split-layout">
                     <div class="dashboard-panel-card">
                         <div class="panel-card-header">
-                            <h4>Top 3 Performers</h4>
+                            <h4>🏆 Top Performers</h4>
                             <a href="{% url 'control_dashboard:team_performance' %}" class="panel-header-link">View Full Team <i class="fas fa-arrow-right"></i></a>
                         </div>
                         
@@ -172,12 +176,12 @@
                                     <th>Full Name</th>
                                     <th class="text-center">Submitted</th>
                                     <th class="text-center">Completion</th>
-                                    <th class="text-center" style="width: 60px;">View</th>
+                                    <th class="text-center" style="width: 60px;">Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for member in team_performance|slice:":3" %}
-                                <tr>
+                                {% for member in team_performance|slice:":5" %}
+                                <tr onclick="window.location.href='{% url 'control_dashboard:team_performance' %}'" style="cursor: pointer;">
                                     <td class="text-center">
                                         <span class="rank-badge rank-{{ forloop.counter }}">
                                             {{ forloop.counter }}
@@ -191,9 +195,9 @@
                                         </span>
                                     </td>
                                     <td class="text-center">
-                                        <a href="#" class="row-link nav-arrow">
-                                            <i class="fas fa-chevron-right"></i>
-                                        </a>
+                                        <span class="status-badge {% if member.status == 'success' %}active{% elif member.status == 'warning' %}pending{% else %}inactive{% endif %}" style="font-size: 10px; padding: 2px 8px;">
+                                            {% if member.status == 'success' %}🌟{% elif member.status == 'warning' %}📈{% else %}⚠️{% endif %}
+                                        </span>
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -206,7 +210,7 @@
                             </tbody>
                         </table>
                         
-                        {% if team_performance|length > 3 %}
+                        {% if team_performance|length > 5 %}
                         <div style="text-align: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.05);">
                             <a href="{% url 'control_dashboard:team_performance' %}" class="panel-header-link">
                                 View all {{ team_performance|length }} team members <i class="fas fa-arrow-right"></i>
@@ -217,7 +221,7 @@
 
                     <div class="dashboard-panel-card">
                         <div class="panel-card-header">
-                            <h4>Operational Controls</h4>
+                            <h4>⚡ Quick Actions</h4>
                         </div>
                         <div class="quick-actions-list-stack">
                             <a href="{% url 'control_dashboard:logged_exceptions' %}" class="action-shortcut-item">
@@ -226,93 +230,40 @@
                                 </div>
                                 <div class="shortcut-text-box">
                                     <h5>Logged Exceptions 
-                                        {% if pending_reviews > 0 %}
-                                        <span class="exception-count-badge">{{ pending_reviews }}</span>
+                                        {% if total_exceptions > 0 %}
+                                        <span class="exception-count-badge">{{ total_exceptions }}</span>
                                         {% endif %}
                                     </h5>
-                                    <p class="shortcut-desc">Review flagged exceptions</p>
+                                    <p class="shortcut-desc">View all exceptions</p>
                                 </div>
+                                <div class="shortcut-arrow"><i class="fas fa-chevron-right"></i></div>
                             </a>
-                            <a href="{% url 'control_dashboard:ad_hoc_scorecard' %}"class="action-shortcut-item">
-                                <div class="shortcut-icon-box primary-box"><i class="fas fa-star"></i></div>
+                            <a href="{% url 'control_dashboard:submitted_reports' %}" class="action-shortcut-item">
+                                <div class="shortcut-icon-box primary-box"><i class="fas fa-file-alt"></i></div>
+                                <div class="shortcut-text-box">
+                                    <h5>Submitted Reports</h5>
+                                    <p class="shortcut-desc">Review submitted reports</p>
+                                </div>
+                                <div class="shortcut-arrow"><i class="fas fa-chevron-right"></i></div>
+                            </a>
+                            <a href="{% url 'control_dashboard:ad_hoc_scorecard' %}" class="action-shortcut-item">
+                                <div class="shortcut-icon-box warning-box"><i class="fas fa-star"></i></div>
                                 <div class="shortcut-text-box">
                                     <h5>Ad-Hoc Scorecard</h5>
-                                    <p class="shortcut-desc">Assess ad-hoc reports</p>
+                                    <p class="shortcut-desc">Manage deductions</p>
                                 </div>
+                                <div class="shortcut-arrow"><i class="fas fa-chevron-right"></i></div>
                             </a>
-                            <a href="{% url 'control_dashboard:supervisor_activity_logs' %}" class="action-shortcut-item">
+                            <a href="{% url 'control_dashboard:supervisor_checklist' %}" class="action-shortcut-item">
                                 <div class="shortcut-icon-box success-box"><i class="fas fa-tasks"></i></div>
                                 <div class="shortcut-text-box">
                                     <h5>Activity Checklist</h5>
                                     <p class="shortcut-desc">Review team checklists</p>
                                 </div>
+                                <div class="shortcut-arrow"><i class="fas fa-chevron-right"></i></div>
                             </a>
                         </div>
                     </div>
-                </div>
-
-                <div class="dashboard-panel-card">
-                    <div class="panel-card-header">
-                        <h4>Outstanding Exceptions</h4>
-                        <a href="{% url 'control_dashboard:logged_exceptions' %}?status=open" class="panel-header-link">
-                            View All Exception Logs <i class="fas fa-arrow-right"></i>
-                        </a>
-                    </div>
-                    
-                    <table class="users-table">
-                        <thead>
-                            <tr>
-                                <th>Unit / Branch</th>
-                                <th>Exception Header</th>
-                                <th>Details</th>
-                                <th>Date Noted</th>
-                                <th>Age</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for exception in outstanding_exceptions %}
-                            <tr class="outstanding-row">
-                                <td class="font-bold">
-                                    {{ exception.data.unit|default:exception.data.branch|default:"N/A" }}
-                                </td>
-                                <td class="exception-header-text">
-                                    {{ exception.data.header|default:exception.report_type }}
-                                </td>
-                                <td style="font-size: 13px; line-height: 1.5; color: rgba(26, 35, 50, 0.6);">
-                                    {{ exception.data.details|truncatechars:60|default:"No details provided" }}
-                                </td>
-                                <td><span class="time-stamp">{{ exception.created_at|date:"M d, Y" }}</span></td>
-                                <td>
-                                    <span class="badge-overdue">
-                                        <i class="fas fa-clock"></i> 
-                                        {{ exception.created_at|timesince }}
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="status-badge {{ exception.status }}">
-                                        {{ exception.get_status_display }}
-                                    </span>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="6" class="text-center">
-                                    <i class="fas fa-check-circle"></i>
-                                    No outstanding exceptions. All exceptions are being handled!
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    
-                    {% if outstanding_exceptions|length >= 10 %}
-                    <div style="text-align: center; margin-top: 12px;">
-                        <a href="{% url 'control_dashboard:logged_exceptions' %}?status=open" class="panel-header-link">
-                            View all outstanding exceptions <i class="fas fa-arrow-right"></i>
-                        </a>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -394,8 +345,8 @@
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                width: 24px;
-                height: 24px;
+                width: 28px;
+                height: 28px;
                 border-radius: 50%;
                 font-size: 12px;
                 font-weight: 700;
@@ -405,16 +356,154 @@
             .rank-1 {
                 background: #FFD700;
                 color: #1a1a2e;
+                box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
             }
             
             .rank-2 {
                 background: #C0C0C0;
                 color: #1a1a2e;
+                box-shadow: 0 2px 8px rgba(192, 192, 192, 0.3);
             }
             
             .rank-3 {
                 background: #CD7F32;
                 color: white;
+                box-shadow: 0 2px 8px rgba(205, 127, 50, 0.3);
+            }
+
+            .rank-4, .rank-5 {
+                background: #e5e7eb;
+                color: #6b7280;
+            }
+
+            /* Metric card hover effect */
+            .metric-card {
+                position: relative;
+                overflow: hidden;
+                transition: all 0.3s ease;
+            }
+
+            .metric-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            }
+
+            .metric-card-hover {
+                position: absolute;
+                bottom: -30px;
+                left: 0;
+                right: 0;
+                text-align: center;
+                font-size: 12px;
+                font-weight: 500;
+                color: #0066cc;
+                opacity: 0;
+                transition: all 0.3s ease;
+                padding: 4px 0;
+                background: rgba(255,255,255,0.95);
+            }
+
+            .metric-card:hover .metric-card-hover {
+                bottom: 0;
+                opacity: 1;
+            }
+
+            .metric-card:active {
+                transform: scale(0.98);
+            }
+
+            /* Exception count badge */
+            .exception-count-badge {
+                display: inline-block;
+                background: #ef4444;
+                color: white;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 1px 8px;
+                border-radius: 10px;
+                margin-left: 4px;
+                animation: pulse-badge 2s infinite;
+            }
+
+            @keyframes pulse-badge {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.1); }
+            }
+
+            /* Action shortcut items with arrow */
+            .action-shortcut-item {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                padding: 12px 16px;
+                background: #f8fafc;
+                border-radius: 8px;
+                text-decoration: none;
+                transition: all 0.2s ease;
+                border: 1px solid #e5e7eb;
+                position: relative;
+            }
+
+            .action-shortcut-item:hover {
+                background: #f1f5f9;
+                border-color: #0066cc;
+                transform: translateX(4px);
+            }
+
+            .action-shortcut-item .shortcut-arrow {
+                margin-left: auto;
+                color: #9ca3af;
+                transition: all 0.2s ease;
+            }
+
+            .action-shortcut-item:hover .shortcut-arrow {
+                color: #0066cc;
+                transform: translateX(4px);
+            }
+
+            /* Shortcut icon box colors */
+            .shortcut-icon-box.danger-box {
+                background: #fee2e2;
+                color: #dc2626;
+            }
+
+            .shortcut-icon-box.primary-box {
+                background: #dbeafe;
+                color: #2563eb;
+            }
+
+            .shortcut-icon-box.warning-box {
+                background: #fef3c7;
+                color: #d97706;
+            }
+
+            .shortcut-icon-box.success-box {
+                background: #d1fae5;
+                color: #065f46;
+            }
+
+            .shortcut-icon-box {
+                width: 40px;
+                height: 40px;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 18px;
+                flex-shrink: 0;
+            }
+
+            .shortcut-text-box h5 {
+                margin: 0;
+                font-size: 14px;
+                font-weight: 600;
+                color: #1a2332;
+            }
+
+            .shortcut-desc {
+                margin: 2px 0 0 0;
+                font-size: 12px;
+                color: #6b7280;
             }
 
             /* Modal styles */
@@ -449,7 +538,29 @@
                 to { transform: translateY(0); opacity: 1; }
             }
 
-            /* Responsive modal */
+            /* Week range styling */
+            .week-range {
+                font-size: 13px;
+                font-weight: 400;
+                color: rgba(26,35,50,0.5);
+                margin-left: 12px;
+            }
+
+            /* Responsive */
+            @media (max-width: 768px) {
+                .week-range {
+                    display: block;
+                    margin-left: 0;
+                    margin-top: 4px;
+                }
+                .top-header-left {
+                    flex-wrap: wrap;
+                }
+                .analytics-metrics-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+            }
+
             @media (max-width: 480px) {
                 .modal-content {
                     margin: 20px;
@@ -457,6 +568,20 @@
                 }
                 .modal-content h2 {
                     font-size: 20px;
+                }
+                .action-shortcut-item {
+                    padding: 10px 12px;
+                }
+                .shortcut-icon-box {
+                    width: 32px;
+                    height: 32px;
+                    font-size: 14px;
+                }
+                .shortcut-text-box h5 {
+                    font-size: 13px;
+                }
+                .analytics-metrics-grid {
+                    grid-template-columns: 1fr;
                 }
             }
         </style>
@@ -479,17 +604,13 @@
             }
 
             function confirmLogout() {
-                // Show loading state
                 const btn = document.querySelector('#logoutModal .btn-create');
                 const originalText = btn.innerHTML;
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
                 btn.disabled = true;
-
-                // Redirect to logout URL
                 window.location.href = "{% url 'control_dashboard:logout' %}";
             }
 
-            // Close modal on background click
             document.addEventListener('click', function(event) {
                 const modal = document.getElementById('logoutModal');
                 if (event.target === modal) {
@@ -497,7 +618,6 @@
                 }
             });
 
-            // Close modal on Escape key
             document.addEventListener('keydown', function(event) {
                 if (event.key === 'Escape') {
                     closeLogoutModal();
@@ -505,7 +625,7 @@
             });
 
             // ============================================
-            // EXISTING FUNCTIONS
+            // TOAST NOTIFICATION
             // ============================================
 
             function showToast(message, title = 'Success!') {
@@ -549,15 +669,78 @@
                 }
             };
 
+            // ============================================
+            // SYNC DASHBOARD
+            // ============================================
+
             function syncDashboard() {
                 const btn = document.querySelector('.btn-sync-header');
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
                 btn.disabled = true;
+                
+                showToast('Refreshing dashboard data...', 'Refreshing');
                 
                 setTimeout(() => {
                     location.reload();
                 }, 1000);
             }
+
+            // ============================================
+            // AUTO REFRESH (every 60 seconds)
+            // ============================================
+
+            let autoRefreshInterval = null;
+
+            function startAutoRefresh() {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                }
+                // Refresh every 60 seconds to keep data current
+                autoRefreshInterval = setInterval(() => {
+                    // Only refresh if the page is visible
+                    if (!document.hidden) {
+                        fetch(window.location.href, {
+                            method: 'HEAD',
+                            headers: {
+                                'X-CSRFToken': getCsrfToken()
+                            }
+                        })
+                        .then(() => {
+                            // If HEAD request succeeds, reload the page
+                            location.reload();
+                        })
+                        .catch(() => {
+                            // Silent fail - don't show error for auto-refresh
+                        });
+                    }
+                }, 60000);
+            }
+
+            // Start auto-refresh when page loads
+            document.addEventListener('DOMContentLoaded', function() {
+                startAutoRefresh();
+                
+                // Stop auto-refresh when user leaves the page
+                document.addEventListener('visibilitychange', function() {
+                    if (document.hidden) {
+                        if (autoRefreshInterval) {
+                            clearInterval(autoRefreshInterval);
+                            autoRefreshInterval = null;
+                        }
+                    } else {
+                        startAutoRefresh();
+                    }
+                });
+            });
+
+            // Clean up interval on page unload
+            window.addEventListener('beforeunload', function() {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+            });
         </script>
     </body>
 </html>

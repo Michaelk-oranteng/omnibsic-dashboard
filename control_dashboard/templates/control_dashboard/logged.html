@@ -161,19 +161,22 @@
                                     <table class="report-details-table">
                                         <thead>
                                             <tr>
-                                                <th>Branch/Unit</th>
-                                                <th>Exception Header</th>
-                                                <th>Exception Details</th>
                                                 <th>Submitted By</th>
+                                                <th>Branch/Unit</th>
+                                                <th>Header</th>
+                                                <th>Details</th>
                                                 <th>Date Noted</th>
                                                 <th>Status</th>
-                                                <th class="text-center">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {% for exception in group.list %}
                                             <tr>
-                                                <td class="font-bold">
+                                                <td>
+                                                    <span class="user-name">{{ exception.created_by.full_name|default:exception.created_by.email }}</span>
+                                                </td>
+                                                <td>
+                                                    {# Branch/Unit - look for BRANCH/UNIT key which becomes BRANCH_UNIT in Django #}
                                                     {% if exception.data.BRANCH_UNIT %}
                                                         {{ exception.data.BRANCH_UNIT }}
                                                     {% elif exception.data.branch %}
@@ -184,7 +187,7 @@
                                                         N/A
                                                     {% endif %}
                                                 </td>
-                                                <td class="exception-header-text">
+                                                <td>
                                                     {% if exception.data.Exception_Header %}
                                                         {{ exception.data.Exception_Header }}
                                                     {% elif exception.data.header %}
@@ -216,9 +219,6 @@
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <span class="user-name">{{ exception.created_by.full_name|default:exception.created_by.email }}</span>
-                                                </td>
-                                                <td>
                                                     {% if exception.data.DATE %}
                                                         <span class="time-stamp">{{ exception.data.DATE }}</span>
                                                     {% else %}
@@ -226,19 +226,20 @@
                                                     {% endif %}
                                                 </td>
                                                 <td>
-                                                    <span class="status-badge {{ exception.status }}">
-                                                        {{ exception.get_status_display }}
-                                                    </span>
-                                                </td>
-                                                <td class="text-center">
-                                                    <div class="table-actions-cluster">
-                                                        <button class="btn-view" onclick="viewException({{ exception.id }})" title="View Full Exception">
-                                                            <i class="fas fa-eye"></i> View
-                                                        </button>
-                                                        <button class="btn-edit-row" onclick="editException({{ exception.id }})" title="Edit Exception">
-                                                            <i class="fas fa-edit"></i> Edit
-                                                        </button>
-                                                    </div>
+                                                    {# Status - show the status from the data (Open/Closed/etc) #}
+                                                    {% if exception.data.STATUS %}
+                                                        <span class="status-badge {{ exception.data.STATUS|lower }}">
+                                                            {{ exception.data.STATUS }}
+                                                        </span>
+                                                    {% elif exception.data.status %}
+                                                        <span class="status-badge {{ exception.data.status|lower }}">
+                                                            {{ exception.data.status }}
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="status-badge {{ exception.status }}">
+                                                            {{ exception.get_status_display }}
+                                                        </span>
+                                                    {% endif %}
                                                 </td>
                                             </tr>
                                             {% endfor %}
@@ -254,67 +255,6 @@
                         </div>
                     {% endif %}
                 </div>
-            </div>
-        </div>
-
-        <!-- View Exception Modal -->
-        <div id="viewModal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <span class="modal-close" onclick="closeViewModal()">&times;</span>
-                <h2 id="viewModalTitle">Exception Details</h2>
-                <div id="viewModalBody">
-                    <!-- Filled by JavaScript -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Edit Exception Modal -->
-        <div id="editModal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <span class="modal-close" onclick="closeEditModal()">&times;</span>
-                <h2>Edit Exception</h2>
-                <form id="editExceptionForm" onsubmit="saveException(event)">
-                    <input type="hidden" id="edit-exception-id">
-                    
-                    <div class="modal-section">
-                        <label class="field-label">Branch / Unit</label>
-                        <input type="text" id="edit-branch" placeholder="Enter branch or unit">
-                    </div>
-                    
-                    <div class="modal-section">
-                        <label class="field-label">Exception Header</label>
-                        <input type="text" id="edit-header" placeholder="Enter exception header">
-                    </div>
-                    
-                    <div class="modal-section">
-                        <label class="field-label">Exception Details</label>
-                        <textarea id="edit-details" rows="6" placeholder="Enter exception details..."></textarea>
-                    </div>
-                    
-                    <div class="modal-section">
-                        <label class="field-label">Status</label>
-                        <select id="edit-status">
-                            <option value="draft">Draft</option>
-                            <option value="submitted">Submitted</option>
-                            <option value="in_review">In Review</option>
-                            <option value="approved">Approved</option>
-                            <option value="rejected">Rejected</option>
-                            <option value="revision_requested">Revision Requested</option>
-                        </select>
-                    </div>
-                    
-                    <div class="modal-section">
-                        <label class="field-label">Review Comments</label>
-                        <textarea id="edit-comments" rows="3" placeholder="Add review comments..."></textarea>
-                    </div>
-                    
-                    <div class="modal-actions">
-                        <button type="button" class="btn-cancel-modal" onclick="closeEditModal()">Cancel</button>
-                        <button type="submit" class="btn-save-modal" id="editSubmitBtn">
-                            <i class="fas fa-save"></i> Save Changes
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
 
@@ -350,7 +290,62 @@
         </div>
 
         <style>
-            /* Profile card logout styling */
+            /* Add status badge styles for Open/Closed statuses */
+            .status-badge.open {
+                background: #d1fae5;
+                color: #065f46;
+            }
+
+            .status-badge.closed {
+                background: #fee2e2;
+                color: #dc2626;
+            }
+
+            .status-badge.pending {
+                background: #fef3c7;
+                color: #d97706;
+            }
+
+            .status-badge.in_progress {
+                background: #dbeafe;
+                color: #2563eb;
+            }
+
+            .status-badge.resolved {
+                background: #d1fae5;
+                color: #065f46;
+            }
+
+            .status-badge.draft {
+                background: #f3f4f6;
+                color: #6b7280;
+            }
+
+            .status-badge.submitted {
+                background: #fef3c7;
+                color: #d97706;
+            }
+
+            .status-badge.in_review {
+                background: #dbeafe;
+                color: #2563eb;
+            }
+
+            .status-badge.approved {
+                background: #d1fae5;
+                color: #065f46;
+            }
+
+            .status-badge.rejected {
+                background: #fee2e2;
+                color: #dc2626;
+            }
+
+            .status-badge.revision_requested {
+                background: #fef3c7;
+                color: #d97706;
+            }
+
             .nav-profile-card {
                 display: flex;
                 align-items: center;
@@ -400,7 +395,6 @@
                 color: #6b7280;
             }
 
-            /* Report Type Group Styles */
             .report-type-group {
                 margin-bottom: 16px;
                 border: 1px solid #e5e7eb;
@@ -470,7 +464,6 @@
                 display: none;
             }
 
-            /* Report Details Table */
             .report-details-table {
                 width: 100%;
                 border-collapse: collapse;
@@ -520,7 +513,6 @@
                 margin-bottom: 12px;
             }
 
-            /* Modal styles */
             .modal {
                 position: fixed;
                 z-index: 9999;
@@ -540,9 +532,7 @@
                 border-radius: 12px;
                 padding: 32px;
                 animation: slideUp 0.3s ease;
-                max-width: 700px;
-                max-height: 90vh;
-                overflow-y: auto;
+                max-width: 400px;
             }
 
             @keyframes fadeIn {
@@ -555,134 +545,6 @@
                 to { transform: translateY(0); opacity: 1; }
             }
 
-            .modal-close {
-                float: right;
-                font-size: 28px;
-                font-weight: bold;
-                cursor: pointer;
-                color: #aaa;
-                transition: color 0.2s;
-            }
-
-            .modal-close:hover {
-                color: #000;
-            }
-
-            .modal-section {
-                margin-bottom: 16px;
-            }
-
-            .modal-section label.field-label {
-                display: block;
-                font-weight: 500;
-                margin-bottom: 4px;
-                font-size: 14px;
-                color: #374151;
-            }
-
-            .modal-section .field-value {
-                padding: 8px 12px;
-                background: #f8fafc;
-                border-radius: 6px;
-                border: 1px solid #e5e7eb;
-                font-size: 14px;
-                color: #1a2332;
-                word-wrap: break-word;
-            }
-
-            .modal-section input,
-            .modal-section textarea,
-            .modal-section select {
-                width: 100%;
-                padding: 10px 12px;
-                border: 1px solid #d1d5db;
-                border-radius: 6px;
-                font-size: 14px;
-                transition: border-color 0.2s;
-                font-family: inherit;
-            }
-
-            .modal-section input:focus,
-            .modal-section textarea:focus,
-            .modal-section select:focus {
-                outline: none;
-                border-color: #0066cc;
-                box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
-            }
-
-            .modal-actions {
-                display: flex;
-                gap: 12px;
-                justify-content: flex-end;
-                margin-top: 20px;
-            }
-
-            .btn-cancel-modal {
-                padding: 10px 24px;
-                background: #e5e7eb;
-                color: #1a2332;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: 500;
-                transition: background 0.2s;
-            }
-
-            .btn-cancel-modal:hover {
-                background: #d1d5db;
-            }
-
-            .btn-save-modal {
-                padding: 10px 24px;
-                background: #0066cc;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: 500;
-                transition: background 0.2s;
-            }
-
-            .btn-save-modal:hover {
-                background: #004e8c;
-            }
-
-            .btn-save-modal:disabled {
-                opacity: 0.6;
-                cursor: not-allowed;
-            }
-
-            .review-timeline {
-                margin-top: 8px;
-            }
-
-            .review-item {
-                padding: 8px 12px;
-                background: #f8fafc;
-                border-radius: 6px;
-                margin-bottom: 8px;
-                border-left: 3px solid #0066cc;
-            }
-
-            .review-action {
-                font-weight: 600;
-                color: #1a2332;
-            }
-
-            .review-meta {
-                font-size: 12px;
-                color: #6b7280;
-            }
-
-            .review-comments {
-                margin-top: 4px;
-                font-size: 14px;
-                color: #1a2332;
-            }
-
-            /* Toast Notification */
             .toast-notification {
                 position: fixed;
                 top: 20px;
@@ -783,7 +645,6 @@
                 color: #1a2332;
             }
 
-            /* Responsive */
             @media (max-width: 768px) {
                 .top-header {
                     flex-wrap: wrap;
@@ -821,12 +682,6 @@
                 }
                 .modal-content h2 {
                     font-size: 20px;
-                }
-                .modal-actions {
-                    flex-direction: column;
-                }
-                .modal-actions button {
-                    width: 100%;
                 }
                 .report-type-header {
                     flex-wrap: wrap;
@@ -880,7 +735,6 @@
                 window.location.href = "{% url 'control_dashboard:logout' %}";
             }
 
-            // Close modal on background click
             document.addEventListener('click', function(event) {
                 const modal = document.getElementById('logoutModal');
                 if (event.target === modal) {
@@ -888,7 +742,6 @@
                 }
             });
 
-            // Close modal on Escape key
             document.addEventListener('keydown', function(event) {
                 if (event.key === 'Escape') {
                     closeLogoutModal();
@@ -905,7 +758,6 @@
                 const titleEl = toast.querySelector('.toast-title');
                 const icon = toast.querySelector('.toast-icon i');
                 
-                // Remove all type classes
                 toast.classList.remove('success', 'error', 'warning', 'info', 'show');
                 
                 msgEl.textContent = message || 'Action completed successfully.';
@@ -966,201 +818,6 @@
             function resetFilters() {
                 window.location.href = window.location.pathname;
             }
-
-            // ============================================
-            // VIEW EXCEPTION
-            // ============================================
-
-            function viewException(exceptionId) {
-                const modal = document.getElementById('viewModal');
-                const title = document.getElementById('viewModalTitle');
-                const body = document.getElementById('viewModalBody');
-                
-                modal.style.display = 'block';
-                title.textContent = 'Loading...';
-                body.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin" style="font-size: 32px;"></i><p>Loading exception details...</p></div>';
-                
-                fetch('/adminboard/api/exception/' + exceptionId + '/', {
-                    method: 'GET',
-                    headers: {
-                        'X-CSRFToken': getCsrfToken()
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const e = data.exception;
-                        title.textContent = 'Exception: ' + (e.data.header || e.report_type);
-                        
-                        let html = '';
-                        html += '<div class="modal-section"><div class="field-label">Branch / Unit</div><div class="field-value"><strong>' + (e.data.branch || e.data.unit || e.data.BRANCH_UNIT || 'N/A') + '</strong></div></div>';
-                        html += '<div class="modal-section"><div class="field-label">Exception Header</div><div class="field-value">' + (e.data.header || e.data.Exception_Header || e.report_type) + '</div></div>';
-                        html += '<div class="modal-section"><div class="field-label">Details</div><div class="field-value">' + (e.data.details || e.data.Exception_Details || e.data.OBSERVATION || 'No details provided') + '</div></div>';
-                        html += '<div class="modal-section"><div class="field-label">Status</div><div class="field-value"><span class="status-badge ' + e.status + '">' + e.status_display + '</span></div></div>';
-                        html += '<div class="modal-section"><div class="field-label">Submitted By</div><div class="field-value">' + e.created_by.name + ' (' + e.created_by.email + ')</div></div>';
-                        html += '<div class="modal-section"><div class="field-label">Created</div><div class="field-value">' + e.created_at + '</div></div>';
-                        if (e.submitted_at) {
-                            html += '<div class="modal-section"><div class="field-label">Submitted</div><div class="field-value">' + e.submitted_at + '</div></div>';
-                        }
-                        if (e.review_comments) {
-                            html += '<div class="modal-section"><div class="field-label">Review Comments</div><div class="field-value">' + e.review_comments + '</div></div>';
-                        }
-                        if (e.reviews && e.reviews.length > 0) {
-                            html += '<div class="modal-section"><div class="field-label">Review History</div><div class="review-timeline">';
-                            for (let i = 0; i < e.reviews.length; i++) {
-                                const r = e.reviews[i];
-                                html += '<div class="review-item"><div class="review-action">' + r.action + '</div><div class="review-meta">By ' + r.performed_by + ' on ' + r.created_at + '</div>';
-                                if (r.comments) {
-                                    html += '<div class="review-comments">' + r.comments + '</div>';
-                                }
-                                html += '</div>';
-                            }
-                            html += '</div></div>';
-                        }
-                        
-                        body.innerHTML = html;
-                    } else {
-                        showToast('Error loading exception details: ' + data.error, 'Error', 'error');
-                        closeViewModal();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('An error occurred while loading the exception.', 'Error', 'error');
-                    closeViewModal();
-                });
-            }
-
-            function closeViewModal() {
-                document.getElementById('viewModal').style.display = 'none';
-            }
-
-            // ============================================
-            // EDIT EXCEPTION
-            // ============================================
-
-            function editException(exceptionId) {
-                const modal = document.getElementById('editModal');
-                modal.style.display = 'block';
-                
-                document.getElementById('edit-exception-id').value = exceptionId;
-                document.getElementById('editSubmitBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
-                document.getElementById('editSubmitBtn').disabled = true;
-                
-                fetch('/adminboard/api/exception/' + exceptionId + '/', {
-                    method: 'GET',
-                    headers: {
-                        'X-CSRFToken': getCsrfToken()
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const e = data.exception;
-                        document.getElementById('edit-branch').value = e.data.branch || e.data.unit || e.data.BRANCH_UNIT || '';
-                        document.getElementById('edit-header').value = e.data.header || e.data.Exception_Header || e.report_type || '';
-                        document.getElementById('edit-details').value = e.data.details || e.data.Exception_Details || e.data.OBSERVATION || '';
-                        document.getElementById('edit-status').value = e.status;
-                        document.getElementById('edit-comments').value = e.review_comments || '';
-                        
-                        document.getElementById('editSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Changes';
-                        document.getElementById('editSubmitBtn').disabled = false;
-                    } else {
-                        showToast('Error loading exception details: ' + data.error, 'Error', 'error');
-                        closeEditModal();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('An error occurred while loading the exception.', 'Error', 'error');
-                    closeEditModal();
-                });
-            }
-
-            function closeEditModal() {
-                document.getElementById('editModal').style.display = 'none';
-            }
-
-            function saveException(event) {
-                event.preventDefault();
-                
-                const exceptionId = document.getElementById('edit-exception-id').value;
-                const branch = document.getElementById('edit-branch').value;
-                const header = document.getElementById('edit-header').value;
-                const details = document.getElementById('edit-details').value;
-                const status = document.getElementById('edit-status').value;
-                const comments = document.getElementById('edit-comments').value;
-                
-                const btn = document.getElementById('editSubmitBtn');
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-                
-                const data = {
-                    data: {
-                        branch: branch,
-                        header: header,
-                        details: details
-                    },
-                    status: status,
-                    review_comments: comments
-                };
-                
-                fetch('/adminboard/api/exception/' + exceptionId + '/update/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify(data)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
-                    
-                    if (data.success) {
-                        showToast('Exception updated successfully!', 'Success', 'success');
-                        closeEditModal();
-                        setTimeout(() => location.reload(), 1500);
-                    } else {
-                        showToast('Error: ' + data.error, 'Error', 'error');
-                    }
-                })
-                .catch(error => {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
-                    console.error('Error:', error);
-                    showToast('An error occurred while saving.', 'Error', 'error');
-                });
-            }
-
-            // ============================================
-            // MODAL CLOSE HANDLERS
-            // ============================================
-
-            window.onclick = function(event) {
-                const viewModal = document.getElementById('viewModal');
-                const editModal = document.getElementById('editModal');
-                if (event.target === viewModal) {
-                    closeViewModal();
-                }
-                if (event.target === editModal) {
-                    closeEditModal();
-                }
-            };
-
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    const target = e.target;
-                    if (target.id === 'search-input' || target.id === 'start-date' || target.id === 'end-date') {
-                        applyFilters();
-                    }
-                }
-                if (e.key === 'Escape') {
-                    closeViewModal();
-                    closeEditModal();
-                }
-            });
         </script>
     </body>
 </html>

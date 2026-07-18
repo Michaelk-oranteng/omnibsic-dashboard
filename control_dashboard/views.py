@@ -1714,6 +1714,93 @@ def logged_exceptions(request):
     
     return render(request, 'control_dashboard/logged.html', context)
 
+# Add this to control_dashboard/views.py
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_user_checklist_detail(request, user_id):
+    """
+    API endpoint to get detailed checklist completion for a specific user.
+    """
+    try:
+        user = get_object_or_404(UserProfile, id=user_id)
+        
+        all_checklists = Checklist.objects.filter(is_active=True)
+        
+        assigned_checklists = all_checklists.filter(
+            Q(assigned_users=user) | 
+            Q(assignment_target='all')
+        ).distinct()
+        
+        checklist_details = []
+        completed_count = 0
+        
+        for checklist in assigned_checklists:
+            is_completed = ActivityLog.objects.filter(
+                user=user,
+                activity_type='checklist_updated',
+                details__icontains=checklist.name
+            ).exists()
+            
+            if is_completed:
+                completed_count += 1
+            
+            tasks = checklist.tasks.all()
+            completed_tasks = 0
+            task_list = []
+            
+            for task in tasks:
+                task_completed = ActivityLog.objects.filter(
+                    user=user,
+                    activity_type='task_status_changed',
+                    details__icontains=task.description
+                ).filter(
+                    details__icontains='Completed'
+                ).exists()
+                
+                if task_completed:
+                    completed_tasks += 1
+                
+                task_list.append({
+                    'id': task.id,
+                    'description': task.description,
+                    'is_completed': task_completed
+                })
+            
+            checklist_details.append({
+                'id': checklist.id,
+                'name': checklist.name,
+                'frequency': checklist.get_frequency_display(),
+                'is_completed': is_completed,
+                'tasks': task_list,
+                'total_tasks': len(task_list),
+                'completed_tasks': completed_tasks,
+                'task_completion_rate': round((completed_tasks / len(task_list)) * 100) if len(task_list) > 0 else 0
+            })
+        
+        total_checklists = len(assigned_checklists)
+        completion_rate = round((completed_count / total_checklists) * 100) if total_checklists > 0 else 0
+        
+        return JsonResponse({
+            'success': True,
+            'user': {
+                'id': user.id,
+                'full_name': user.full_name or user.email,
+                'email': user.email,
+                'position': user.get_position_display(),
+                'total_checklists': total_checklists,
+                'completed_checklists': completed_count,
+                'completion_rate': completion_rate,
+                'checklist_details': checklist_details,
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error in api_user_checklist_detail: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 # ==================== DRAFTS & REPORTS ====================
 
