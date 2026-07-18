@@ -134,6 +134,191 @@ class Report(models.Model):
         ordering = ['-created_at']
 
 
+# ==================== REPORT SCHEDULE MODEL ====================
+
+class ReportSchedule(models.Model):
+    """
+    Model for storing the rendition schedule of all reports.
+    This defines the standard reporting schedule including report names,
+    deadlines, and responsible officers.
+    """
+    
+    DEADLINE_TYPES = [
+        ('monthly_date', 'Monthly Date'),
+        ('weekday', 'Weekday'),
+        ('custom', 'Custom'),
+    ]
+    
+    # Report Details
+    name = models.CharField(max_length=200, unique=True, help_text="Name of the report")
+    report_type = models.CharField(max_length=100, help_text="Category/Type of report")
+    description = models.TextField(blank=True, help_text="Detailed description of the report")
+    
+    # Schedule Details
+    deadline_type = models.CharField(max_length=50, choices=DEADLINE_TYPES, default='monthly_date')
+    deadline_day = models.IntegerField(null=True, blank=True, help_text="Day of month (1-31) for monthly_date type")
+    deadline_weekday = models.CharField(max_length=20, blank=True, help_text="Day of week for weekday type")
+    deadline_time = models.TimeField(help_text="Time when report is due (GMT)")
+    deadline_description = models.CharField(max_length=200, blank=True, help_text="Human readable deadline description")
+    
+    # Responsible Officers
+    responsible_officer = models.ForeignKey(
+        UserProfile, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='reports_responsible',
+        help_text="Primary officer responsible for this report"
+    )
+    backup_officer = models.ForeignKey(
+        UserProfile, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='reports_backup',
+        help_text="Backup officer for this report"
+    )
+    responsible_officer_name = models.CharField(max_length=200, blank=True, help_text="Name of responsible officer")
+    backup_officer_name = models.CharField(max_length=200, blank=True, help_text="Name of backup officer")
+    
+    # Additional officers (for reports with multiple assignees like "All")
+    additional_officers = models.ManyToManyField(
+        UserProfile, 
+        blank=True, 
+        related_name='reports_additional',
+        help_text="Additional officers assigned to this report"
+    )
+    additional_officers_names = models.TextField(blank=True, help_text="Comma separated names of additional officers")
+    
+    # Status
+    is_active = models.BooleanField(default=True)
+    is_recurring = models.BooleanField(default=True, help_text="Whether this is a recurring report")
+    frequency = models.CharField(max_length=50, choices=Report.FREQUENCY_CHOICES, default='monthly')
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(UserProfile, on_delete=models.SET_NULL, null=True, related_name='schedules_created')
+    
+    def get_deadline_description(self):
+        """Get a human readable deadline description."""
+        if self.deadline_type == 'monthly_date':
+            return f"{self.deadline_day}th (or last working day before {self.deadline_day}th)"
+        elif self.deadline_type == 'weekday':
+            return f"{self.deadline_weekday} (or last working day before {self.deadline_weekday})"
+        return self.deadline_description
+    
+    def get_responsible_officer_display(self):
+        """Get the responsible officer name."""
+        if self.responsible_officer:
+            return self.responsible_officer.full_name or self.responsible_officer.email
+        return self.responsible_officer_name
+    
+    def get_backup_officer_display(self):
+        """Get the backup officer name."""
+        if self.backup_officer:
+            return self.backup_officer.full_name or self.backup_officer.email
+        return self.backup_officer_name
+    
+    def get_all_officers(self):
+        """Get a list of all officers (responsible, backup, additional)."""
+        officers = []
+        if self.get_responsible_officer_display():
+            officers.append(self.get_responsible_officer_display())
+        if self.get_backup_officer_display():
+            officers.append(self.get_backup_officer_display())
+        
+        # Add additional officers names
+        if self.additional_officers_names:
+            for name in self.additional_officers_names.split(','):
+                if name.strip():
+                    officers.append(name.strip())
+        
+        # Add additional officers from ManyToMany
+        for officer in self.additional_officers.all():
+            officers.append(officer.full_name or officer.email)
+        
+        return officers
+    
+    def __str__(self):
+        return f"{self.name} - {self.get_deadline_description()}"
+    
+    class Meta:
+        db_table = 'report_schedules'
+        ordering = ['name']
+
+
+# ==================== REPORT INSTANCE MODEL ====================
+
+class ReportInstance(models.Model):
+    """
+    Model for tracking individual instances of reports.
+    Each instance represents a specific report for a specific period.
+    """
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('submitted', 'Submitted'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('overdue', 'Overdue'),
+    ]
+    
+    report_schedule = models.ForeignKey(
+        ReportSchedule, 
+        on_delete=models.CASCADE, 
+        related_name='instances'
+    )
+    period_start = models.DateField(null=True, blank=True)
+    period_end = models.DateField(null=True, blank=True)
+    due_date = models.DateField()
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    submitted_by = models.ForeignKey(
+        UserProfile, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='submitted_reports'
+    )
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending')
+    review_comments = models.TextField(blank=True)
+    reviewed_by = models.ForeignKey(
+        UserProfile, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='reviewed_reports'
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    
+    # Data storage
+    data = models.JSONField(default=dict, blank=True)
+    
+    # Tracking
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def is_overdue(self):
+        """Check if the report is overdue."""
+        from django.utils import timezone
+        if self.status in ['pending', 'in_progress'] and self.due_date < timezone.now().date():
+            return True
+        return False
+    
+    def get_status_display(self):
+        if self.is_overdue() and self.status not in ['submitted', 'approved', 'rejected']:
+            return 'Overdue'
+        return dict(self.STATUS_CHOICES).get(self.status, self.status)
+    
+    def __str__(self):
+        return f"{self.report_schedule.name} - {self.period_start} to {self.period_end}"
+    
+    class Meta:
+        db_table = 'report_instances'
+        ordering = ['-due_date']
+
+
 # ==================== TEMPLATE BUILDER MODELS ====================
 
 class ReportTemplate(models.Model):
@@ -276,13 +461,12 @@ class ChecklistTask(models.Model):
         ordering = ['order']
 
 
-
 class Draft(models.Model):
     """
     Model for storing draft reports.
     """
     STATUS_CHOICES = [
-        ('', 'No Status'),  # Add empty status
+        ('', 'No Status'),
         ('draft', 'Draft'),
         ('submitted', 'Submitted for Review'),
         ('in_review', 'In Review'),
@@ -296,7 +480,7 @@ class Draft(models.Model):
     created_by = models.ForeignKey('UserProfile', on_delete=models.CASCADE, related_name='drafts')
     assigned_to = models.ForeignKey('UserProfile', on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_drafts')
     data = models.JSONField(default=dict)
-    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='', blank=True)  # Default is now empty string
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='', blank=True)
     submitted_at = models.DateTimeField(null=True, blank=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
     review_comments = models.TextField(blank=True)
@@ -306,7 +490,7 @@ class Draft(models.Model):
     
     def get_status_display(self):
         if not self.status:
-            return 'Saved'  # Display 'Saved' for empty status
+            return 'Saved'
         return dict(self.STATUS_CHOICES).get(self.status, self.status)
     
     def __str__(self):
@@ -316,7 +500,6 @@ class Draft(models.Model):
         db_table = 'drafts'
         ordering = ['-created_at']
 
-# control_dashboard/models.py
 
 class Branch(models.Model):
     """Model for storing branch information"""
@@ -351,7 +534,6 @@ class ExceptionCategory(models.Model):
     def __str__(self):
         return self.name
 
-# control_dashboard/models.py
 
 class DraftReview(models.Model):
     """
@@ -383,7 +565,6 @@ class DraftReview(models.Model):
     def __str__(self):
         return f"{self.draft.report_type} - {self.get_action_display()} - {self.created_at}"
 
-# In models.py, add this new model:
 
 class ChecklistLog(models.Model):
     """
