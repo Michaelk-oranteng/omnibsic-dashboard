@@ -101,4 +101,6 @@ urlpatterns = [
     path('api/ad-hoc/<int:deduction_id>/delete/', views.api_delete_ad_hoc_deduction, name='api_delete_ad_hoc_deduction'),
     path('api/exceptions/<int:exception_id>/', views.api_get_exception_detail, name='api_get_exception_detail'),
     path('api/exceptions/<int:exception_id>/update/', views.api_update_exception, name='api_update_exception'),
+    path('api/draft/<int:draft_id>/', views.api_get_draft, name='api_get_draft'),
+    path('api/draft/<int:draft_id>/edit/', views.api_edit_draft, name='api_edit_draft'),
 ]

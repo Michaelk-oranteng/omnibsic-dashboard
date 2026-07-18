@@ -282,6 +282,7 @@ class Draft(models.Model):
     Model for storing draft reports.
     """
     STATUS_CHOICES = [
+        ('', 'No Status'),  # Add empty status
         ('draft', 'Draft'),
         ('submitted', 'Submitted for Review'),
         ('in_review', 'In Review'),
@@ -295,7 +296,7 @@ class Draft(models.Model):
     created_by = models.ForeignKey('UserProfile', on_delete=models.CASCADE, related_name='drafts')
     assigned_to = models.ForeignKey('UserProfile', on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_drafts')
     data = models.JSONField(default=dict)
-    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='draft')
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='', blank=True)  # Default is now empty string
     submitted_at = models.DateTimeField(null=True, blank=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
     review_comments = models.TextField(blank=True)
@@ -304,6 +305,8 @@ class Draft(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     def get_status_display(self):
+        if not self.status:
+            return 'Saved'  # Display 'Saved' for empty status
         return dict(self.STATUS_CHOICES).get(self.status, self.status)
     
     def __str__(self):
@@ -313,6 +316,42 @@ class Draft(models.Model):
         db_table = 'drafts'
         ordering = ['-created_at']
 
+# control_dashboard/models.py
+
+class Branch(models.Model):
+    """Model for storing branch information"""
+    name = models.CharField(max_length=200, unique=True)
+    code = models.CharField(max_length=20, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'branches'
+        ordering = ['name']
+        verbose_name_plural = 'Branches'
+
+    def __str__(self):
+        return self.name
+
+
+class ExceptionCategory(models.Model):
+    """Model for storing exception categories"""
+    name = models.CharField(max_length=200, unique=True)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'exception_categories'
+        ordering = ['name']
+        verbose_name_plural = 'Exception Categories'
+
+    def __str__(self):
+        return self.name
+
+# control_dashboard/models.py
 
 class DraftReview(models.Model):
     """
@@ -328,7 +367,7 @@ class DraftReview(models.Model):
         ('resubmitted', 'Resubmitted'),
     ]
     
-    draft = models.ForeignKey(Draft, on_delete=models.CASCADE, related_name='reviews')
+    draft = models.ForeignKey('Draft', on_delete=models.CASCADE, related_name='reviews')
     action = models.CharField(max_length=50, choices=REVIEW_ACTIONS)
     performed_by = models.ForeignKey('UserProfile', on_delete=models.CASCADE, related_name='draft_reviews')
     comments = models.TextField(blank=True)

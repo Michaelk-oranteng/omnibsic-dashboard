@@ -1,3 +1,5 @@
+# control_dashboard/views.py
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.models import User as DjangoUser
@@ -12,8 +14,15 @@ import json
 import csv
 from datetime import datetime, date, timedelta
 from django.contrib.auth.decorators import login_required
+from django import template
+from django.template.defaultfilters import stringfilter
+from control_dashboard.models import ReportTemplate, TemplateField
 
-from .models import UserProfile, ActivityLog, Report, ReportTemplate, TemplateField, TemplateAssignment, Checklist, ChecklistTask, Draft, DraftReview
+from .models import (
+    UserProfile, ActivityLog, Report, ReportTemplate, TemplateField, 
+    TemplateAssignment, Checklist, ChecklistTask, Draft, DraftReview,
+    Branch, ExceptionCategory
+)
 
 
 # ==================== AUTHENTICATION VIEWS ====================
@@ -23,12 +32,11 @@ def login_page(request):
     Login page view - redirects to landing page since login.html was deleted.
     The landing page (index.html) contains the login form.
     """
-    # If user is already authenticated, redirect to their dashboard
     if request.user.is_authenticated:
         return redirect_dashboard(request.user)
     
-    # Redirect to landing page which has the login form
     return redirect('control_dashboard:landing_page')
+
 
 def redirect_dashboard(user):
     """
@@ -44,8 +52,8 @@ def redirect_dashboard(user):
         else:
             return redirect('/adminboard/member/')
     except UserProfile.DoesNotExist:
-        # Default to member dashboard if no profile found
         return redirect('/adminboard/member/')
+
 
 # ==================== API - EMAIL LOGIN ====================
 
@@ -65,7 +73,6 @@ def api_email_login(request):
                 'error': 'Email is required'
             }, status=400)
         
-        # Check if user exists in UserProfile
         try:
             user_profile = UserProfile.objects.get(email__iexact=email)
         except UserProfile.DoesNotExist:
@@ -74,29 +81,22 @@ def api_email_login(request):
                 'error': 'No account found with this email. Please contact your administrator.'
             }, status=404)
         
-        # Check if user is active
         if user_profile.status != 'active':
             return JsonResponse({
                 'success': False,
                 'error': 'Your account is inactive. Please contact support.'
             }, status=403)
         
-        # Get or create Django user
         django_user, created = DjangoUser.objects.get_or_create(
             email__iexact=email,
-            defaults={
-                'username': email,
-                'email': email
-            }
+            defaults={'username': email, 'email': email}
         )
         
         if created:
             django_user.save()
         
-        # Log the user in
         auth_login(request, django_user)
         
-        # Log the activity
         log_activity(
             user=user_profile,
             activity_type='login',
@@ -104,7 +104,6 @@ def api_email_login(request):
             request=request
         )
         
-        # Determine redirect URL based on role
         redirect_urls = {
             'admin': '/adminboard/admin/',
             'supervisor': '/adminboard/supervisor/',
@@ -125,15 +124,10 @@ def api_email_login(request):
         })
         
     except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': 'Invalid JSON data'
-        }, status=400)
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -173,14 +167,10 @@ def api_test_login(request):
         }
         
         if role not in test_users:
-            return JsonResponse({
-                'success': False,
-                'error': 'Invalid user role'
-            }, status=400)
+            return JsonResponse({'success': False, 'error': 'Invalid user role'}, status=400)
         
         user_data = test_users[role]
         
-        # Get or create Django user
         django_user, created = DjangoUser.objects.get_or_create(
             username=user_data['email'],
             defaults={
@@ -193,7 +183,6 @@ def api_test_login(request):
             django_user.set_password(user_data['password'])
             django_user.save()
         
-        # Get or create UserProfile
         user_profile, created = UserProfile.objects.get_or_create(
             email=user_data['email'],
             defaults={
@@ -208,10 +197,8 @@ def api_test_login(request):
             user_profile.role = user_data['role']
             user_profile.save()
         
-        # Log the user in
         auth_login(request, django_user)
         
-        # Log the activity
         log_activity(
             user=user_profile,
             activity_type='login',
@@ -219,7 +206,6 @@ def api_test_login(request):
             request=request
         )
         
-        # Determine redirect URL based on role
         redirect_urls = {
             'admin': '/adminboard/admin/',
             'supervisor': '/adminboard/supervisor/',
@@ -244,6 +230,7 @@ def api_test_login(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 def logout_view(request):
     """
     Logout view.
@@ -263,251 +250,18 @@ def logout_view(request):
     auth_logout(request)
     messages.info(request, 'You have been logged out successfully.')
     return redirect('control_dashboard:landing_page')
+
 
 def landing_page(request):
     """
     Landing page view - the first page users see.
     Renders index.html which contains the login form.
     """
-    # If user is already authenticated, redirect to their dashboard
     if request.user.is_authenticated:
         return redirect_dashboard(request.user)
     
     return render(request, 'control_dashboard/index.html')
 
-def redirect_dashboard(user):
-    """
-    Redirect user to their appropriate dashboard based on role.
-    """
-    try:
-        user_profile = UserProfile.objects.get(email=user.email)
-        
-        if user_profile.role == 'admin':
-            return redirect('/adminboard/admin/')
-        elif user_profile.role == 'supervisor':
-            return redirect('/adminboard/supervisor/')
-        else:
-            return redirect('/adminboard/member/')
-    except UserProfile.DoesNotExist:
-        # Default to member dashboard if no profile found
-        return redirect('/adminboard/member/')
-
-# ==================== API - EMAIL LOGIN ====================
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_email_login(request):
-    """
-    API endpoint for email-based login.
-    """
-    try:
-        data = json.loads(request.body)
-        email = data.get('email', '').strip()
-        
-        if not email:
-            return JsonResponse({
-                'success': False,
-                'error': 'Email is required'
-            }, status=400)
-        
-        # Check if user exists in UserProfile
-        try:
-            user_profile = UserProfile.objects.get(email__iexact=email)
-        except UserProfile.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'error': 'No account found with this email. Please contact your administrator.'
-            }, status=404)
-        
-        # Check if user is active
-        if user_profile.status != 'active':
-            return JsonResponse({
-                'success': False,
-                'error': 'Your account is inactive. Please contact support.'
-            }, status=403)
-        
-        # Get or create Django user
-        django_user, created = DjangoUser.objects.get_or_create(
-            email__iexact=email,
-            defaults={
-                'username': email,
-                'email': email
-            }
-        )
-        
-        if created:
-            django_user.save()
-        
-        # Log the user in
-        auth_login(request, django_user)
-        
-        # Log the activity
-        log_activity(
-            user=user_profile,
-            activity_type='login',
-            details=f'User {email} logged in via email API',
-            request=request
-        )
-        
-        # Determine redirect URL based on role
-        redirect_urls = {
-            'admin': '/adminboard/admin/',
-            'supervisor': '/adminboard/supervisor/',
-            'member': '/adminboard/member/'
-        }
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Welcome back, {user_profile.full_name}!',
-            'redirect_url': redirect_urls.get(user_profile.role, '/adminboard/member/'),
-            'user': {
-                'id': user_profile.id,
-                'email': user_profile.email,
-                'full_name': user_profile.full_name,
-                'role': user_profile.role,
-                'position': user_profile.position
-            }
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': 'Invalid JSON data'
-        }, status=400)
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_test_login(request):
-    """
-    API endpoint for test login with role-based authentication.
-    """
-    try:
-        data = json.loads(request.body)
-        role = data.get('role', 'member')
-        
-        test_users = {
-            'admin': {
-                'email': 'admin@test.com',
-                'full_name': 'Admin User',
-                'position': 'hoc',
-                'role': 'admin',
-                'status': 'active',
-                'password': 'Admin@123'
-            },
-            'supervisor': {
-                'email': 'supervisor@test.com',
-                'full_name': 'Supervisor User',
-                'position': 'cc',
-                'role': 'supervisor',
-                'status': 'active',
-                'password': 'Supervisor@123'
-            },
-            'member': {
-                'email': 'member@test.com',
-                'full_name': 'Member User',
-                'position': 'hoc',
-                'role': 'member',
-                'status': 'active',
-                'password': 'Member@123'
-            }
-        }
-        
-        if role not in test_users:
-            return JsonResponse({
-                'success': False,
-                'error': 'Invalid user role'
-            }, status=400)
-        
-        user_data = test_users[role]
-        
-        # Get or create Django user
-        django_user, created = DjangoUser.objects.get_or_create(
-            username=user_data['email'],
-            defaults={
-                'email': user_data['email'],
-                'first_name': user_data['full_name']
-            }
-        )
-        
-        if created:
-            django_user.set_password(user_data['password'])
-            django_user.save()
-        
-        # Get or create UserProfile
-        user_profile, created = UserProfile.objects.get_or_create(
-            email=user_data['email'],
-            defaults={
-                'full_name': user_data['full_name'],
-                'position': user_data['position'],
-                'role': user_data['role'],
-                'status': user_data['status']
-            }
-        )
-        
-        if not created and user_profile.role != user_data['role']:
-            user_profile.role = user_data['role']
-            user_profile.save()
-        
-        # Log the user in
-        auth_login(request, django_user)
-        
-        # Log the activity
-        log_activity(
-            user=user_profile,
-            activity_type='login',
-            details=f'User {user_data["email"]} logged in via test login as {role}',
-            request=request
-        )
-        
-        # Determine redirect URL based on role
-        redirect_urls = {
-            'admin': '/adminboard/admin/',
-            'supervisor': '/adminboard/supervisor/',
-            'member': '/adminboard/member/'
-        }
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Welcome {user_data["full_name"]}!',
-            'redirect_url': redirect_urls.get(role, '/adminboard/member/'),
-            'user': {
-                'id': user_profile.id,
-                'email': user_profile.email,
-                'full_name': user_profile.full_name,
-                'role': user_profile.role,
-                'position': user_profile.position
-            }
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-def logout_view(request):
-    """
-    Logout view.
-    """
-    if request.user.is_authenticated:
-        try:
-            user_profile = UserProfile.objects.get(email=request.user.email)
-            log_activity(
-                user=user_profile,
-                activity_type='logout',
-                details=f'User {request.user.email} logged out',
-                request=request
-            )
-        except:
-            pass
-    
-    auth_logout(request)
-    messages.info(request, 'You have been logged out successfully.')
-    return redirect('control_dashboard:login')
 
 # ==================== HELPER FUNCTIONS ====================
 
@@ -531,8 +285,8 @@ def log_activity(user, activity_type, details, request=None):
             user_agent=user_agent
         )
     except Exception as e:
-        # Silently fail if logging fails
         pass
+
 
 def get_or_create_user_profile(django_user):
     """
@@ -550,39 +304,25 @@ def get_or_create_user_profile(django_user):
         )
     return user_profile
 
-# ==================== LANDING PAGE ====================
 
-def landing_page(request):
-    """
-    Landing page view - the first page users see.
-    """
-    # If user is already authenticated, redirect to their dashboard
-    if request.user.is_authenticated:
-        return redirect_dashboard(request.user)
-    
-    return render(request, 'control_dashboard/index.html')
+# ==================== LEGACY VIEWS ====================
 
 def login_view(request):
-    """
-    Legacy login page view - redirects to the new login page.
-    """
+    """Legacy login page view - redirects to the new login page."""
     return redirect('control_dashboard:login')
 
+
 def microsoft_login(request):
-    """
-    Redirect to Microsoft login.
-    """
+    """Redirect to Microsoft login."""
     messages.info(request, 'Microsoft login is being configured. Using email login for now.')
     return redirect('control_dashboard:login')
 
+
 def test_login(request, role):
-    """
-    Development-only test login via URL.
-    """
+    """Development-only test login via URL."""
     if not settings.DEBUG:
         return redirect('control_dashboard:login')
     
-    # Map role to email
     role_emails = {
         'admin': 'admin@test.com',
         'member': 'member@test.com',
@@ -594,7 +334,6 @@ def test_login(request, role):
         messages.error(request, 'Invalid test role')
         return redirect('control_dashboard:login')
     
-    # Get or create Django user
     django_user, created = DjangoUser.objects.get_or_create(
         username=email,
         defaults={'email': email}
@@ -604,7 +343,6 @@ def test_login(request, role):
         django_user.set_password('Test@123')
         django_user.save()
     
-    # Get or create UserProfile
     try:
         user_profile = UserProfile.objects.get(email=email)
     except UserProfile.DoesNotExist:
@@ -623,10 +361,8 @@ def test_login(request, role):
             status='active'
         )
     
-    # Login the user
     auth_login(request, django_user)
     
-    # Log the activity
     log_activity(
         user=user_profile,
         activity_type='login',
@@ -634,8 +370,8 @@ def test_login(request, role):
         request=request
     )
     
-    # Redirect based on role
     return redirect_dashboard(django_user)
+
 
 @csrf_exempt
 @require_http_methods(["GET"])
@@ -670,25 +406,22 @@ def get_user_profile_api(request):
             }
         })
 
+
 # ==================== ADMIN PAGE ====================
 
 def admin_page(request):
     """
     Main admin dashboard view with filtering and search.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
-    # Get filter parameters
     search_query = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', '')
     position_filter = request.GET.get('position', '')
     
-    # Start with all users
     users = UserProfile.objects.all()
     
-    # Apply filters
     if search_query:
         users = users.filter(
             Q(email__icontains=search_query) |
@@ -701,12 +434,15 @@ def admin_page(request):
     if position_filter:
         users = users.filter(position=position_filter)
     
-    # Statistics
     total_users = UserProfile.objects.count()
     active_users = UserProfile.objects.filter(status='active').count()
     inactive_users = UserProfile.objects.filter(status='inactive').count()
     hoc_users = UserProfile.objects.filter(position='hoc').count()
     cc_users = UserProfile.objects.filter(position='cc').count()
+    
+    # Get branches and categories for dropdowns
+    branches = Branch.objects.filter(is_active=True).order_by('name')
+    categories = ExceptionCategory.objects.filter(is_active=True).order_by('name')
     
     context = {
         'users': users,
@@ -721,9 +457,12 @@ def admin_page(request):
         'statuses': UserProfile.STATUS_CHOICES,
         'positions': UserProfile.POSITION_CHOICES,
         'roles': UserProfile.ROLE_CHOICES,
+        'branches': branches,
+        'categories': categories,
     }
     
     return render(request, 'control_dashboard/adminboard.html', context)
+
 
 # ==================== REPORT CENTER ====================
 
@@ -731,7 +470,6 @@ def report_center(request):
     """
     Report Center view with filtering.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
@@ -746,7 +484,6 @@ def report_center(request):
     if user_filter and user_filter != 'all':
         reports = reports.filter(assigned_to__id=user_filter)
     
-    # Statistics
     total_reports = Report.objects.count()
     assigned_reports = Report.objects.filter(status='assigned').count()
     in_progress_reports = Report.objects.filter(status='in_progress').count()
@@ -754,9 +491,15 @@ def report_center(request):
     
     users = UserProfile.objects.all()
     
+    # Get branches and categories
+    branches = Branch.objects.filter(is_active=True).order_by('name')
+    categories = ExceptionCategory.objects.filter(is_active=True).order_by('name')
+    
     context = {
         'reports': reports,
         'users': users,
+        'branches': branches,
+        'categories': categories,
         'total_reports': total_reports,
         'assigned_reports': assigned_reports,
         'in_progress_reports': in_progress_reports,
@@ -768,26 +511,23 @@ def report_center(request):
     
     return render(request, 'control_dashboard/reportcenter.html', context)
 
+
 # ==================== ACTIVITY LOGS ====================
 
 def activity_logs(request):
     """
     Activity logs view with filtering.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
-    # Get filter parameters
     start_date = request.GET.get('start_date', '')
     end_date = request.GET.get('end_date', '')
     activity_filter = request.GET.get('activity', '')
     user_filter = request.GET.get('user', '')
     
-    # Start with all logs
     logs = ActivityLog.objects.all()
     
-    # Apply filters
     if start_date:
         try:
             start = datetime.strptime(start_date, '%Y-%m-%d')
@@ -808,7 +548,6 @@ def activity_logs(request):
     if user_filter and user_filter != 'all':
         logs = logs.filter(user_id=user_filter)
     
-    # Get all users for filter dropdown
     users = UserProfile.objects.all()
     
     context = {
@@ -823,13 +562,13 @@ def activity_logs(request):
     
     return render(request, 'control_dashboard/activity.html', context)
 
+
 # ==================== EXPORT LOGS ====================
 
 def export_logs(request):
     """
     Export activity logs as CSV.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
@@ -840,7 +579,6 @@ def export_logs(request):
     
     logs = ActivityLog.objects.all()
     
-    # Apply filters
     if start_date:
         try:
             start = datetime.strptime(start_date, '%Y-%m-%d')
@@ -861,7 +599,6 @@ def export_logs(request):
     if user_filter and user_filter != 'all':
         logs = logs.filter(user_id=user_filter)
     
-    # Create CSV response
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="activity_logs_{timezone.now().date()}.csv"'
     
@@ -877,7 +614,6 @@ def export_logs(request):
             log.ip_address or 'N/A'
         ])
     
-    # Log the export activity
     try:
         user = UserProfile.objects.first()
         if user:
@@ -892,30 +628,33 @@ def export_logs(request):
     
     return response
 
+
 # ==================== TEMPLATE BUILDER ====================
 
 def template_builder(request):
     """
     Template Builder view.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
     templates = ReportTemplate.objects.all().order_by('-created_at')
     users = UserProfile.objects.all()
     
-    # Get all unique report types from existing reports
     report_types = Report.objects.values_list('report_type', flat=True).distinct()
-    # Also get from templates that might have custom types
     template_report_types = ReportTemplate.objects.values_list('name', flat=True).distinct()
-    # Combine and get unique values
     all_report_types = list(set(list(report_types) + list(template_report_types)))
     all_report_types.sort()
+    
+    # Get branches and categories
+    branches = Branch.objects.filter(is_active=True).order_by('name')
+    categories = ExceptionCategory.objects.filter(is_active=True).order_by('name')
     
     context = {
         'templates': templates,
         'users': users,
+        'branches': branches,
+        'categories': categories,
         'field_types': ReportTemplate.FIELD_TYPES,
         'data_sources': ReportTemplate.DATA_SOURCES,
         'report_types': all_report_types,
@@ -923,13 +662,13 @@ def template_builder(request):
     
     return render(request, 'control_dashboard/reporttemplate.html', context)
 
+
 # ==================== CHECKLIST BUILDER ====================
 
 def checklist_builder(request):
     """
     Checklist Builder view.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
@@ -945,31 +684,26 @@ def checklist_builder(request):
     
     return render(request, 'control_dashboard/checklist.html', context)
 
+
 # ==================== MEMBER DASHBOARD ====================
 
 def member_dashboard(request):
     """
     Member Dashboard view.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
-    # Get the current user's profile
     try:
         user_profile = UserProfile.objects.get(email=request.user.email)
     except UserProfile.DoesNotExist:
         user_profile = get_or_create_user_profile(request.user)
     
-    # Calculate the week range (Thursday to Wednesday)
     today = timezone.now().date()
-    
-    # Find the most recent Thursday (if today is Thursday, use today)
     days_since_thursday = (today.weekday() - 3) % 7
     week_start = today - timedelta(days=days_since_thursday)
-    week_end = week_start + timedelta(days=6)  # Wednesday
+    week_end = week_start + timedelta(days=6)
     
-    # 1. Get checklists assigned to this user (Daily frequency only)
     daily_checklists = Checklist.objects.filter(
         frequency='daily'
     ).filter(
@@ -977,7 +711,6 @@ def member_dashboard(request):
         Q(assignment_target='all')
     ).distinct().order_by('-created_at')[:10]
     
-    # 2. Get exceptions logged this week (Thursday to Wednesday)
     exceptions_this_week = ActivityLog.objects.filter(
         user=user_profile,
         activity_type='exception',
@@ -985,7 +718,6 @@ def member_dashboard(request):
         created_at__date__lte=week_end
     ).count()
     
-    # 3. Get assigned tasks this week
     assigned_this_week = Checklist.objects.filter(
         Q(assigned_users=user_profile) | 
         Q(assignment_target='all')
@@ -994,13 +726,11 @@ def member_dashboard(request):
         created_at__date__lte=week_end
     ).count()
     
-    # 4. Get pending submissions (reports assigned but not submitted)
     pending_submissions = Report.objects.filter(
         assigned_to=user_profile,
         status__in=['assigned', 'in_progress']
     ).count()
     
-    # 5. Get recent submissions
     recent_submissions = Report.objects.filter(
         created_by=user_profile
     ).order_by('-created_at')[:5]
@@ -1019,32 +749,28 @@ def member_dashboard(request):
     
     return render(request, 'control_dashboard/memberboard.html', context)
 
+
 # ==================== MEMBER CHECKLIST ====================
 
 def member_checklist(request):
     """
     Member Checklist view - shows checklists assigned to the user.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
-    # Get the current user's profile
     try:
         user_profile = UserProfile.objects.get(email=request.user.email)
     except UserProfile.DoesNotExist:
         user_profile = get_or_create_user_profile(request.user)
     
-    # Get checklists assigned to this user OR assigned to 'all'
     checklists = Checklist.objects.filter(
         Q(assigned_users=user_profile) | 
         Q(assignment_target='all')
     ).distinct().order_by('-created_at')
     
-    # Build checklist data with logs included
     checklist_data = []
     for checklist in checklists:
-        # Get logs from activity logs for this checklist
         logs = ActivityLog.objects.filter(
             user=user_profile,
             activity_type='checklist_updated',
@@ -1070,31 +796,27 @@ def member_checklist(request):
     
     return render(request, 'control_dashboard/checklist-mem.html', context)
 
+
 # ==================== MEMBER ACTIVITY LOGS ====================
 
 def member_activity_logs(request):
     """
     Member Activity Logs view - shows user's own activities only.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
-    # Get the current user's profile
     try:
         user_profile = UserProfile.objects.get(email=request.user.email)
     except UserProfile.DoesNotExist:
         user_profile = get_or_create_user_profile(request.user)
     
-    # Get filter parameters
     start_date = request.GET.get('start_date', '')
     end_date = request.GET.get('end_date', '')
     activity_filter = request.GET.get('activity', '')
     
-    # Start with user's own logs
     logs = ActivityLog.objects.filter(user=user_profile)
     
-    # Apply filters
     if start_date:
         try:
             start = datetime.strptime(start_date, '%Y-%m-%d')
@@ -1123,44 +845,37 @@ def member_activity_logs(request):
     
     return render(request, 'control_dashboard/activity-mem.html', context)
 
+
 # ==================== SUPERVISOR DASHBOARD ====================
 
 def supervisor_dashboard(request):
     """
     Supervisor Dashboard view with real-time metrics.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
-    # Get the current user's profile
     try:
         user_profile = UserProfile.objects.get(email=request.user.email)
     except UserProfile.DoesNotExist:
         user_profile = get_or_create_user_profile(request.user)
     
-    # Calculate week range (Monday to Sunday)
     today = timezone.now().date()
     week_start = today - timedelta(days=today.weekday())
     week_end = week_start + timedelta(days=6)
     
-    # 1. LOGGED EXCEPTIONS - Total count of exceptions captured during the week
     weekly_exceptions = Draft.objects.filter(
         created_at__date__gte=week_start,
         created_at__date__lte=week_end,
         status__in=['draft', 'rejected', 'submitted', 'in_review', 'approved']
     )
     total_exceptions = weekly_exceptions.count()
-    
-    # Get today's exceptions
     today_exceptions = weekly_exceptions.filter(created_at__date=today).count()
     
-    # 2. PENDING REVIEWS - Count of reviews outstanding or due for the week
     pending_reviews = Draft.objects.filter(
         status__in=['submitted', 'in_review']
     ).count()
     
-    # 3. TEAM COMPLETION RATE - Percentage completion of all tasks and reports submitted
     team_drafts = Draft.objects.filter(
         created_by__role__in=['member', 'supervisor']
     )
@@ -1170,19 +885,14 @@ def supervisor_dashboard(request):
         status__in=['approved', 'rejected']
     ).count()
     
-    if total_drafts > 0:
-        completion_rate = round((completed_drafts / total_drafts) * 100)
-    else:
-        completion_rate = 0
+    completion_rate = round((completed_drafts / total_drafts) * 100) if total_drafts > 0 else 0
     
-    # 4. OUTSTANDING EXCEPTIONS - Exceptions that are open or past resolution date
     overage_threshold = today - timedelta(days=7)
     outstanding_exceptions = Draft.objects.filter(
         status__in=['draft', 'submitted', 'in_review', 'rejected'],
         created_at__date__lte=overage_threshold
     ).order_by('created_at')[:10]
     
-    # Get team performance data
     team_members = UserProfile.objects.filter(
         role__in=['member', 'supervisor']
     ).annotate(
@@ -1193,7 +903,6 @@ def supervisor_dashboard(request):
         in_review_drafts=Count('drafts', filter=Q(drafts__status='in_review')),
     )
     
-    # Calculate completion rates
     team_performance = []
     for member in team_members:
         total = member.total_drafts
@@ -1214,10 +923,8 @@ def supervisor_dashboard(request):
             'status': 'success' if percentage >= 90 else 'warning' if percentage >= 70 else 'danger'
         })
     
-    # Sort by percentage descending
     team_performance.sort(key=lambda x: x['percentage'], reverse=True)
     
-    # Get recent exceptions (last 10)
     recent_exceptions = Draft.objects.filter(
         status__in=['draft', 'rejected', 'submitted', 'in_review']
     ).order_by('-created_at')[:10]
@@ -1239,13 +946,13 @@ def supervisor_dashboard(request):
     
     return render(request, 'control_dashboard/supervisorboard.html', context)
 
+
 # ==================== SUPERVISOR EXCEPTIONS ====================
 
 def supervisor_exceptions(request):
     """
     Supervisor view for logged exceptions with filtering and review capabilities.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
@@ -1254,17 +961,16 @@ def supervisor_exceptions(request):
     except UserProfile.DoesNotExist:
         user_profile = get_or_create_user_profile(request.user)
     
-    # Get filter parameters
     status_filter = request.GET.get('status', '')
     date_filter = request.GET.get('date', '')
     search_query = request.GET.get('search', '')
+    branch_filter = request.GET.get('branch', '')
+    category_filter = request.GET.get('category', '')
     
-    # Start with all exceptions
     exceptions = Draft.objects.filter(
         status__in=['draft', 'rejected', 'submitted', 'in_review', 'approved']
     )
     
-    # Apply filters
     if status_filter and status_filter != 'all':
         exceptions = exceptions.filter(status=status_filter)
     
@@ -1283,7 +989,15 @@ def supervisor_exceptions(request):
             Q(created_by__full_name__icontains=search_query)
         )
     
-    # Get status counts for filter badges
+    if branch_filter and branch_filter != 'all':
+        exceptions = exceptions.filter(
+            Q(data__branch__icontains=branch_filter) |
+            Q(data__unit__icontains=branch_filter)
+        )
+    
+    if category_filter and category_filter != 'all':
+        exceptions = exceptions.filter(report_type__icontains=category_filter)
+    
     status_counts = {
         'draft': Draft.objects.filter(status='draft').count(),
         'submitted': Draft.objects.filter(status='submitted').count(),
@@ -1292,11 +1006,19 @@ def supervisor_exceptions(request):
         'rejected': Draft.objects.filter(status='rejected').count(),
     }
     
+    # Get branches and categories for filters
+    branches = Branch.objects.filter(is_active=True).order_by('name')
+    categories = ExceptionCategory.objects.filter(is_active=True).order_by('name')
+    
     context = {
         'user_profile': user_profile,
         'exceptions': exceptions,
+        'branches': branches,
+        'categories': categories,
         'status_counts': status_counts,
         'status_filter': status_filter,
+        'branch_filter': branch_filter,
+        'category_filter': category_filter,
         'date_filter': date_filter,
         'search_query': search_query,
         'statuses': Draft.STATUS_CHOICES,
@@ -1304,38 +1026,35 @@ def supervisor_exceptions(request):
     
     return render(request, 'control_dashboard/supervisor_exceptions.html', context)
 
+
 # ==================== TEAM PERFORMANCE ====================
 
 def team_performance(request):
     """
     Team Performance view - shows all team members and their performance metrics.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
-    # Get the current user's profile
     try:
         user_profile = UserProfile.objects.get(email=request.user.email)
     except UserProfile.DoesNotExist:
         user_profile = get_or_create_user_profile(request.user)
     
-    # Get filter parameters
     search_query = request.GET.get('search', '')
     
-    # Get all team members (users with role 'member' or 'supervisor')
+    # Get all team members (ONLY users with role 'member' - exclude supervisors and admins)
     team_members = UserProfile.objects.filter(
-        role__in=['member', 'supervisor']
+        role='member',
+        status='active'
     )
     
-    # Apply search filter
     if search_query:
         team_members = team_members.filter(
             Q(full_name__icontains=search_query) |
             Q(email__icontains=search_query)
         )
     
-    # Annotate with performance metrics
     team_members = team_members.annotate(
         total_drafts=Count('drafts'),
         submitted_drafts=Count('drafts', filter=Q(drafts__status='submitted')),
@@ -1345,26 +1064,42 @@ def team_performance(request):
         completed_drafts=Count('drafts', filter=Q(drafts__status__in=['approved', 'rejected'])),
     )
     
-    # Calculate performance scores
     team_data = []
     for member in team_members:
         total = member.total_drafts
         completed = member.completed_drafts
         
-        # Calculate percentage
         if total > 0:
-            percentage = round((completed / total) * 100)
+            base_percentage = round((completed / total) * 100)
         else:
-            percentage = 0
+            base_percentage = 0
         
-        # Determine status color
-        if percentage >= 90:
+        ad_hoc_deductions = ActivityLog.objects.filter(
+            user=member,
+            activity_type='ad_hoc_deduction'
+        )
+        
+        total_deduction = 0
+        for deduction in ad_hoc_deductions:
+            try:
+                details = deduction.details
+                if 'Deduction:' in details:
+                    parts = details.split(' - ')
+                    if len(parts) >= 1:
+                        points_part = parts[0].replace('Deduction: ', '').strip()
+                        total_deduction += int(points_part)
+            except (ValueError, IndexError):
+                pass
+        
+        final_percentage = max(0, base_percentage - total_deduction)
+        
+        if final_percentage >= 90:
             status = 'success'
             status_text = 'Excellent'
-        elif percentage >= 70:
+        elif final_percentage >= 70:
             status = 'warning'
             status_text = 'Good'
-        elif percentage >= 50:
+        elif final_percentage >= 50:
             status = 'info'
             status_text = 'Average'
         else:
@@ -1379,26 +1114,24 @@ def team_performance(request):
             'rejected': member.rejected_drafts,
             'in_review': member.in_review_drafts,
             'completed': completed,
-            'percentage': percentage,
+            'base_percentage': base_percentage,
+            'total_deduction': total_deduction,
+            'percentage': final_percentage,
             'status': status,
             'status_text': status_text,
         })
     
-    # Sort by percentage descending
     team_data.sort(key=lambda x: x['percentage'], reverse=True)
     
-    # Calculate team statistics
+    total_members = len(team_data)
     total_tasks = sum(m['total_tasks'] for m in team_data)
     total_completed = sum(m['completed'] for m in team_data)
-    if total_tasks > 0:
-        overall_completion = round((total_completed / total_tasks) * 100)
-    else:
-        overall_completion = 0
+    overall_completion = round((total_completed / total_tasks) * 100) if total_tasks > 0 else 0
     
     context = {
         'user_profile': user_profile,
         'team_data': team_data,
-        'total_members': len(team_data),
+        'total_members': total_members,
         'total_tasks': total_tasks,
         'total_completed': total_completed,
         'overall_completion': overall_completion,
@@ -1407,38 +1140,34 @@ def team_performance(request):
     
     return render(request, 'control_dashboard/team.html', context)
 
+
 # ==================== SUPERVISOR ACTIVITY LOGS ====================
 
 def supervisor_activity_logs(request):
     """
     Supervisor Activity Logs view - shows all activities with filtering.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
-    # Get the current user's profile
     try:
         user_profile = UserProfile.objects.get(email=request.user.email)
     except UserProfile.DoesNotExist:
         user_profile = get_or_create_user_profile(request.user)
     
-    # Get filter parameters
     start_date = request.GET.get('start_date', '')
     end_date = request.GET.get('end_date', '')
     activity_filter = request.GET.get('activity', '')
     user_filter = request.GET.get('user', '')
     
-    # Start with all logs
     logs = ActivityLog.objects.all()
     
-    # Apply filters
     if start_date:
         try:
             start = datetime.strptime(start_date, '%Y-%m-%d')
             logs = logs.filter(created_at__date__gte=start)
         except:
-            pass    
+            pass
     
     if end_date:
         try:
@@ -1453,10 +1182,8 @@ def supervisor_activity_logs(request):
     if user_filter and user_filter != 'all':
         logs = logs.filter(user_id=user_filter)
     
-    # Get all users for filter dropdown
     users = UserProfile.objects.all()
     
-    # Get activity type counts for statistics
     activity_counts = {}
     for log in logs:
         activity_counts[log.activity_type] = activity_counts.get(log.activity_type, 0) + 1
@@ -1476,34 +1203,29 @@ def supervisor_activity_logs(request):
     
     return render(request, 'control_dashboard/activity-sup.html', context)
 
+
 # ==================== SUPERVISOR CHECKLIST ====================
 
 def supervisor_checklist(request):
     """
     Supervisor Activity Checklist view - shows all users and their checklist completion.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
-    # Get the current user's profile
     try:
         user_profile = UserProfile.objects.get(email=request.user.email)
     except UserProfile.DoesNotExist:
         user_profile = get_or_create_user_profile(request.user)
     
-    # Get all users with role 'member' or 'supervisor'
     users = UserProfile.objects.filter(
         role__in=['member', 'supervisor']
     )
     
-    # Get all checklists
     all_checklists = Checklist.objects.filter(is_active=True)
     
-    # Build user completion data
     user_completion_data = []
     for user in users:
-        # Get checklists assigned to this user
         assigned_checklists = all_checklists.filter(
             Q(assigned_users=user) | 
             Q(assignment_target='all')
@@ -1514,7 +1236,6 @@ def supervisor_checklist(request):
         checklist_details = []
         
         for checklist in assigned_checklists:
-            # Check if user has completed this checklist
             is_completed = ActivityLog.objects.filter(
                 user=user,
                 activity_type='checklist_updated',
@@ -1524,13 +1245,11 @@ def supervisor_checklist(request):
             if is_completed:
                 completed_checklists += 1
             
-            # Get tasks for this checklist
             tasks = checklist.tasks.all()
             completed_tasks = 0
             task_details = []
             
             for task in tasks:
-                # Check if task is completed
                 task_completed = ActivityLog.objects.filter(
                     user=user,
                     activity_type='task_status_changed',
@@ -1559,13 +1278,8 @@ def supervisor_checklist(request):
                 'task_completion_rate': round((completed_tasks / len(task_details)) * 100) if len(task_details) > 0 else 0
             })
         
-        # Calculate overall completion rate
-        if total_checklists > 0:
-            completion_rate = round((completed_checklists / total_checklists) * 100)
-        else:
-            completion_rate = 0
+        completion_rate = round((completed_checklists / total_checklists) * 100) if total_checklists > 0 else 0
         
-        # Determine status
         if completion_rate >= 90:
             status = 'success'
         elif completion_rate >= 70:
@@ -1582,10 +1296,8 @@ def supervisor_checklist(request):
             'checklist_details': checklist_details,
         })
     
-    # Sort by completion rate descending
     user_completion_data.sort(key=lambda x: x['completion_rate'], reverse=True)
     
-    # Calculate overall statistics
     total_users = len(user_completion_data)
     avg_completion = sum(u['completion_rate'] for u in user_completion_data) / total_users if total_users > 0 else 0
     
@@ -1599,34 +1311,30 @@ def supervisor_checklist(request):
     
     return render(request, 'control_dashboard/checklist-sup.html', context)
 
+
 # ==================== SUBMITTED REPORTS ====================
 
 def submitted_reports(request):
     """
     Submitted Reports view - shows all submitted reports with scoring.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
-    # Get the current user's profile
     try:
         user_profile = UserProfile.objects.get(email=request.user.email)
     except UserProfile.DoesNotExist:
         user_profile = get_or_create_user_profile(request.user)
     
-    # Get filter parameters
     user_filter = request.GET.get('user', '')
     category_filter = request.GET.get('category', '')
     start_date = request.GET.get('start_date', '')
     end_date = request.GET.get('end_date', '')
     
-    # Start with all submitted drafts
     reports = Draft.objects.filter(
         status__in=['submitted', 'in_review', 'approved', 'rejected', 'revision_requested']
     )
     
-    # Apply filters
     if user_filter and user_filter != 'all':
         reports = reports.filter(created_by__id=user_filter)
     
@@ -1647,19 +1355,11 @@ def submitted_reports(request):
         except:
             pass
     
-    # Get all users for filter dropdown
-    users = UserProfile.objects.filter(
-        role__in=['member', 'supervisor']
-    )
-    
-    # Get unique categories from reports
+    users = UserProfile.objects.filter(role__in=['member', 'supervisor'])
     categories = reports.values_list('report_type', flat=True).distinct()
     
-    # Calculate scores for each report
     report_data = []
     for report in reports:
-        # Calculate base score (percentage of tasks completed)
-        # For now, we'll use a simple calculation based on status
         status_scores = {
             'submitted': 70,
             'in_review': 80,
@@ -1669,13 +1369,9 @@ def submitted_reports(request):
         }
         base_score = status_scores.get(report.status, 50)
         
-        # Get manual deduction from report data or default to 0
         manual_deduction = report.data.get('manual_deduction', 0) if report.data else 0
-        
-        # Calculate final score
         final_score = max(0, base_score - manual_deduction)
         
-        # Determine score badge class
         if final_score >= 90:
             badge_class = 'badge-success'
         elif final_score >= 70:
@@ -1713,42 +1409,32 @@ def submitted_reports(request):
     
     return render(request, 'control_dashboard/submitted.html', context)
 
+
 # ==================== AD-HOC SCORECARD ====================
 
 def ad_hoc_scorecard(request):
     """
     Ad-Hoc Scorecard view - manage manual deductions for users.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
-    # Get the current user's profile
     try:
         user_profile = UserProfile.objects.get(email=request.user.email)
     except UserProfile.DoesNotExist:
         user_profile = get_or_create_user_profile(request.user)
     
-    # Get filter parameter
     user_filter = request.GET.get('user', '')
     
-    # Get all ad-hoc deductions
-    deductions = ActivityLog.objects.filter(
-        activity_type='ad_hoc_deduction'
-    )
+    deductions = ActivityLog.objects.filter(activity_type='ad_hoc_deduction')
     
     if user_filter and user_filter != 'all':
         deductions = deductions.filter(user_id=user_filter)
     
-    # Get all users for filter dropdown
-    users = UserProfile.objects.filter(
-        role__in=['member', 'supervisor']
-    )
+    users = UserProfile.objects.filter(role__in=['member', 'supervisor'])
     
-    # Build deduction data
     deduction_data = []
     for deduction in deductions:
-        # Parse details from the log
         details = deduction.details
         parts = details.split(' - ')
         if len(parts) >= 2:
@@ -1785,23 +1471,21 @@ def ad_hoc_scorecard(request):
     
     return render(request, 'control_dashboard/ad-hoc.html', context)
 
+
 # ==================== LOGGED EXCEPTIONS ====================
 
 def logged_exceptions(request):
     """
     Logged Exceptions view - shows all exceptions with filtering and management.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
-    # Get the current user's profile
     try:
         user_profile = UserProfile.objects.get(email=request.user.email)
     except UserProfile.DoesNotExist:
         user_profile = get_or_create_user_profile(request.user)
     
-    # Get filter parameters
     branch_filter = request.GET.get('branch', '')
     category_filter = request.GET.get('category', '')
     status_filter = request.GET.get('status', '')
@@ -1809,10 +1493,8 @@ def logged_exceptions(request):
     end_date = request.GET.get('end_date', '')
     search_query = request.GET.get('search', '')
     
-    # Start with all exceptions (drafts and reports)
     exceptions = Draft.objects.all().order_by('-created_at')
     
-    # Apply filters
     if branch_filter and branch_filter != 'all':
         exceptions = exceptions.filter(
             Q(data__branch__icontains=branch_filter) |
@@ -1848,17 +1530,10 @@ def logged_exceptions(request):
             Q(created_by__full_name__icontains=search_query)
         )
     
-    # Get unique branches/units from exceptions
-    branches = set()
-    for exception in exceptions:
-        branch = exception.data.get('branch', '') or exception.data.get('unit', '')
-        if branch:
-            branches.add(branch)
+    # Get branches and categories for filters
+    branches = Branch.objects.filter(is_active=True).order_by('name')
+    categories = ExceptionCategory.objects.filter(is_active=True).order_by('name')
     
-    # Get unique categories
-    categories = exceptions.values_list('report_type', flat=True).distinct()
-    
-    # Get status counts for filter badges
     status_counts = {
         'draft': Draft.objects.filter(status='draft').count(),
         'submitted': Draft.objects.filter(status='submitted').count(),
@@ -1871,7 +1546,7 @@ def logged_exceptions(request):
     context = {
         'user_profile': user_profile,
         'exceptions': exceptions,
-        'branches': sorted(list(branches)),
+        'branches': branches,
         'categories': categories,
         'status_counts': status_counts,
         'branch_filter': branch_filter,
@@ -1885,13 +1560,13 @@ def logged_exceptions(request):
     
     return render(request, 'control_dashboard/logged.html', context)
 
+
 # ==================== DRAFTS & REPORTS ====================
 
 def drafts_page(request):
     """
     Drafts page view - shows templates and drafts.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
@@ -1900,19 +1575,22 @@ def drafts_page(request):
     except UserProfile.DoesNotExist:
         user_profile = get_or_create_user_profile(request.user)
     
-    # Get all report types from templates
     templates = ReportTemplate.objects.filter(is_active=True).order_by('name')
     report_types = templates.values_list('name', flat=True).distinct()
     
-    # Get user's drafts
     drafts = Draft.objects.filter(created_by=user_profile).order_by('-created_at')
     
-    # Get supervisors for assignment
     supervisors = UserProfile.objects.filter(Q(role='admin') | Q(role='supervisor'))
+    
+    # Get branches and categories
+    branches = Branch.objects.filter(is_active=True).order_by('name')
+    categories = ExceptionCategory.objects.filter(is_active=True).order_by('name')
     
     context = {
         'user_profile': user_profile,
         'templates': templates,
+        'branches': branches,
+        'categories': categories,
         'report_types': list(report_types),
         'drafts': drafts,
         'supervisors': supervisors,
@@ -1922,11 +1600,11 @@ def drafts_page(request):
     
     return render(request, 'control_dashboard/draft.html', context)
 
+
 def reports_page(request):
     """
-    Reports page view - shows all reports with filtering.
+    Reports page view - shows all saved reports.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
@@ -1935,10 +1613,9 @@ def reports_page(request):
     except UserProfile.DoesNotExist:
         user_profile = get_or_create_user_profile(request.user)
     
-    # Get all reports created by this user
+    # Get all reports (drafts) created by this user - no status filter
     reports = Draft.objects.filter(created_by=user_profile).order_by('-created_at')
     
-    # Get all report types for filter
     report_types = reports.values_list('report_type', flat=True).distinct()
     
     context = {
@@ -1950,11 +1627,59 @@ def reports_page(request):
     
     return render(request, 'control_dashboard/reports.html', context)
 
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_get_draft(request, draft_id):
+    try:
+        draft = get_object_or_404(Draft, id=draft_id)
+        return JsonResponse({
+            'success': True,
+            'draft': {
+                'id': draft.id,
+                'report_type': draft.report_type,
+                'data': draft.data,
+                'status': draft.status,
+                'created_at': draft.created_at.isoformat(),
+                'updated_at': draft.updated_at.isoformat(),
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["PUT", "POST"])
+def api_edit_draft(request, draft_id):
+    try:
+        draft = get_object_or_404(Draft, id=draft_id)
+        data = json.loads(request.body)
+        
+        form_data = data.get('form_data', {})
+        status = data.get('status', draft.status)
+        
+        # Update the draft
+        draft.data = form_data
+        draft.status = status
+        draft.save()
+        
+        log_activity(
+            user=draft.created_by,
+            activity_type='report_updated',
+            details=f'Updated report: {draft.report_type}',
+            request=request
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Report updated successfully'
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
 def submit_page(request):
     """
     Submit page view - shows available exceptions for email submission.
     """
-    # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('control_dashboard:login')
     
@@ -1963,18 +1688,15 @@ def submit_page(request):
     except UserProfile.DoesNotExist:
         user_profile = get_or_create_user_profile(request.user)
     
-    # Get available exceptions (draft or rejected reports)
     exceptions = Draft.objects.filter(
         created_by=user_profile,
         status__in=['draft', 'rejected']
     ).order_by('-created_at')
     
-    # Get all report types for filter
     report_types = Draft.objects.filter(
         created_by=user_profile
     ).values_list('report_type', flat=True).distinct()
     
-    # Get unique categories from exceptions
     categories = []
     category_names = set()
     for exception in exceptions:
@@ -1986,7 +1708,6 @@ def submit_page(request):
                 'name': category_name
             })
     
-    # Get email recipients
     email_recipients = [
         {'email': 'hoc@bank.com', 'name': 'Head of Control', 'department': 'Control'},
         {'email': 'cc@bank.com', 'name': 'Control Committee', 'department': 'Control'},
@@ -1994,7 +1715,6 @@ def submit_page(request):
         {'email': 'risk@bank.com', 'name': 'Risk Management', 'department': 'Risk'},
     ]
     
-    # Convert exceptions to JSON for frontend
     exceptions_json = []
     for exception in exceptions:
         status_display = dict(Draft.STATUS_CHOICES).get(exception.status, exception.status)
@@ -2012,24 +1732,30 @@ def submit_page(request):
             'unit': exception.data.get('unit', '') or exception.data.get('branch', '') or 'N/A',
         })
     
-    # Add user data to template
     user_data = {
         'name': user_profile.full_name if user_profile else 'Test User',
         'email': user_profile.email if user_profile else 'test@bank.com',
         'department': user_profile.get_position_display() if user_profile else 'Member',
     }
     
+    # Get branches and categories
+    branches = Branch.objects.filter(is_active=True).order_by('name')
+    exception_categories = ExceptionCategory.objects.filter(is_active=True).order_by('name')
+    
     context = {
         'user_profile': user_profile,
         'exceptions_json': json.dumps(exceptions_json, default=str),
         'exceptions': exceptions,
+        'branches': branches,
+        'categories': exception_categories,
         'report_types': list(report_types),
-        'categories': categories,
+        'categories_list': categories,
         'email_recipients': email_recipients,
         'user_data': user_data,
     }
     
     return render(request, 'control_dashboard/submit.html', context)
+
 
 # ==================== API - USER ENDPOINTS ====================
 
@@ -2074,6 +1800,7 @@ def api_create_user(request):
         return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["PUT", "POST"])
@@ -2134,6 +1861,7 @@ def api_edit_user(request, user_id):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_update_status(request, user_id):
@@ -2169,6 +1897,7 @@ def api_update_status(request, user_id):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["DELETE"])
 def api_delete_user(request, user_id):
@@ -2196,6 +1925,7 @@ def api_delete_user(request, user_id):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 # ==================== API - REPORT ENDPOINTS ====================
 
 @csrf_exempt
@@ -2213,6 +1943,8 @@ def api_create_report(request):
         deadline_date = data.get('deadline_date', '')
         deadline_time = data.get('deadline_time', '')
         assigned_users = data.get('assigned_users', [])
+        branch_id = data.get('branch_id')
+        category_id = data.get('category_id')
         
         if not report_type:
             return JsonResponse({'success': False, 'error': 'Report type is required'}, status=400)
@@ -2237,6 +1969,27 @@ def api_create_report(request):
             created_by=created_by,
             status='assigned'
         )
+        
+        # Store branch and category in report data
+        if branch_id:
+            try:
+                branch = Branch.objects.get(id=branch_id)
+                if not report.data:
+                    report.data = {}
+                report.data['branch'] = branch.name
+                report.save()
+            except Branch.DoesNotExist:
+                pass
+        
+        if category_id:
+            try:
+                category = ExceptionCategory.objects.get(id=category_id)
+                if not report.data:
+                    report.data = {}
+                report.data['category'] = category.name
+                report.save()
+            except ExceptionCategory.DoesNotExist:
+                pass
         
         assigned_count = 0
         for user_id in assigned_users:
@@ -2265,6 +2018,7 @@ def api_create_report(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_get_report(request, report_id):
@@ -2285,11 +2039,13 @@ def api_get_report(request, report_id):
                 'deadline_date': report.deadline_date.strftime('%Y-%m-%d') if report.deadline_date else '',
                 'deadline_time': report.deadline_time.strftime('%H:%M') if report.deadline_time else '',
                 'assigned_users': list(report.assigned_to.values_list('id', flat=True)),
+                'data': report.data or {},
             }
         })
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["PUT", "POST"])
@@ -2336,6 +2092,12 @@ def api_edit_report(request, report_id):
                     pass
             changes.append('Assigned users updated')
         
+        if 'data' in data:
+            if not report.data:
+                report.data = {}
+            report.data.update(data['data'])
+            changes.append('Report data updated')
+        
         report.save()
         
         if changes:
@@ -2355,6 +2117,7 @@ def api_edit_report(request, report_id):
         return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["DELETE"])
@@ -2382,6 +2145,7 @@ def api_delete_report(request, report_id):
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -2426,6 +2190,7 @@ def api_submit_report(request):
         return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -2475,6 +2240,7 @@ def api_update_report_score(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 # ==================== API - ACTIVITY ENDPOINTS ====================
 
 @csrf_exempt
@@ -2498,6 +2264,7 @@ def api_get_activity(request, activity_id):
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["PUT", "POST"])
@@ -2545,6 +2312,7 @@ def api_edit_activity(request, activity_id):
         return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 # ==================== API - TEMPLATE ENDPOINTS ====================
 
@@ -2613,6 +2381,7 @@ def api_create_template(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_get_template(request, template_id):
@@ -2648,6 +2417,7 @@ def api_get_template(request, template_id):
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["PUT", "POST"])
@@ -2715,6 +2485,7 @@ def api_edit_template(request, template_id):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["DELETE"])
 def api_delete_template(request, template_id):
@@ -2741,6 +2512,7 @@ def api_delete_template(request, template_id):
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -2796,6 +2568,7 @@ def api_assign_template_to_report(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_get_template_fields(request):
@@ -2835,6 +2608,7 @@ def api_get_template_fields(request):
         return JsonResponse({'success': False, 'error': 'Template not found for this report type'}, status=404)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 # ==================== API - CHECKLIST ENDPOINTS ====================
 
@@ -2914,6 +2688,7 @@ def api_create_checklist(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_get_checklist(request, checklist_id):
@@ -2948,6 +2723,7 @@ def api_get_checklist(request, checklist_id):
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["PUT", "POST"])
@@ -3031,6 +2807,7 @@ def api_edit_checklist(request, checklist_id):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["DELETE"])
 def api_delete_checklist(request, checklist_id):
@@ -3057,6 +2834,7 @@ def api_delete_checklist(request, checklist_id):
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -3089,6 +2867,7 @@ def api_update_task_status(request, task_id):
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -3153,6 +2932,7 @@ def api_log_checklist(request):
         return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["GET"])
@@ -3236,19 +3016,20 @@ def api_user_checklist_detail(request, user_id):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 # ==================== API - DRAFT ENDPOINTS ====================
 
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_save_draft(request):
     """
-    API endpoint to save a draft report.
+    API endpoint to save a report directly to the database without any status.
     """
     try:
         data = json.loads(request.body)
         report_type = data.get('report_type', '').strip()
         form_data = data.get('form_data', {})
-        submit = data.get('submit', False)
+        template_name = data.get('template_name', '')
         
         if not report_type:
             return JsonResponse({'success': False, 'error': 'Report type is required'}, status=400)
@@ -3263,45 +3044,47 @@ def api_save_draft(request):
         
         template = ReportTemplate.objects.filter(name=report_type).first()
         
-        if submit:
-            status = 'submitted'
-        else:
-            status = 'draft'
-        
-        draft, created = Draft.objects.update_or_create(
-            report_type=report_type,
-            created_by=user,
-            status='draft',
-            defaults={
-                'template': template,
-                'data': form_data,
-                'status': status,
+        # Prepare the data - store form_data as JSON
+        if isinstance(form_data, list) and len(form_data) > 0:
+            main_data = {
+                '_all_rows': form_data,
+                '_first_row': form_data[0] if form_data else {}
             }
+            if form_data and isinstance(form_data[0], dict):
+                for key, value in form_data[0].items():
+                    main_data[key] = value
+        else:
+            main_data = form_data
+        
+        # Create a NEW draft each time (don't update existing)
+        draft = Draft.objects.create(
+            report_type=report_type,
+            template=template,
+            created_by=user,
+            data=main_data,
+            status='',  # Empty string for no status
         )
         
-        if submit:
-            draft.submitted_at = timezone.now()
-            draft.save()
-        
-        action_text = 'submitted' if submit else 'saved'
+        # Log the activity
         log_activity(
             user=user,
-            activity_type='edit' if not submit else 'report_created',
-            details=f'{action_text.capitalize()} draft for report type: {report_type}',
+            activity_type='report_created',
+            details=f'Saved report: {report_type} (ID: {draft.id})',
             request=request
         )
         
         return JsonResponse({
             'success': True,
-            'message': f'Draft {action_text} successfully',
+            'message': 'Report saved successfully',
             'draft_id': draft.id,
-            'status': draft.status
+            'created': True
         })
         
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -3351,6 +3134,7 @@ def api_submit_draft(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_get_draft(request, draft_id):
@@ -3375,6 +3159,7 @@ def api_get_draft(request, draft_id):
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["DELETE"])
@@ -3409,6 +3194,7 @@ def api_delete_draft(request, draft_id):
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 # ==================== API - OTHER ENDPOINTS ====================
 
@@ -3477,6 +3263,7 @@ def api_send_email(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_team_member_detail(request, user_id):
@@ -3532,6 +3319,7 @@ def api_team_member_detail(request, user_id):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_create_ad_hoc_deduction(request):
@@ -3583,6 +3371,7 @@ def api_create_ad_hoc_deduction(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_update_ad_hoc_deduction(request, deduction_id):
@@ -3625,6 +3414,7 @@ def api_update_ad_hoc_deduction(request, deduction_id):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["DELETE"])
 def api_delete_ad_hoc_deduction(request, deduction_id):
@@ -3646,6 +3436,7 @@ def api_delete_ad_hoc_deduction(request, deduction_id):
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["GET"])
@@ -3695,6 +3486,7 @@ def api_get_exception_detail(request, exception_id):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_update_exception(request, exception_id):
@@ -3738,135 +3530,9 @@ def api_update_exception(request, exception_id):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-# control_dashboard/views.py
 
-def team_performance(request):
-    """
-    Team Performance view - shows all team members and their performance metrics.
-    """
-    # Check if user is authenticated
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    # Get the current user's profile
-    try:
-        user_profile = UserProfile.objects.get(email=request.user.email)
-    except UserProfile.DoesNotExist:
-        user_profile = get_or_create_user_profile(request.user)
-    
-    # Get filter parameters
-    search_query = request.GET.get('search', '')
-    
-    # Get all team members (ONLY users with role 'member' - exclude supervisors and admins)
-    team_members = UserProfile.objects.filter(
-        role='member',  # Only members
-        status='active'  # Only active users
-    )
-    
-    # Apply search filter
-    if search_query:
-        team_members = team_members.filter(
-            Q(full_name__icontains=search_query) |
-            Q(email__icontains=search_query)
-        )
-    
-    # Annotate with performance metrics from drafts
-    team_members = team_members.annotate(
-        total_drafts=Count('drafts'),
-        submitted_drafts=Count('drafts', filter=Q(drafts__status='submitted')),
-        approved_drafts=Count('drafts', filter=Q(drafts__status='approved')),
-        rejected_drafts=Count('drafts', filter=Q(drafts__status='rejected')),
-        in_review_drafts=Count('drafts', filter=Q(drafts__status='in_review')),
-        completed_drafts=Count('drafts', filter=Q(drafts__status__in=['approved', 'rejected'])),
-    )
-    
-    # Calculate performance scores with ad-hoc deductions
-    team_data = []
-    for member in team_members:
-        total = member.total_drafts
-        completed = member.completed_drafts
-        
-        # Calculate base percentage
-        if total > 0:
-            base_percentage = round((completed / total) * 100)
-        else:
-            base_percentage = 0
-        
-        # Get ad-hoc deductions for this user
-        ad_hoc_deductions = ActivityLog.objects.filter(
-            user=member,
-            activity_type='ad_hoc_deduction'
-        )
-        
-        # Calculate total deduction points
-        total_deduction = 0
-        for deduction in ad_hoc_deductions:
-            try:
-                # Parse the points from the details field
-                details = deduction.details
-                if 'Deduction:' in details:
-                    parts = details.split(' - ')
-                    if len(parts) >= 1:
-                        points_part = parts[0].replace('Deduction: ', '').strip()
-                        total_deduction += int(points_part)
-            except (ValueError, IndexError):
-                pass
-        
-        # Apply deduction to the percentage
-        final_percentage = max(0, base_percentage - total_deduction)
-        
-        # Determine status color
-        if final_percentage >= 90:
-            status = 'success'
-            status_text = 'Excellent'
-        elif final_percentage >= 70:
-            status = 'warning'
-            status_text = 'Good'
-        elif final_percentage >= 50:
-            status = 'info'
-            status_text = 'Average'
-        else:
-            status = 'danger'
-            status_text = 'Needs Improvement'
-        
-        team_data.append({
-            'user': member,
-            'total_tasks': total,
-            'submitted': member.submitted_drafts,
-            'approved': member.approved_drafts,
-            'rejected': member.rejected_drafts,
-            'in_review': member.in_review_drafts,
-            'completed': completed,
-            'base_percentage': base_percentage,
-            'total_deduction': total_deduction,
-            'percentage': final_percentage,
-            'status': status,
-            'status_text': status_text,
-        })
-    
-    # Sort by percentage descending
-    team_data.sort(key=lambda x: x['percentage'], reverse=True)
-    
-    # Calculate team statistics
-    total_members = len(team_data)
-    total_tasks = sum(m['total_tasks'] for m in team_data)
-    total_completed = sum(m['completed'] for m in team_data)
-    if total_tasks > 0:
-        overall_completion = round((total_completed / total_tasks) * 100)
-    else:
-        overall_completion = 0
-    
-    context = {
-        'user_profile': user_profile,
-        'team_data': team_data,
-        'total_members': total_members,
-        'total_tasks': total_tasks,
-        'total_completed': total_completed,
-        'overall_completion': overall_completion,
-        'search_query': search_query,
-    }
-    
-    return render(request, 'control_dashboard/team.html', context)
+# ==================== API - EXCEL UPLOAD ====================
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_upload_exceptions(request):
@@ -3897,6 +3563,46 @@ def api_upload_exceptions(request):
             'message': f'{len(exceptions)} exceptions uploaded successfully'
         })
         
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# ==================== API - BRANCHES AND CATEGORIES ====================
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_get_branches(request):
+    """
+    API endpoint to get all active branches.
+    """
+    try:
+        branches = Branch.objects.filter(is_active=True).values('id', 'name')
+        return JsonResponse({
+            'success': True,
+            'branches': list(branches)
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_get_categories(request):
+    """
+    API endpoint to get all exception categories.
+    """
+    try:
+        categories = ExceptionCategory.objects.filter(is_active=True).values('id', 'name')
+        return JsonResponse({
+            'success': True,
+            'categories': list(categories)
+        })
     except Exception as e:
         return JsonResponse({
             'success': False,
