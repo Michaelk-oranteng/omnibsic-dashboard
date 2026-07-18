@@ -56,6 +56,9 @@
         <div class="top-header-center"></div>
         <div class="top-header-right">
             <button class="btn-export-header" onclick="exportChecklist()"><i class="fas fa-download"></i> <span>Export</span></button>
+            <button class="btn-refresh-header" onclick="refreshChecklist()" style="margin-left: 8px; background: #6b7280;">
+                <i class="fas fa-sync"></i> <span>Refresh</span>
+            </button>
         </div>
     </div>
 
@@ -76,7 +79,7 @@
         <div class="checklist-container">
             <div class="glass-card">
                 <h2>Hello, {{ user_profile.full_name|default:"Member" }}!</h2>
-                <p>Welcome to your checklist dashboard. Here you can manage and track your assigned tasks and activities.</p>
+                <p>Welcome to your checklist dashboard. Click on any date in the calendar to mark it as completed.</p>
 
                 <div class="table-container">
                     <table class="dashboard-table">
@@ -172,6 +175,26 @@
         color: #ef4444;
     }
 
+    .btn-refresh-header {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: #6b7280;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .btn-refresh-header:hover {
+        background: #4b5563;
+        transform: translateY(-1px);
+    }
+
     /* Modal styles */
     .modal {
         position: fixed;
@@ -204,7 +227,232 @@
         to { transform: translateY(0); opacity: 1; }
     }
 
-    /* Responsive modal */
+    /* Mini Calendar Styles */
+    .mini-calendar {
+        display: inline-block;
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 8px;
+        min-width: 200px;
+        border: 1px solid #e5e7eb;
+    }
+
+    .cal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #1a2332;
+    }
+
+    .cal-header button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #6b7280;
+        padding: 2px 8px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+    }
+
+    .cal-header button:hover {
+        background: #e5e7eb;
+        color: #1a2332;
+    }
+
+    .cal-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 2px;
+        text-align: center;
+    }
+
+    .day-label {
+        font-size: 10px;
+        font-weight: 600;
+        color: #9ca3af;
+        padding: 2px 0;
+    }
+
+    .cal-day {
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        transition: all 0.2s ease;
+        background: transparent;
+        color: #1a2332;
+        font-family: 'Poppins', sans-serif;
+        margin: 0 auto;
+    }
+
+    .cal-day:hover:not(.empty) {
+        background: #e5e7eb;
+        transform: scale(1.1);
+    }
+
+    .cal-day.today {
+        border: 2px solid #0066cc;
+        font-weight: 600;
+    }
+
+    .cal-day.logged {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .cal-day.logged:hover {
+        background: #a7f3d0;
+    }
+
+    .cal-day.logged .cal-tick-mark {
+        display: block;
+        position: absolute;
+        bottom: -2px;
+        right: -2px;
+        font-size: 10px;
+        color: #10b981;
+    }
+
+    .cal-day.empty {
+        cursor: default;
+        visibility: hidden;
+    }
+
+    .cal-tick-mark {
+        display: none;
+    }
+
+    .day-num {
+        position: relative;
+        z-index: 1;
+    }
+
+    .cal-day .fa-check.cal-tick-mark {
+        position: absolute;
+        bottom: -2px;
+        right: -2px;
+        font-size: 10px;
+        color: #10b981;
+        display: block;
+    }
+
+    .frequency-tag {
+        display: inline-block;
+        padding: 2px 12px;
+        background: #f3f4f6;
+        border-radius: 12px;
+        font-size: 12px;
+        color: #6b7280;
+        font-weight: 500;
+    }
+
+    .table-actions-cluster {
+        display: flex;
+        gap: 4px;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .btn-edit-row {
+        padding: 4px 12px;
+        background: #fef3c7;
+        color: #d97706;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-edit-row:hover {
+        background: #fde68a;
+        transform: scale(1.02);
+    }
+
+    .btn-save {
+        padding: 4px 12px;
+        background: #d1fae5;
+        color: #065f46;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-save:hover {
+        background: #a7f3d0;
+        transform: scale(1.02);
+    }
+
+    .btn-cancel-row {
+        padding: 4px 12px;
+        background: #fee2e2;
+        color: #dc2626;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-cancel-row:hover {
+        background: #fecaca;
+        transform: scale(1.02);
+    }
+
+    .editable-cell .cell-input {
+        width: 100%;
+        padding: 4px 8px;
+        border: 1px solid #0066cc;
+        border-radius: 4px;
+        font-size: 13px;
+        font-family: 'Poppins', sans-serif;
+        background: white;
+    }
+
+    .editable-cell .cell-input:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .mini-calendar {
+            min-width: 150px;
+            padding: 4px;
+        }
+        .cal-day {
+            width: 22px;
+            height: 22px;
+            font-size: 10px;
+        }
+        .cal-day .fa-check.cal-tick-mark {
+            font-size: 8px;
+        }
+        .table-actions-cluster button span {
+            display: none;
+        }
+    }
+
     @media (max-width: 480px) {
         .modal-content {
             margin: 20px;
@@ -212,6 +460,23 @@
         }
         .modal-content h2 {
             font-size: 20px;
+        }
+        .mini-calendar {
+            min-width: 120px;
+            padding: 4px;
+        }
+        .cal-day {
+            width: 18px;
+            height: 18px;
+            font-size: 9px;
+        }
+        .cal-header {
+            font-size: 11px;
+        }
+        .cal-day .fa-check.cal-tick-mark {
+            font-size: 7px;
+            bottom: -1px;
+            right: -1px;
         }
     }
 </style>
@@ -234,17 +499,13 @@
     }
 
     function confirmLogout() {
-        // Show loading state
         const btn = document.querySelector('#logoutModal .btn-create');
         const originalText = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
         btn.disabled = true;
-
-        // Redirect to logout URL
         window.location.href = "{% url 'control_dashboard:logout' %}";
     }
 
-    // Close modal on background click
     document.addEventListener('click', function(event) {
         const modal = document.getElementById('logoutModal');
         if (event.target === modal) {
@@ -252,7 +513,6 @@
         }
     });
 
-    // Close modal on Escape key
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Escape') {
             closeLogoutModal();
@@ -260,7 +520,37 @@
     });
 
     // ============================================
-    // EXISTING FUNCTIONS
+    // TOAST NOTIFICATION
+    // ============================================
+
+    function showToast(message, title = 'Success!') {
+        const toast = document.getElementById('toastNotification');
+        const msgEl = document.getElementById('toastMessage');
+        const titleEl = toast.querySelector('.toast-title');
+        msgEl.textContent = message || 'Action completed successfully.';
+        titleEl.textContent = title;
+        toast.classList.add('show');
+        
+        if (window.toastTimeout) {
+            clearTimeout(window.toastTimeout);
+        }
+        
+        window.toastTimeout = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    window.closeToast = function() {
+        const toast = document.getElementById('toastNotification');
+        toast.classList.remove('show');
+        if (window.toastTimeout) {
+            clearTimeout(window.toastTimeout);
+            window.toastTimeout = null;
+        }
+    };
+
+    // ============================================
+    // CHECKLIST DATA - From Django
     // ============================================
 
     const tasksData = [
@@ -281,94 +571,28 @@
         {% endfor %}
     ];
 
+    // Initialize completionLogs from server data
     let completionLogs = {};
+    tasksData.forEach((task, index) => {
+        completionLogs[index] = task.logs || [];
+    });
+
     let editingRow = null;
     let toastTimeout = null;
-    
-    // Store the active viewing month/year for each row to prevent calendar snapping
     let calendarStates = {};
 
-    function showToast(message) {
-        const toast = document.getElementById('toastNotification');
-        const msgEl = document.getElementById('toastMessage');
-        msgEl.textContent = message || 'Completion date saved successfully.';
-        toast.classList.add('show');
-        
-        if (toastTimeout) {
-            clearTimeout(toastTimeout);
-        }
-        
-        toastTimeout = setTimeout(() => {
-            toast.classList.remove('show');
-        }, 3000);
-    }
-
-    window.closeToast = function() {
-        const toast = document.getElementById('toastNotification');
-        toast.classList.remove('show');
-        if (toastTimeout) {
-            clearTimeout(toastTimeout);
-            toastTimeout = null;
-        }
-    };
-
-    function toggleLogCompletion(index, date, dayElement) {
-        if (!date) return;
-
-        const taskId = tasksData[index]?.id;
-        if (!taskId) return;
-
-        if (!completionLogs[index]) {
-            completionLogs[index] = [];
-        }
-
-        const isLogged = completionLogs[index].includes(date);
-        const action = isLogged ? 'unlog' : 'log';
-
-        fetch("{% url 'control_dashboard:api_log_checklist' %}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCsrfToken()
-            },
-            body: JSON.stringify({
-                checklist_id: taskId,
-                log_date: date,
-                action: action
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                if (isLogged) {
-                    completionLogs[index] = completionLogs[index].filter(d => d !== date);
-                    showToast(data.message || `"${tasksData[index]?.activity}" unlogged for ${date}`);
-                } else {
-                    completionLogs[index].push(date);
-                    showToast(data.message || `"${tasksData[index]?.activity}" logged for ${date}`);
-                }
-                updateRowUI(index);
-            } else {
-                alert('Error: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred. Please try again.');
-        });
-    }
+    // ============================================
+    // RENDER TABLE
+    // ============================================
 
     function renderTable() {
         const tbody = document.getElementById('taskTableBody');
+        if (!tbody) return;
         tbody.innerHTML = '';
 
         tasksData.forEach((task, index) => {
             const tr = document.createElement('tr');
             const isEditing = (editingRow === index);
-
-            if (!completionLogs[index]) {
-                completionLogs[index] = task.logs || [];
-            }
 
             const tdAct = document.createElement('td');
             tdAct.style.fontWeight = '500';
@@ -428,11 +652,14 @@
         });
     }
 
+    // ============================================
+    // CREATE MINI CALENDAR
+    // ============================================
+
     function createMiniCalendar(index, frequency) {
         const container = document.createElement('div');
         container.className = 'mini-calendar';
         
-        // Initialize or recall viewing state for this row
         if (!calendarStates[index]) {
             const today = new Date();
             calendarStates[index] = {
@@ -478,6 +705,8 @@
                 const dateObj = new Date(currentYear, currentMonth, d);
                 const dateStr = dateObj.toISOString().slice(0, 10);
                 let classes = 'cal-day';
+                
+                // Only highlight today, don't auto-log it
                 if (dateStr === todayStr) classes += ' today';
                 
                 const isLogged = loggedDates.includes(dateStr);
@@ -487,12 +716,13 @@
                 dayDiv.className = classes;
                 dayDiv.dataset.date = dateStr;
                 dayDiv.dataset.index = index;
+                dayDiv.innerHTML = `<span class="day-num">${d}</span>`;
                 
-                // Add tick icon markup for logged dates
+                // Add tick mark for logged dates
                 if (isLogged) {
-                    dayDiv.innerHTML = `<span class="day-num">${d}</span><i class="fas fa-check cal-tick-mark"></i>`;
-                } else {
-                    dayDiv.innerHTML = `<span class="day-num">${d}</span>`;
+                    const tick = document.createElement('i');
+                    tick.className = 'fas fa-check cal-tick-mark';
+                    dayDiv.appendChild(tick);
                 }
                 
                 dayDiv.addEventListener('click', function(e) {
@@ -503,6 +733,7 @@
                 container.querySelector('.cal-grid').appendChild(dayDiv);
             }
 
+            // Navigation events
             container.querySelector('.cal-prev').addEventListener('click', function(e) {
                 e.stopPropagation();
                 calendarStates[index].month--;
@@ -527,6 +758,113 @@
         buildCalendar();
         return container;
     }
+
+    // ============================================
+    // TOGGLE LOG COMPLETION - Saves to Database
+    // ============================================
+
+    function toggleLogCompletion(index, date, dayElement) {
+        if (!date) return;
+
+        const taskId = tasksData[index]?.id;
+        if (!taskId) {
+            showToast('Error: Task not found.', 'Error');
+            return;
+        }
+
+        // Check if already logged
+        const isLogged = completionLogs[index] && completionLogs[index].includes(date);
+        const action = isLogged ? 'unlog' : 'log';
+
+        // Show loading state on the day
+        if (dayElement) {
+            dayElement.style.opacity = '0.5';
+            dayElement.disabled = true;
+        }
+
+        fetch("{% url 'control_dashboard:api_log_checklist' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                checklist_id: taskId,
+                log_date: date,
+                action: action
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Server returned ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Update local state
+                if (!completionLogs[index]) {
+                    completionLogs[index] = [];
+                }
+                
+                if (isLogged) {
+                    completionLogs[index] = completionLogs[index].filter(d => d !== date);
+                    showToast(`"${tasksData[index]?.activity}" unlogged for ${date}`, 'Unlogged');
+                } else {
+                    completionLogs[index].push(date);
+                    showToast(`"${tasksData[index]?.activity}" logged for ${date}`, 'Logged!');
+                }
+                
+                // Update the UI for this row
+                updateRowUI(index);
+            } else {
+                showToast('Error: ' + (data.error || 'Unknown error'), 'Error');
+                // Revert the UI
+                if (dayElement) {
+                    dayElement.style.opacity = '1';
+                    dayElement.disabled = false;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('An error occurred. Please try again.', 'Error');
+            if (dayElement) {
+                dayElement.style.opacity = '1';
+                dayElement.disabled = false;
+            }
+        });
+    }
+
+    // ============================================
+    // UPDATE ROW UI
+    // ============================================
+
+    function updateRowUI(index) {
+        const rows = document.querySelectorAll('#taskTableBody tr');
+        if (!rows[index]) return;
+        
+        const tdCalendar = rows[index].querySelector('.log-column');
+        if (!tdCalendar) return;
+        
+        const task = tasksData[index];
+        const newCalendar = createMiniCalendar(index, task.frequency_value);
+        tdCalendar.innerHTML = '';
+        tdCalendar.appendChild(newCalendar);
+    }
+
+    // ============================================
+    // REFRESH CHECKLIST - Reload from Server
+    // ============================================
+
+    function refreshChecklist() {
+        showToast('Refreshing checklist...', 'Loading');
+        window.location.reload();
+    }
+
+    // ============================================
+    // CREATE EDITABLE CELL
+    // ============================================
 
     function createEditableCell(field, value, index, isEditing) {
         const container = document.createElement('div');
@@ -570,12 +908,12 @@
             select.dataset.field = 'frequency';
             select.dataset.index = index;
 
-            const options = ['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Annually'];
+            const options = ['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Yearly'];
             options.forEach(opt => {
                 const option = document.createElement('option');
-                option.value = opt;
+                option.value = opt.toLowerCase();
                 option.textContent = opt;
-                if (opt === value) {
+                if (opt.toLowerCase() === value.toLowerCase()) {
                     option.selected = true;
                 }
                 select.appendChild(option);
@@ -592,18 +930,9 @@
         return container;
     }
 
-    function updateRowUI(index) {
-        const rows = document.querySelectorAll('#taskTableBody tr');
-        if (!rows[index]) return;
-        
-        const tdCalendar = rows[index].querySelector('.log-column');
-        if (!tdCalendar) return;
-        
-        const task = tasksData[index];
-        const newCalendar = createMiniCalendar(index, task.frequency_value);
-        tdCalendar.innerHTML = '';
-        tdCalendar.appendChild(newCalendar);
-    }
+    // ============================================
+    // EDIT FUNCTIONS
+    // ============================================
 
     function startEdit(index) {
         if (editingRow !== null) {
@@ -669,10 +998,12 @@
                 console.log('Checklist updated:', data);
             } else {
                 console.error('Error updating checklist:', data.error);
+                showToast('Error updating: ' + data.error, 'Error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
+            showToast('An error occurred while updating.', 'Error');
         });
     }
 
@@ -681,10 +1012,14 @@
         renderTable();
     }
 
+    // ============================================
+    // EXPORT CHECKLIST
+    // ============================================
+
     function exportChecklist() {
         let csv = 'Activity,Task,Frequency,Logs\n';
-        tasksData.forEach(task => {
-            const logs = completionLogs[task.id] || [];
+        tasksData.forEach((task, index) => {
+            const logs = completionLogs[index] || [];
             csv += `"${task.activity}","${task.task}","${task.frequency}","${logs.join('; ')}"\n`;
         });
         
@@ -693,11 +1028,20 @@
         const a = document.createElement('a');
         a.href = url;
         a.download = 'my_checklist.csv';
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
+        showToast('Checklist exported successfully!', 'Exported');
     }
 
-    renderTable();
+    // ============================================
+    // INITIALIZE
+    // ============================================
+
+    document.addEventListener('DOMContentLoaded', function() {
+        renderTable();
+    });
 </script>
 </body>
 </html>

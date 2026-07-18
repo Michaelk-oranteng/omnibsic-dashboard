@@ -764,6 +764,7 @@ def member_checklist(request):
     except UserProfile.DoesNotExist:
         user_profile = get_or_create_user_profile(request.user)
     
+    # Get all checklists assigned to the user
     checklists = Checklist.objects.filter(
         Q(assigned_users=user_profile) | 
         Q(assignment_target='all')
@@ -771,13 +772,35 @@ def member_checklist(request):
     
     checklist_data = []
     for checklist in checklists:
+        # Query ALL activity logs for this user with checklist_updated type
+        # Then filter by checklist name in the details
         logs = ActivityLog.objects.filter(
             user=user_profile,
-            activity_type='checklist_updated',
-            details__icontains=checklist.name
-        ).values_list('created_at__date', flat=True).distinct()
+            activity_type='checklist_updated'
+        ).filter(
+            Q(details__icontains=checklist.name) |
+            Q(details__icontains=f'"{checklist.name}"')
+        )
         
-        log_dates = [log.strftime('%Y-%m-%d') for log in logs if log]
+        # Extract dates from the logs
+        log_dates = []
+        for log in logs:
+            # Extract date from the details string
+            # Format: "Completed checklist "X" on 2024-01-15"
+            import re
+            match = re.search(r'on\s+(\d{4}-\d{2}-\d{2})', log.details)
+            if match:
+                log_dates.append(match.group(1))
+            else:
+                # Fallback: use the created_at date
+                log_dates.append(log.created_at.strftime('%Y-%m-%d'))
+        
+        # Remove duplicates
+        log_dates = list(set(log_dates))
+        
+        # Debug print
+        print(f"Checklist: {checklist.name}, Logs found: {len(log_dates)}")
+        print(f"Log dates: {log_dates}")
         
         checklist_data.append({
             'id': checklist.id,
@@ -795,6 +818,126 @@ def member_checklist(request):
     }
     
     return render(request, 'control_dashboard/checklist-mem.html', context)
+
+
+# ==================== API - LOG CHECKLIST (FIXED) ====================
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_log_checklist(request):
+    """
+    API endpoint to log or unlog a checklist completion.
+    """
+    try:
+        data = json.loads(request.body)
+        checklist_id = data.get('checklist_id')
+        log_date = data.get('log_date')
+        action = data.get('action', 'log')
+        
+        print(f"=== API Log Checklist Called ===")
+        print(f"checklist_id: {checklist_id}")
+        print(f"log_date: {log_date}")
+        print(f"action: {action}")
+        
+        if not checklist_id or not log_date:
+            return JsonResponse({'success': False, 'error': 'Checklist ID and log date are required'}, status=400)
+        
+        try:
+            checklist = Checklist.objects.get(id=checklist_id)
+            print(f"Checklist found: {checklist.name}")
+        except Checklist.DoesNotExist:
+            print(f"Checklist not found with ID: {checklist_id}")
+            return JsonResponse({'success': False, 'error': 'Checklist not found'}, status=404)
+        
+        try:
+            user = UserProfile.objects.get(email=request.user.email)
+            print(f"User found: {user.email}")
+        except (UserProfile.DoesNotExist, AttributeError):
+            user = UserProfile.objects.first()
+            print(f"Using fallback user: {user.email if user else 'None'}")
+        
+        if not user:
+            return JsonResponse({'success': False, 'error': 'No user found'}, status=400)
+        
+        # Check if the user is assigned to this checklist
+        is_assigned = checklist.assigned_users.filter(id=user.id).exists() or checklist.assignment_target == 'all'
+        print(f"Is user assigned? {is_assigned}")
+        if not is_assigned:
+            return JsonResponse({'success': False, 'error': 'You are not assigned to this checklist'}, status=403)
+        
+        # Parse the log date
+        try:
+            log_date_obj = datetime.strptime(log_date, '%Y-%m-%d').date()
+            print(f"Parsed date: {log_date_obj}")
+        except ValueError:
+            return JsonResponse({'success': False, 'error': 'Invalid date format. Use YYYY-MM-DD'}, status=400)
+        
+        if action == 'unlog':
+            # Find and delete the log entry - FIXED: using Q objects for multiple conditions
+            activity_log = ActivityLog.objects.filter(
+                user=user,
+                activity_type='checklist_updated'
+            ).filter(
+                Q(details__icontains=checklist.name) &
+                Q(details__icontains=log_date)
+            ).first()
+            
+            if activity_log:
+                activity_log.delete()
+                print(f"Unlogged: {checklist.name} for {log_date}")
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Checklist "{checklist.name}" unlogged for {log_date}'
+                })
+            else:
+                print(f"No log entry found to remove for {checklist.name} on {log_date}")
+                return JsonResponse({
+                    'success': True,
+                    'message': 'No log entry found to remove'
+                })
+        else:
+            # Check if already logged for this date - FIXED: using Q objects
+            existing_log = ActivityLog.objects.filter(
+                user=user,
+                activity_type='checklist_updated'
+            ).filter(
+                Q(details__icontains=checklist.name) &
+                Q(details__icontains=log_date)
+            ).exists()
+            
+            if existing_log:
+                print(f"Already logged for {log_date}")
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Already logged for {log_date}',
+                    'already_logged': True
+                })
+            
+            # Create the log entry
+            log_entry = ActivityLog.objects.create(
+                user=user,
+                activity_type='checklist_updated',
+                details=f'Completed checklist "{checklist.name}" on {log_date}',
+                ip_address=request.META.get('REMOTE_ADDR'),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')
+            )
+            
+            print(f"Created ActivityLog entry: ID={log_entry.id}")
+            print(f"Details: {log_entry.details}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Checklist "{checklist.name}" logged for {log_date}'
+            })
+        
+    except json.JSONDecodeError as e:
+        print(f"JSON Decode Error: {e}")
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        print(f"Error in api_log_checklist: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 # ==================== MEMBER ACTIVITY LOGS ====================
@@ -1627,6 +1770,7 @@ def reports_page(request):
     
     return render(request, 'control_dashboard/reports.html', context)
 
+
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_get_draft(request, draft_id):
@@ -1645,6 +1789,7 @@ def api_get_draft(request, draft_id):
         })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["PUT", "POST"])
@@ -2865,71 +3010,6 @@ def api_update_task_status(request, task_id):
             'message': 'Task status updated successfully'
         })
         
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_log_checklist(request):
-    """
-    API endpoint to log or unlog a checklist completion.
-    """
-    try:
-        data = json.loads(request.body)
-        checklist_id = data.get('checklist_id')
-        log_date = data.get('log_date')
-        action = data.get('action', 'log')
-        
-        if not checklist_id or not log_date:
-            return JsonResponse({'success': False, 'error': 'Checklist ID and log date are required'}, status=400)
-        
-        checklist = get_object_or_404(Checklist, id=checklist_id)
-        
-        try:
-            user = UserProfile.objects.get(email=request.user.email)
-        except (UserProfile.DoesNotExist, AttributeError):
-            user = UserProfile.objects.first()
-        
-        if not user:
-            return JsonResponse({'success': False, 'error': 'No user found'}, status=400)
-        
-        if action == 'unlog':
-            activity_log = ActivityLog.objects.filter(
-                user=user,
-                activity_type='checklist_updated'
-            ).filter(
-                details__icontains=checklist.name
-            ).filter(
-                details__icontains=log_date
-            ).first()
-            
-            if activity_log:
-                activity_log.delete()
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Checklist "{checklist.name}" unlogged for {log_date}'
-                })
-            else:
-                return JsonResponse({
-                    'success': True,
-                    'message': 'No log entry found to remove'
-                })
-        else:
-            log_activity(
-                user=user,
-                activity_type='checklist_updated',
-                details=f'Completed checklist "{checklist.name}" on {log_date}',
-                request=request
-            )
-            
-            return JsonResponse({
-                'success': True,
-                'message': f'Checklist "{checklist.name}" logged for {log_date}'
-            })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 

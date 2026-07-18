@@ -116,41 +116,11 @@
             </div>
             {% endif %}
 
-            <!-- ==================== DEBUG SECTION - Remove after fixing ==================== -->
-            <div style="background: #f8f9fa; padding: 15px; margin: 10px 20px; border: 1px solid #ddd; border-radius: 5px; font-size: 12px; max-height: 300px; overflow: auto; display: none;">
-                <h5 style="margin: 0 0 10px 0;">🔍 DEBUG - Report Data Structure</h5>
-                {% for report in reports|slice:":3" %}
-                    <hr>
-                    <strong>Report ID:</strong> {{ report.id }}<br>
-                    <strong>Report Type:</strong> {{ report.report_type }}<br>
-                    <strong>Data Keys:</strong> 
-                    {% if report.data %}
-                        {% for key, value in report.data.items %}
-                            {{ key }} ({{ value|get_type }}) - 
-                        {% endfor %}
-                    {% else %}
-                        No data
-                    {% endif %}
-                    <br>
-                    <strong>Full Data:</strong> 
-                    <pre style="background: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 3px; max-height: 150px; overflow: auto;">{{ report.data|pprint }}</pre>
-                    <strong>Created At:</strong> {{ report.created_at|date:"Y-m-d H:i:s" }}<br>
-                {% endfor %}
-            </div>
-
             <!-- ==================== MAIN CONTENT ==================== -->
             <div class="main-content">
                 <div class="table-container">
                     <div class="table-header">
                         <h4>Saved Reports ({{ reports|length }})</h4>
-                        <div>
-                            <button class="btn-refresh" onclick="toggleDebug()" style="margin-right: 10px; background: #6b7280;">
-                                <i class="fas fa-bug"></i> Debug
-                            </button>
-                            <button class="btn-refresh" onclick="location.reload()">
-                                <i class="fas fa-sync"></i> Refresh
-                            </button>
-                        </div>
                     </div>
 
                     <!-- Group by Report Type -->
@@ -743,25 +713,6 @@
                 color: #1a2332;
             }
 
-            .btn-refresh {
-                background: #0066cc;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 6px;
-                cursor: pointer;
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                font-size: 13px;
-                transition: all 0.2s ease;
-            }
-
-            .btn-refresh:hover {
-                background: #004e8c;
-                transform: scale(1.02);
-            }
-
             /* Responsive */
             @media (max-width: 768px) {
                 .report-details-table {
@@ -814,20 +765,6 @@
         <script>
             function getCsrfToken() {
                 return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            }
-
-            // ============================================
-            // DEBUG TOGGLE
-            // ============================================
-            
-            let debugVisible = false;
-
-            function toggleDebug() {
-                const debugEl = document.querySelector('.debug-section');
-                if (debugEl) {
-                    debugVisible = !debugVisible;
-                    debugEl.style.display = debugVisible ? 'block' : 'none';
-                }
             }
 
             // ============================================
@@ -1131,11 +1068,6 @@
 
             document.addEventListener('DOMContentLoaded', function() {
                 filterReports();
-                // Add debug class to the debug section
-                const debugEl = document.querySelector('.debug-section');
-                if (debugEl) {
-                    debugEl.style.display = 'none';
-                }
             });
         </script>
     </body>

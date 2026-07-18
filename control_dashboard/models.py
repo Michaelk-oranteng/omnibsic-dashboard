@@ -382,3 +382,23 @@ class DraftReview(models.Model):
     
     def __str__(self):
         return f"{self.draft.report_type} - {self.get_action_display()} - {self.created_at}"
+
+# In models.py, add this new model:
+
+class ChecklistLog(models.Model):
+    """
+    Model for storing checklist completion logs.
+    This is a dedicated table for tracking which dates a user completed a checklist.
+    """
+    checklist = models.ForeignKey(Checklist, on_delete=models.CASCADE, related_name='logs')
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='checklist_logs')
+    completion_date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'checklist_logs'
+        unique_together = ['checklist', 'user', 'completion_date']
+        ordering = ['-completion_date']
+    
+    def __str__(self):
+        return f"{self.checklist.name} - {self.user.email} - {self.completion_date}"
