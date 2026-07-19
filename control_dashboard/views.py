@@ -504,49 +504,45 @@ def report_center(request):
 
 # ==================== API - REPORT MANAGEMENT ====================
 
+# views.py - Add/Update these functions
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_create_report(request):
     """
-    API endpoint to create a new report safely parsing empty string variants.
+    API endpoint to create a new report.
     """
     try:
         if not request.body:
-            return JsonResponse({'success': False, 'error': 'Empty layout request payload'}, status=400)
+            return JsonResponse({'success': False, 'error': 'Empty request payload'}, status=400)
             
         data = json.loads(request.body)
+        print(f"Create report data: {data}")
         
         report_type = data.get('report_type', '').strip()
         frequency = data.get('frequency', 'one-off')
         description = data.get('description', '').strip()
-        
-        # Normalize empty inputs explicitly to None so they drop into DB cleanly as NULL
         deadline_date = data.get('deadline_date')
-        if not deadline_date or str(deadline_date).strip() == '':
-            deadline_date = None
-            
         deadline_time = data.get('deadline_time')
-        if not deadline_time or str(deadline_time).strip() == '':
-            deadline_time = None
-            
         assigned_users = data.get('assigned_users', [])
         is_assigned_to_all = data.get('is_assigned_to_all', False)
         
         if not report_type:
             return JsonResponse({'success': False, 'error': 'Report type is required'}, status=400)
         
-        # Owner profile resolution fallback strategy
-        created_by = None
-        if request.user and request.user.is_authenticated:
-            created_by = UserProfile.objects.filter(email=request.user.email).first()
-            
-        if not created_by:
-            created_by = UserProfile.objects.filter(role='admin').first() or UserProfile.objects.first()
-            
-        if not created_by:
-            return JsonResponse({'success': False, 'error': 'No profile accounts exist to take ownership'}, status=400)
+        # Get the logged-in user
+        try:
+            created_by = UserProfile.objects.get(email=request.user.email)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
         
-        # Instantiate report record parameters safely
+        # Normalize empty date/time fields
+        if not deadline_date or str(deadline_date).strip() == '':
+            deadline_date = None
+        if not deadline_time or str(deadline_time).strip() == '':
+            deadline_time = None
+        
+        # Create the report
         report = Report.objects.create(
             report_type=report_type,
             frequency=frequency,
@@ -558,24 +554,22 @@ def api_create_report(request):
             status='assigned'
         )
         
-        # Assign members securely based on targeted role filter constraints
+        # Assign users
         if is_assigned_to_all:
             all_members = UserProfile.objects.filter(role='member', status='active')
             report.assigned_to.set(all_members)
         elif assigned_users:
-            active_members = UserProfile.objects.filter(id__in=assigned_users, role='member', status='active')
+            active_members = UserProfile.objects.filter(id__in=assigned_users, status='active')
             report.assigned_to.set(active_members)
-            
-        try:
-            log_activity(
-                user=created_by,
-                activity_type='report_created',
-                details=f'Created report: {report_type}',
-                request=request
-            )
-        except NameError:
-            pass 
-            
+        
+        # Log activity
+        log_activity(
+            user=created_by,
+            activity_type='report_created',
+            details=f'Created report: {report_type}',
+            request=request
+        )
+        
         return JsonResponse({
             'success': True,
             'message': 'Report created successfully',
@@ -583,8 +577,11 @@ def api_create_report(request):
         }, status=201)
         
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Malformed JSON structural arguments payload'}, status=400)
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
+        print(f"Error creating report: {e}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
@@ -592,10 +589,18 @@ def api_create_report(request):
 @require_http_methods(["GET"])
 def api_get_report(request, report_id):
     """
-    API endpoint to get report details.
+    API endpoint to get report details for editing.
     """
     try:
         report = get_object_or_404(Report, id=report_id)
+        
+        # Check if user has permission
+        try:
+            user_profile = UserProfile.objects.get(email=request.user.email)
+            if report.created_by != user_profile and user_profile.role != 'admin':
+                return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
         
         return JsonResponse({
             'success': True,
@@ -614,6 +619,7 @@ def api_get_report(request, report_id):
         })
         
     except Exception as e:
+        print(f"Error getting report: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
@@ -621,14 +627,25 @@ def api_get_report(request, report_id):
 @require_http_methods(["PUT", "POST"])
 def api_edit_report(request, report_id):
     """
-    API endpoint to modify an existing report dataset instance securely.
+    API endpoint to edit an existing report.
     """
     try:
         report = get_object_or_404(Report, id=report_id)
+        
+        # Check if user has permission
+        try:
+            user_profile = UserProfile.objects.get(email=request.user.email)
+            if report.created_by != user_profile and user_profile.role != 'admin':
+                return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+        
         if not request.body:
-            return JsonResponse({'success': False, 'error': 'Payload structural parameters cannot be blank'}, status=400)
+            return JsonResponse({'success': False, 'error': 'Empty request payload'}, status=400)
             
         data = json.loads(request.body)
+        print(f"Edit report data: {data}")
+        
         changes = []
         
         if 'report_type' in data and data['report_type'].strip() != report.report_type:
@@ -666,27 +683,30 @@ def api_edit_report(request, report_id):
         if is_assigned_to_all:
             report.assigned_to.set(UserProfile.objects.filter(role='member', status='active'))
         elif 'assigned_users' in data:
-            report.assigned_to.set(UserProfile.objects.filter(id__in=assigned_users, role='member', status='active'))
+            report.assigned_to.set(UserProfile.objects.filter(id__in=assigned_users, status='active'))
             changes.append('Assigned user profiles refreshed')
             
         report.save()
         
         if changes:
-            try:
-                log_activity(
-                    user=report.created_by,
-                    activity_type='report_updated',
-                    details=f'Report {report.report_type} updated: ' + '; '.join(changes),
-                    request=request
-                )
-            except NameError:
-                pass
+            log_activity(
+                user=user_profile,
+                activity_type='report_updated',
+                details=f'Report {report.report_type} updated: ' + '; '.join(changes),
+                request=request
+            )
                 
-        return JsonResponse({'success': True, 'message': 'Report modifications indexed successfully'})
+        return JsonResponse({
+            'success': True, 
+            'message': 'Report updated successfully'
+        })
         
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON structure constraints'}, status=400)
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
+        print(f"Error editing report: {e}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
@@ -698,6 +718,15 @@ def api_delete_report(request, report_id):
     """
     try:
         report = get_object_or_404(Report, id=report_id)
+        
+        # Check if user has permission
+        try:
+            user_profile = UserProfile.objects.get(email=request.user.email)
+            if report.created_by != user_profile and user_profile.role != 'admin':
+                return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+        
         report_type = report.report_type
         
         log_activity(
@@ -715,6 +744,7 @@ def api_delete_report(request, report_id):
         })
         
     except Exception as e:
+        print(f"Error deleting report: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 # control_dashboard/views.py - Add these functions

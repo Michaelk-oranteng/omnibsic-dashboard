@@ -89,4 +89,9 @@ urlpatterns = [
     
     # ==================== API - CHECKLIST DETAIL ====================
     path('api/checklist/detail/<int:user_id>/', views.api_checklist_detail, name='api_checklist_detail'),
+    # ==================== API - ADMIN REPORTS ====================
+    path('api/reports/create/', views.api_create_report, name='api_create_report'),
+    path('api/reports/<int:report_id>/', views.api_get_report, name='api_get_report'),
+    path('api/reports/<int:report_id>/edit/', views.api_edit_report, name='api_edit_report'),
+    path('api/reports/<int:report_id>/delete/', views.api_delete_report, name='api_delete_report'),
 ]
