@@ -1,498 +1,300 @@
+{% extends 'control_dashboard/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Admin Dashboard</title>
-        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
-        <link rel="stylesheet" href="{% static 'stylesheets/admin.css' %}" type="text/css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-        <meta name="csrf-token" content="{{ csrf_token }}">
-    </head>
-    <body>
-        <div class="page-wrapper">
-            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
-            <div class="nav-bar">
-                <div class="logo">
-                    <a href="{% url 'control_dashboard:admin_page' %}">
-                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
-                    </a>
-                </div>
 
-                <ul class="nav-links">
-                    <li class="active"><a href="{% url 'control_dashboard:admin_page' %}">
-                        <span class="nav-icon"><i class="fas fa-user-cog"></i></span>
-                        <span class="nav-text">User Management</span>
-                    </a></li> 
-                    <li><a href="{% url 'control_dashboard:report_center' %}">
-                        <span class="nav-icon"><i class="fas fa-flag"></i></span>
-                        <span class="nav-text">Report Center</span>
-                    </a></li> 
-                    <li><a href="{% url 'control_dashboard:template_builder' %}">
-                        <span class="nav-icon"><i class="fas fa-cubes"></i></span>
-                        <span class="nav-text">Template Builder</span>
-                    </a></li>          
-                    <li><a href="{% url 'control_dashboard:checklist_builder' %}">
-                        <span class="nav-icon"><i class="fas fa-tools"></i></span>
-                        <span class="nav-text">Checklist Builder</span>
-                    </a></li>
-                    <li><a href="{% url 'control_dashboard:activity_logs' %}">
-                        <span class="nav-icon"><i class="fas fa-key"></i></span>
-                        <span class="nav-text">Activity Logs</span>
-                    </a></li> 
-                </ul>
+{% block title %}Admin Dashboard - User Management{% endblock %}
 
-                <!-- ==================== PROFILE CARD - NOW A LOGOUT BUTTON ==================== -->
-                <div class="nav-footer">
-                    <div class="nav-profile-card" onclick="logoutUser()" style="cursor: pointer;" title="Click to logout">
-                        <div class="nav-profile-img-wrapper">
-                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
-                        </div>
-                        <div class="nav-profile-info">
-                            <h4 class="nav-user-name">{{ request.user.get_full_name|default:"Admin User" }}</h4>
-                            <p class="nav-user-role">
-                                <i class="fas fa-sign-out-alt" style="font-size: 11px; margin-right: 4px;"></i>
-                                Click to logout
-                            </p>
-                        </div>
-                        <div class="nav-profile-logout-icon">
-                            <i class="fas fa-sign-out-alt"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'stylesheets/admin.css' %}" type="text/css">
+{% endblock %}
 
-            <!-- ==================== TOP HEADER ==================== -->
-            <div class="top-header">
-                <div class="top-header-left">
-                    <span class="page-title">Create and Manage Users</span>
-                </div>
+{% block dashboard_url %}{% url 'control_dashboard:admin_page' %}{% endblock %}
 
-                <div class="top-header-right"></div>
-            </div>
+{% block nav_links %}
+<li class="active"><a href="{% url 'control_dashboard:admin_page' %}">
+    <span class="nav-icon"><i class="fas fa-user-cog"></i></span>
+    <span class="nav-text">User Management</span>
+</a></li> 
+<li><a href="{% url 'control_dashboard:report_center' %}"s>
+    <span class="nav-icon"><i class="fas fa-flag"></i></span>
+    <span class="nav-text">Report Center</span>
+</a></li> 
+<li><a href="{% url 'control_dashboard:template_builder' %}">
+    <span class="nav-icon"><i class="fas fa-cubes"></i></span>
+    <span class="nav-text">Template Builder</span>
+</a></li>          
+<li><a href="{% url 'control_dashboard:checklist_builder' %}">
+    <span class="nav-icon"><i class="fas fa-tools"></i></span>
+    <span class="nav-text">Checklist Builder</span>
+</a></li>
+<li><a href="{% url 'control_dashboard:activity_logs' %}">
+    <span class="nav-icon"><i class="fas fa-key"></i></span>
+    <span class="nav-text">Activity Logs</span>
+</a></li> 
+{% endblock %}
 
-            <!-- ==================== MESSAGES ==================== -->
-            {% if messages %}
-            <div class="messages-container">
-                {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">
-                    {{ message }}
-                    <button class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
+{% block page_title %}Create and Manage Users{% endblock %}
 
-            <!-- ==================== MAIN CONTENT ==================== -->
-            <div class="main-content">
-                <div class="table-container">
-                    <h4>Add New User</h4>
-                    <form id="addUserForm" onsubmit="addUser(event)">
-                        {% csrf_token %}
-                        <table class="users-table">
-                            <thead>
-                                <tr>
-                                    <th>E-mail</th>
-                                    <th>Full Name</th>
-                                    <th>Position</th>
-                                    <th>Role</th>
-                                    <th>Status</th>
-                                    <th class="text-center">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><input type="email" id="newEmail" class="table-input" placeholder="enter email address..." required></td>
-                                    <td><input type="text" id="newFullName" class="table-input" placeholder="enter full name..." required></td>
-                                    <td>
-                                        <select id="newPosition" class="table-select">
-                                            {% for value, label in positions %}
-                                            <option value="{{ value }}">{{ label }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <select id="newRole" class="table-select">
-                                            {% for value, label in roles %}
-                                            <option value="{{ value }}">{{ label }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <select id="newStatus" class="table-select">
-                                            {% for value, label in statuses %}
-                                            <option value="{{ value }}">{{ label }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </td>
-                                    <td class="text-center">
-                                        <button type="submit" class="btn-create">
-                                            <i class="fas fa-plus"></i> Add
-                                        </button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </form>
-
-                    <div class="table-divider"></div>
-
-                    <h4>Existing Users ({{ users|length }})</h4>
-                    
-                    <table class="users-table">
-                        <thead>
-                            <tr>
-                                <th>E-mail</th>
-                                <th>Full Name</th>
-                                <th>Position</th>
-                                <th>Role</th>
-                                <th>Status</th>
-                                <th class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for user in users %}
-                            <tr id="user-row-{{ user.id }}">
-                                <td class="font-bold user-email" data-val="{{ user.email }}">{{ user.email }}</td>
-                                <td class="user-fullname" data-val="{{ user.full_name|default:'' }}">{{ user.full_name|default:"-" }}</td>
-                                <td class="user-position" data-val="{{ user.position }}">{{ user.get_position_display }}</td>
-                                <td class="user-role" data-val="{{ user.role }}">{{ user.get_role_display }}</td>
-                                <td>
-                                    <div class="status-toggle-container">
-                                        <label class="switch">
-                                            <input type="checkbox" 
-                                                   {% if user.status == 'active' %}checked{% endif %}
-                                                   onchange="toggleStatus('{{ user.id }}', this.checked)">
-                                            <span class="slider round"></span>
-                                        </label>
-                                        <span class="status-text" id="status-text-{{ user.id }}">
-                                            {{ user.get_status_display }}
-                                        </span>
-                                    </div>
-                                </td>
-                                <td class="text-center actions-cell">
-                                    <button class="btn-edit" onclick="editUser('{{ user.id }}')">
-                                        <i class="fas fa-edit"></i> Edit
-                                    </button>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="6" class="text-center">
-                                    <i class="fas fa-users"></i>
-                                    No users found. Create your first user!
-                                </td>
-                            </tr>
+{% block content %}
+<div class="table-container">
+    <h4>Add New User</h4>
+    <form id="addUserForm" onsubmit="addUser(event)">
+        {% csrf_token %}
+        <table class="users-table">
+            <thead>
+                <tr>
+                    <th>E-mail</th>
+                    <th>Full Name</th>
+                    <th>Position</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th class="text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><input type="email" id="newEmail" class="table-input" placeholder="enter email address..." required></td>
+                    <td><input type="text" id="newFullName" class="table-input" placeholder="enter full name..." required></td>
+                    <td>
+                        <select id="newPosition" class="table-select">
+                            {% for value, label in positions %}
+                            <option value="{{ value }}">{{ label }}</option>
                             {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+                        </select>
+                    </td>
+                    <td>
+                        <select id="newRole" class="table-select">
+                            {% for value, label in roles %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        <select id="newStatus" class="table-select">
+                            {% for value, label in statuses %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td class="text-center">
+                        <button type="submit" class="btn-create">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </form>
 
-        <!-- Logout Confirmation Modal -->
-        <div id="logoutModal" class="modal" style="display: none;">
-            <div class="modal-content" style="max-width: 400px; text-align: center;">
-                <div style="font-size: 48px; color: #ef4444; margin-bottom: 16px;">
-                    <i class="fas fa-sign-out-alt"></i>
-                </div>
-                <h2 style="margin-bottom: 8px;">Confirm Logout</h2>
-                <p style="color: rgba(26,35,50,0.6); margin-bottom: 24px;">
-                    Are you sure you want to logout?
-                </p>
-                <div style="display: flex; gap: 12px; justify-content: center;">
-                    <button onclick="closeLogoutModal()" class="btn-edit" style="padding: 10px 24px; background: #e5e7eb; color: #1a2332; border: none; border-radius: 6px; cursor: pointer;">
-                        Cancel
+    <div class="table-divider"></div>
+
+    <h4>Existing Users ({{ users|length }})</h4>
+    
+    <table class="users-table">
+        <thead>
+            <tr>
+                <th>E-mail</th>
+                <th>Full Name</th>
+                <th>Position</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr id="user-row-{{ user.id }}">
+                <td class="font-bold user-email" data-val="{{ user.email }}">{{ user.email }}</td>
+                <td class="user-fullname" data-val="{{ user.full_name|default:'' }}">{{ user.full_name|default:"-" }}</td>
+                <td class="user-position" data-val="{{ user.position }}">{{ user.get_position_display }}</td>
+                <td class="user-role" data-val="{{ user.role }}">{{ user.get_role_display }}</td>
+                <td>
+                    <div class="status-toggle-container">
+                        <label class="switch">
+                            <input type="checkbox" 
+                                   {% if user.status == 'active' %}checked{% endif %}
+                                   onchange="toggleStatus('{{ user.id }}', this.checked)">
+                            <span class="slider round"></span>
+                        </label>
+                        <span class="status-text" id="status-text-{{ user.id }}">
+                            {{ user.get_status_display }}
+                        </span>
+                    </div>
+                </td>
+                <td class="text-center actions-cell">
+                    <button class="btn-edit" onclick="editUser('{{ user.id }}')">
+                        <i class="fas fa-edit"></i> Edit
                     </button>
-                    <button onclick="confirmLogout()" class="btn-create" style="padding: 10px 24px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
-                </div>
-            </div>
-        </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center">
+                    <i class="fas fa-users"></i>
+                    No users found. Create your first user!
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
-        <style>
-            /* Profile card logout styling */
-            .nav-profile-card {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 12px 16px;
-                border-radius: 8px;
-                background: rgba(255,255,255,0.05);
-                transition: all 0.2s ease;
-                position: relative;
+<script>
+    // Store choice positions and roles dynamically from context for inline building
+    const POSITIONS = [
+        {% for value, label in positions %}
+        { value: "{{ value }}", label: "{{ label }}" },
+        {% endfor %}
+    ];
+    const ROLES = [
+        {% for value, label in roles %}
+        { value: "{{ value }}", label: "{{ label }}" },
+        {% endfor %}
+    ];
+
+    // ============================================
+    // USER MANAGEMENT FUNCTIONS
+    // ============================================
+
+    function addUser(event) {
+        event.preventDefault();
+        
+        const email = document.getElementById('newEmail').value;
+        const fullName = document.getElementById('newFullName').value;
+        const position = document.getElementById('newPosition').value;
+        const role = document.getElementById('newRole').value;
+        const status = document.getElementById('newStatus').value;
+
+        fetch("{% url 'control_dashboard:api_create_user' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                email: email,
+                full_name: fullName,
+                position: position,
+                role: role,
+                status: status
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again.');
+        });
+    }
 
-            .nav-profile-card:hover {
-                background: rgba(255,255,255,0.1);
-                transform: translateX(4px);
+    function editUser(userId) {
+        const row = document.getElementById(`user-row-${userId}`);
+        if (!row || row.classList.contains('editing')) return;
+
+        row.classList.add('editing');
+
+        const emailCell = row.querySelector('.user-email');
+        const fullNameCell = row.querySelector('.user-fullname');
+        const positionCell = row.querySelector('.user-position');
+        const roleCell = row.querySelector('.user-role');
+        const actionsCell = row.querySelector('.actions-cell');
+
+        const origEmail = emailCell.dataset.val;
+        const origFullName = fullNameCell.dataset.val;
+        const origPosition = positionCell.dataset.val;
+        const origRole = roleCell.dataset.val;
+
+        emailCell.innerHTML = `<input type="email" id="edit-email-${userId}" class="table-input" value="${origEmail}" required>`;
+        fullNameCell.innerHTML = `<input type="text" id="edit-fullname-${userId}" class="table-input" value="${origFullName}">`;
+
+        let positionOptions = POSITIONS.map(opt => 
+            `<option value="${opt.value}" ${opt.value === origPosition ? 'selected' : ''}>${opt.label}</option>`
+        ).join('');
+        positionCell.innerHTML = `<select id="edit-position-${userId}" class="table-select">${positionOptions}</select>`;
+
+        let roleOptions = ROLES.map(opt => 
+            `<option value="${opt.value}" ${opt.value === origRole ? 'selected' : ''}>${opt.label}</option>`
+        ).join('');
+        roleCell.innerHTML = `<select id="edit-role-${userId}" class="table-select">${roleOptions}</select>`;
+
+        actionsCell.innerHTML = `
+            <button class="btn-create" onclick="submitEditUserInline('${userId}')" style="padding: 6px 12px; font-size: 11px;">
+                <i class="fas fa-save"></i> Save
+            </button>
+            <button class="btn-edit" onclick="location.reload()" style="padding: 6px 12px; font-size: 11px; background: rgba(0,0,0,0.05); color: #1a2332; border-color: rgba(0,0,0,0.1); margin-left: 4px;">
+                Cancel
+            </button>
+        `;
+    }
+
+    function submitEditUserInline(userId) {
+        const email = document.getElementById(`edit-email-${userId}`).value;
+        const fullName = document.getElementById(`edit-fullname-${userId}`).value;
+        const position = document.getElementById(`edit-position-${userId}`).value;
+        const role = document.getElementById(`edit-role-${userId}`).value;
+
+        const row = document.getElementById(`user-row-${userId}`);
+        const statusCheckbox = row.querySelector('input[type="checkbox"]');
+        const status = statusCheckbox.checked ? 'active' : 'inactive';
+
+        fetch("{% url 'control_dashboard:api_edit_user' 0 %}".replace('0', userId), {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                email: email,
+                full_name: fullName,
+                position: position,
+                role: role,
+                status: status
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again.');
+        });
+    }
 
-            .nav-profile-card:hover .nav-profile-logout-icon {
-                opacity: 1;
-                transform: translateX(0);
+    function toggleStatus(userId, isChecked) {
+        const status = isChecked ? 'active' : 'inactive';
+        
+        fetch("{% url 'control_dashboard:api_update_status' 0 %}".replace('0', userId), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ status: status })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const statusText = document.getElementById('status-text-' + userId);
+                statusText.textContent = isChecked ? 'Active' : 'Inactive';
+            } else {
+                alert('Error: ' + data.error);
+                location.reload();
             }
-
-            .nav-profile-logout-icon {
-                margin-left: auto;
-                color: rgba(255,255,255,0.4);
-                font-size: 14px;
-                transition: all 0.2s ease;
-                opacity: 0;
-                transform: translateX(-8px);
-            }
-
-            .nav-user-role {
-                font-size: 11px;
-                color: rgba(255,255,255,0.5);
-                margin: 0;
-            }
-
-            .nav-user-role i {
-                color: #ef4444;
-            }
-
-            /* Modal styles */
-            .modal {
-                position: fixed;
-                z-index: 9999;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                background-color: rgba(0, 0, 0, 0.5);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                animation: fadeIn 0.3s ease;
-            }
-
-            .modal-content {
-                background: white;
-                border-radius: 12px;
-                padding: 32px;
-                animation: slideUp 0.3s ease;
-            }
-
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
-
-            @keyframes slideUp {
-                from { transform: translateY(30px); opacity: 0; }
-                to { transform: translateY(0); opacity: 1; }
-            }
-        </style>
-
-        <script>
-            // Store choice positions and roles dynamically from context for inline building
-            const POSITIONS = [
-                {% for value, label in positions %}
-                { value: "{{ value }}", label: "{{ label }}" },
-                {% endfor %}
-            ];
-            const ROLES = [
-                {% for value, label in roles %}
-                { value: "{{ value }}", label: "{{ label }}" },
-                {% endfor %}
-            ];
-
-            function getCsrfToken() {
-                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            }
-
-            // ============================================
-            // LOGOUT FUNCTION
-            // ============================================
-
-            function logoutUser() {
-                document.getElementById('logoutModal').style.display = 'flex';
-            }
-
-            function closeLogoutModal() {
-                document.getElementById('logoutModal').style.display = 'none';
-            }
-
-            function confirmLogout() {
-                // Show loading state
-                const btn = document.querySelector('#logoutModal .btn-create');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
-                btn.disabled = true;
-
-                // Redirect to logout URL
-                window.location.href = "{% url 'control_dashboard:logout' %}";
-            }
-
-            // Close modal on background click
-            document.addEventListener('click', function(event) {
-                const modal = document.getElementById('logoutModal');
-                if (event.target === modal) {
-                    closeLogoutModal();
-                }
-            });
-
-            // Close modal on Escape key
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape') {
-                    closeLogoutModal();
-                }
-            });
-
-            // ============================================
-            // USER MANAGEMENT FUNCTIONS
-            // ============================================
-
-            function addUser(event) {
-                event.preventDefault();
-                
-                const email = document.getElementById('newEmail').value;
-                const fullName = document.getElementById('newFullName').value;
-                const position = document.getElementById('newPosition').value;
-                const role = document.getElementById('newRole').value;
-                const status = document.getElementById('newStatus').value;
-
-                fetch("{% url 'control_dashboard:api_create_user' %}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        email: email,
-                        full_name: fullName,
-                        position: position,
-                        role: role,
-                        status: status
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred. Please try again.');
-                });
-            }
-
-            // Inline editing toggle function
-            function editUser(userId) {
-                const row = document.getElementById(`user-row-${userId}`);
-                if (!row || row.classList.contains('editing')) return;
-
-                row.classList.add('editing');
-
-                // Target columns
-                const emailCell = row.querySelector('.user-email');
-                const fullNameCell = row.querySelector('.user-fullname');
-                const positionCell = row.querySelector('.user-position');
-                const roleCell = row.querySelector('.user-role');
-                const actionsCell = row.querySelector('.actions-cell');
-
-                // Get original raw values
-                const origEmail = emailCell.dataset.val;
-                const origFullName = fullNameCell.dataset.val;
-                const origPosition = positionCell.dataset.val;
-                const origRole = roleCell.dataset.val;
-
-                // Replace cells with table control elements
-                emailCell.innerHTML = `<input type="email" id="edit-email-${userId}" class="table-input" value="${origEmail}" required>`;
-                fullNameCell.innerHTML = `<input type="text" id="edit-fullname-${userId}" class="table-input" value="${origFullName}">`;
-
-                // Build inline selects
-                let positionOptions = POSITIONS.map(opt => 
-                    `<option value="${opt.value}" ${opt.value === origPosition ? 'selected' : ''}>${opt.label}</option>`
-                ).join('');
-                positionCell.innerHTML = `<select id="edit-position-${userId}" class="table-select">${positionOptions}</select>`;
-
-                let roleOptions = ROLES.map(opt => 
-                    `<option value="${opt.value}" ${opt.value === origRole ? 'selected' : ''}>${opt.label}</option>`
-                ).join('');
-                roleCell.innerHTML = `<select id="edit-role-${userId}" class="table-select">${roleOptions}</select>`;
-
-                // Replace button group
-                actionsCell.innerHTML = `
-                    <button class="btn-create" onclick="submitEditUserInline('${userId}')" style="padding: 6px 12px; font-size: 11px;">
-                        <i class="fas fa-save"></i> Save
-                    </button>
-                    <button class="btn-edit" onclick="location.reload()" style="padding: 6px 12px; font-size: 11px; background: rgba(0,0,0,0.05); color: #1a2332; border-color: rgba(0,0,0,0.1); margin-left: 4px;">
-                        Cancel
-                    </button>
-                `;
-            }
-
-            function submitEditUserInline(userId) {
-                const email = document.getElementById(`edit-email-${userId}`).value;
-                const fullName = document.getElementById(`edit-fullname-${userId}`).value;
-                const position = document.getElementById(`edit-position-${userId}`).value;
-                const role = document.getElementById(`edit-role-${userId}`).value;
-
-                // Grab the current checkbox status directly from the toggle element in the row
-                const row = document.getElementById(`user-row-${userId}`);
-                const statusCheckbox = row.querySelector('input[type="checkbox"]');
-                const status = statusCheckbox.checked ? 'active' : 'inactive';
-
-                fetch("{% url 'control_dashboard:api_edit_user' 0 %}".replace('0', userId), {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        email: email,
-                        full_name: fullName,
-                        position: position,
-                        role: role,
-                        status: status
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred. Please try again.');
-                });
-            }
-
-            function toggleStatus(userId, isChecked) {
-                const status = isChecked ? 'active' : 'inactive';
-                
-                fetch("{% url 'control_dashboard:api_update_status' 0 %}".replace('0', userId), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({ status: status })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const statusText = document.getElementById('status-text-' + userId);
-                        statusText.textContent = isChecked ? 'Active' : 'Inactive';
-                    } else {
-                        alert('Error: ' + data.error);
-                        location.reload();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred. Please try again.');
-                });
-            }
-        </script>
-    </body>
-</html>
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again.');
+        });
+    }
+</script>
+{% endblock %}

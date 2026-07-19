@@ -1,144 +1,235 @@
 /* ==========================================================================
-   USER MANAGEMENT STYLES - OMNIBsic BANK
-   Targeted styling for admin dashboard HTML
+   ADMIN.CSS - User Management Styles
+   OmniBSIC Bank Admin Dashboard
    ========================================================================== */
 
-/* 1. Main Content Layout adjustments */
-.main-content {
-    animation: fadeIn 0.4s ease-out;
-}
+/* ==========================================================================
+   1. TABLE CONTAINER
+   ========================================================================== */
 
-h4 {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--omni-primary);
-    margin: 0 0 16px 4px;
-    letter-spacing: -0.2px;
-}
-
-/* 2. Glass Table Container Card */
 .table-container {
     background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
     border: 1px solid var(--glass-border);
-    border-radius: 20px;
-    padding: 24px;
-    box-shadow: 0 8px 32px var(--glass-shadow);
-    margin-bottom: 24px;
+    padding: var(--space-lg);
+    overflow-x: auto;
+    box-shadow: 0 2px 12px var(--glass-shadow);
+    margin-bottom: var(--space-lg);
+}
+
+.table-container:last-child {
+    margin-bottom: 0;
+}
+
+.table-container h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a2332;
+    margin-bottom: var(--space-md);
 }
 
 .table-divider {
     height: 1px;
     background: var(--glass-border-dark);
-    margin: 32px 0 24px;
+    margin: var(--space-lg) 0;
 }
 
-/* 3. Reusable Responsive Table Styles */
+/* ==========================================================================
+   2. USERS TABLE
+   ========================================================================== */
+
 .users-table {
     width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    margin-bottom: 8px;
+    border-collapse: collapse;
+    background: transparent;
 }
 
-.users-table th {
-    background: rgba(0, 51, 153, 0.04);
-    color: rgba(26, 35, 50, 0.6);
+.users-table thead th {
+    background: rgba(0, 51, 153, 0.03);
+    color: rgba(26, 35, 50, 0.5);
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.8px;
-    padding: 14px 16px;
     text-align: left;
-    border-bottom: 2px solid var(--glass-border-dark);
+    padding: 12px var(--space-md);
+    border-bottom: 1px solid var(--glass-border-dark);
 }
 
-.users-table th:first-child {
-    border-radius: 8px 0 0 8px;
-}
-
-.users-table th:last-child {
-    border-radius: 0 8px 8px 0;
-}
-
-.users-table td {
-    padding: 16px;
-    font-size: 13px;
+.users-table tbody td {
+    padding: 14px var(--space-md);
     color: #1a2332;
+    font-size: 13px;
     border-bottom: 1px solid var(--glass-border-dark);
     vertical-align: middle;
+}
+
+.users-table tbody tr:hover {
+    background: rgba(0, 51, 153, 0.02);
 }
 
 .users-table tbody tr:last-child td {
     border-bottom: none;
 }
 
-.users-table tbody tr {
-    transition: background-color 0.2s ease;
+.users-table tbody tr.editing {
+    background: rgba(0, 51, 153, 0.04);
 }
 
-.users-table tbody tr:hover {
-    background: rgba(0, 51, 153, 0.015);
+.users-table tbody tr.editing td {
+    padding: 8px var(--space-md);
 }
 
-/* 4. Table Form Inputs & Selects */
-.table-input,
-.table-select {
-    width: 100%;
-    height: 38px;
-    padding: 8px 12px;
-    font-size: 12.5px;
-    font-weight: 500;
-    color: #1a2332;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid var(--glass-border-dark);
-    border-radius: 8px;
-    outline: none;
-    transition: all 0.3s ease;
-}
-
-.table-select {
-    cursor: pointer;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='rgba(0,0,0,0.3)' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-    padding-right: 30px;
-}
-
-.table-input::placeholder {
-    color: rgba(26, 35, 50, 0.35);
-}
-
-.table-input:hover, .table-input:focus,
-.table-select:hover, .table-select:focus {
-    border-color: var(--omni-primary);
-    box-shadow: 0 0 0 3px rgba(0, 51, 153, 0.08);
-}
-
-/* 5. Utility Styles */
 .font-bold {
     font-weight: 600;
-    color: var(--omni-primary-dark);
 }
 
 .text-center {
-    text-align: center !important;
+    text-align: center;
 }
 
-/* 6. Custom Status Toggle Styling (iOS Slider Style) */
+/* ==========================================================================
+   3. TABLE INPUTS
+   ========================================================================== */
+
+.table-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    background: white;
+    transition: all 0.3s ease;
+    font-family: 'Poppins', sans-serif;
+}
+
+.table-input:focus {
+    border-color: var(--omni-primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 51, 153, 0.1);
+}
+
+.table-input::placeholder {
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+.table-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    background: white;
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+    transition: all 0.3s ease;
+}
+
+.table-select:focus {
+    border-color: var(--omni-primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 51, 153, 0.1);
+}
+
+/* ==========================================================================
+   4. BUTTONS
+   ========================================================================== */
+
+.btn-create {
+    padding: 8px 16px;
+    background: var(--omni-success);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+    font-family: 'Poppins', sans-serif;
+}
+
+.btn-create:hover {
+    background: #008a48;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 168, 89, 0.3);
+}
+
+.btn-create:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-edit {
+    padding: 6px 12px;
+    background: #fef3c7;
+    color: #d97706;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.3s ease;
+    font-family: 'Poppins', sans-serif;
+}
+
+.btn-edit:hover {
+    background: #fde68a;
+    transform: scale(1.02);
+}
+
+.btn-delete {
+    padding: 6px 12px;
+    background: #fee2e2;
+    color: #dc2626;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.3s ease;
+    font-family: 'Poppins', sans-serif;
+}
+
+.btn-delete:hover {
+    background: #fecaca;
+    transform: scale(1.02);
+}
+
+/* ==========================================================================
+   5. STATUS TOGGLE SWITCH
+   ========================================================================== */
+
 .status-toggle-container {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 
+.status-text {
+    font-size: 12px;
+    font-weight: 500;
+    color: #1a2332;
+    transition: color 0.3s ease;
+}
+
+/* Toggle Switch */
 .switch {
     position: relative;
     display: inline-block;
     width: 44px;
-    height: 22px;
+    height: 24px;
     flex-shrink: 0;
 }
 
@@ -155,32 +246,20 @@ h4 {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.1);
-    transition: .4s cubic-bezier(0.4, 0, 0.2, 1);
+    background-color: #d1d5db;
+    transition: all 0.4s ease;
 }
 
 .slider:before {
     position: absolute;
     content: "";
-    height: 16px;
-    width: 16px;
+    height: 18px;
+    width: 18px;
     left: 3px;
     bottom: 3px;
     background-color: white;
-    transition: .4s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.switch input:checked + .slider {
-    background-color: var(--omni-success);
-}
-
-.switch input:focus + .slider {
-    box-shadow: 0 0 1px var(--omni-success);
-}
-
-.switch input:checked + .slider:before {
-    transform: translateX(22px);
+    transition: all 0.4s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .slider.round {
@@ -191,1019 +270,281 @@ h4 {
     border-radius: 50%;
 }
 
-.status-text {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: rgba(26, 35, 50, 0.6);
+.switch input:checked + .slider {
+    background: var(--omni-success);
 }
 
-/* 7. Action Buttons */
-.btn-create, .btn-edit {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 8px 16px;
-    font-size: 12px;
-    font-weight: 600;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: none;
+.switch input:checked + .slider:before {
+    transform: translateX(20px);
 }
 
-.btn-create {
-    background: var(--omni-primary);
-    color: #ffffff;
-    box-shadow: 0 3px 8px rgba(0, 51, 153, 0.15);
+.switch input:focus + .slider {
+    box-shadow: 0 0 0 3px rgba(0, 168, 89, 0.3);
 }
 
-.btn-create:hover {
-    background: var(--omni-primary-light);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 51, 153, 0.25);
-}
-
-.btn-edit {
-    background: rgba(0, 51, 153, 0.05);
-    color: var(--omni-primary);
-    border: 1px solid rgba(0, 51, 153, 0.1);
-}
-
-.btn-edit:hover {
-    background: var(--omni-primary);
-    color: #ffffff;
-    border-color: var(--omni-primary);
-}
-
-/* 8. Messages & Alert Styling */
-.messages-container {
-    margin-left: 252px;
-    margin-top: 92px;
-    padding: 0 32px;
-    width: calc(100% - 252px);
-    margin-bottom: -72px; /* Pull content upwards closer */
-}
-
-.alert {
-    position: relative;
-    padding: 12px 20px;
-    padding-right: 40px;
-    border-radius: 12px;
-    font-size: 13px;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    margin-bottom: 12px;
-    animation: slideDown 0.3s ease-out;
-}
-
-.alert-success {
-    background: rgba(0, 168, 89, 0.1);
-    color: var(--omni-success);
-    border: 1px solid rgba(0, 168, 89, 0.15);
-}
-
-.alert-error, .alert-danger {
-    background: rgba(231, 76, 60, 0.1);
-    color: var(--omni-danger);
-    border: 1px solid rgba(231, 76, 60, 0.15);
-}
-
-.close-alert {
-    position: absolute;
-    right: 12px;
-    background: transparent;
-    border: none;
-    font-size: 18px;
-    color: inherit;
-    cursor: pointer;
+.switch input:disabled + .slider {
     opacity: 0.6;
-}
-
-.close-alert:hover {
-    opacity: 1;
-}
-
-/* 9. Edit User Modal & Inputs */
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(26, 35, 50, 0.4);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 999;
-    animation: fadeIn 0.25s ease-out;
-}
-
-.modal-content {
-    background: #ffffff;
-    width: 480px;
-    border-radius: 24px;
-    padding: 32px;
-    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.15);
-    position: relative;
-    border: 1px solid var(--glass-border);
-    animation: scaleUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.modal-content h2 {
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--omni-primary);
-    margin-bottom: 24px;
-}
-
-.modal .close {
-    position: absolute;
-    top: 24px;
-    right: 24px;
-    font-size: 24px;
-    font-weight: 300;
-    color: rgba(26, 35, 50, 0.4);
-    cursor: pointer;
-    transition: color 0.2s ease;
-}
-
-.modal .close:hover {
-    color: var(--omni-danger);
-}
-
-.form-group {
-    margin-bottom: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.form-group label {
-    font-size: 11px;
-    font-weight: 600;
-    color: rgba(26, 35, 50, 0.5);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.form-group input,
-.form-group select {
-    width: 100%;
-    height: 42px;
-    padding: 10px 14px;
-    font-size: 13px;
-    font-weight: 500;
-    background: #f8fafc;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    border-radius: 10px;
-    outline: none;
-    transition: all 0.3s ease;
-}
-
-.form-group select {
-    cursor: pointer;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='rgba(0,0,0,0.3)' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
-}
-
-.form-group input:hover, .form-group input:focus,
-.form-group select:hover, .form-group select:focus {
-    background: #ffffff;
-    border-color: var(--omni-primary);
-    box-shadow: 0 0 0 3px rgba(0, 51, 153, 0.08);
-}
-
-.btn-submit {
-    width: 100%;
-    height: 44px;
-    background: var(--omni-primary);
-    color: #ffffff;
-    font-size: 14px;
-    font-weight: 600;
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    margin-top: 8px;
-    box-shadow: 0 4px 16px rgba(0, 51, 153, 0.15);
-    transition: all 0.3s ease;
-}
-
-.btn-submit:hover {
-    background: var(--omni-primary-light);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(0, 51, 153, 0.25);
-}
-
-/* 10. Animations */
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes scaleUp {
-    from { transform: scale(0.95); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-}
-
-@keyframes slideDown {
-    from { transform: translateY(-10px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    cursor: not-allowed;
 }
 
 /* ==========================================================================
-   REPORT CENTER COMPONENT STYLES - OMNIBsic BANK
-   Targeted styling for Report creation, Multi-Selects, and Badges
+   6. ACTIONS CELL
    ========================================================================== */
 
-/* --- 1. ASSIGNED USERS MULTI-SELECT (Primary Area of Concern) --- */
-select[multiple].table-select,
-select[multiple].form-control {
-    height: auto !important;
-    min-height: 80px;
-    padding: 6px 8px;
-    background-image: none; /* Remove drop-down arrow for multi-select box */
-    overflow-y: auto;
-}
-
-/* Styled option states within the select box */
-select[multiple] option {
-    padding: 8px 12px;
-    margin-bottom: 4px;
-    border-radius: 6px;
-    font-size: 12.5px;
-    color: #1a2332;
-    background-color: rgba(255, 255, 255, 0.8);
-    transition: all 0.2s ease;
-    cursor: pointer;
-}
-
-select[multiple] option:last-child {
-    margin-bottom: 0;
-}
-
-/* Selected option visual styles */
-select[multiple] option:checked,
-select[multiple] option:selected {
-    background: linear-gradient(135deg, var(--omni-primary), var(--omni-primary-light)) !important;
-    color: #ffffff !important;
-    box-shadow: 0 2px 6px rgba(0, 51, 153, 0.15);
-}
-
-/* Hover effect for unselected options */
-select[multiple] option:hover {
-    background-color: rgba(0, 51, 153, 0.05);
-}
-
-/* Helper text below multi-select box */
-small {
-    display: block;
-    margin-top: 6px;
-    font-size: 11px;
-    color: rgba(26, 35, 50, 0.4);
-    font-weight: 500;
-}
-
-
-/* --- 2. EXISTING REPORT LISTS & COMPONENT BADGES --- */
-
-/* Existing Assigned Users lists inside the table cell */
-.assigned-users-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+.actions-cell {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
-    max-height: 80px;
-    overflow-y: auto;
+    gap: 6px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    min-width: 120px;
 }
 
-.assigned-users-list li {
-    font-size: 12px;
-    font-weight: 500;
-    color: #1a2332;
-    padding: 3px 8px;
-    background: rgba(0, 51, 153, 0.04);
-    border: 1px solid rgba(0, 51, 153, 0.06);
-    border-radius: 6px;
-    display: inline-block;
+.actions-cell .btn-edit,
+.actions-cell .btn-delete,
+.actions-cell .btn-create {
     white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
-}
-
-/* Custom Frequency Tags (Weekly, Monthly, Daily, etc.) */
-.frequency-tag {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 10px;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-radius: 20px;
-    background: rgba(26, 35, 50, 0.05);
-    color: rgba(26, 35, 50, 0.6);
-}
-
-.frequency-tag.daily      { background: rgba(0, 163, 224, 0.08); color: var(--omni-accent); }
-.frequency-tag.weekly     { background: rgba(0, 51, 153, 0.08); color: var(--omni-primary); }
-.frequency-tag.monthly    { background: rgba(201, 168, 76, 0.12); color: var(--omni-gold-dark); }
-.frequency-tag.quarterly  { background: rgba(245, 166, 35, 0.08); color: var(--omni-warning); }
-.frequency-tag.yearly     { background: rgba(231, 76, 60, 0.08); color: var(--omni-danger); }
-
-/* Deadline Time styling */
-.time-stamp {
-    font-family: 'Inter', monospace;
-    font-size: 12px;
-    font-weight: 600;
-    background: rgba(26, 35, 50, 0.03);
-    padding: 3px 6px;
-    border-radius: 6px;
-    color: #1a2332;
-}
-
-/* Status Badges */
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 12px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-radius: 12px;
-}
-
-.status-badge.assigned,
-.status-badge.active,
-.status-badge.completed {
-    background: rgba(0, 168, 89, 0.08);
-    color: var(--omni-success);
-    border: 1px solid rgba(0, 168, 89, 0.15);
-}
-
-.status-badge.in_progress,
-.status-badge.inactive,
-.status-badge.pending {
-    background: rgba(245, 166, 35, 0.08);
-    color: var(--omni-warning);
-    border: 1px solid rgba(245, 166, 35, 0.15);
-}
-
-
-/* --- 3. CONTAINER ACTION HEADERS & BUTTONS --- */
-.table-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-}
-
-.table-header h4 {
-    margin: 0;
-}
-
-.btn-refresh {
-    background: var(--glass-bg-dark);
-    color: var(--omni-primary);
-    border: 1px solid var(--glass-border-dark);
-    padding: 6px 14px;
-    font-size: 12px;
-    font-weight: 600;
-    border-radius: 8px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.2s ease;
-}
-
-.btn-refresh:hover {
-    background: rgba(0, 51, 153, 0.05);
-    border-color: var(--omni-primary);
-}
-
-.btn-delete {
-    background: rgba(231, 76, 60, 0.05);
-    color: var(--omni-danger);
-    border: 1px solid rgba(231, 76, 60, 0.1);
-    padding: 8px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    margin-left: 4px;
-}
-
-.btn-delete:hover {
-    background: var(--omni-danger);
-    color: #ffffff;
-    border-color: var(--omni-danger);
 }
 
 /* ==========================================================================
-   ACTIVITY LOGS COMPONENT STYLES - OMNIBsic BANK
-   Targeted styling for Filter Controls, Activity Tags, and Modal Actions
+   7. EMPTY STATE
    ========================================================================== */
 
-/* --- 1. DYNAMIC ACTIVITY TAGS --- */
-.activity-tag {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 10px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-radius: 20px;
-    background: rgba(26, 35, 50, 0.05);
-    color: rgba(26, 35, 50, 0.6);
-    border: 1px solid rgba(0, 0, 0, 0.02);
-}
-
-/* Categorized background states depending on the log type */
-.activity-tag.login,
-.activity-tag.signin,
-.activity-tag.create {
-    background: rgba(0, 168, 89, 0.08);
-    color: var(--omni-success);
-    border-color: rgba(0, 168, 89, 0.15);
-}
-
-.activity-tag.logout,
-.activity-tag.signout {
-    background: rgba(26, 35, 50, 0.06);
-    color: rgba(26, 35, 50, 0.7);
-}
-
-.activity-tag.update,
-.activity-tag.edit,
-.activity-tag.modify {
-    background: rgba(0, 163, 224, 0.08);
-    color: var(--omni-accent);
-    border-color: rgba(0, 163, 224, 0.15);
-}
-
-.activity-tag.delete,
-.activity-tag.remove,
-.activity-tag.alert {
-    background: rgba(231, 76, 60, 0.08);
-    color: var(--omni-danger);
-    border-color: rgba(231, 76, 60, 0.15);
-}
-
-
-/* --- 2. HEADER DATE RANGE INPUT STYLING --- */
-.header-date-group {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.header-date-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 6px 12px;
-    border-radius: 10px;
-    border: 1px solid var(--glass-border-dark);
-    transition: all 0.3s ease;
-}
-
-.header-date-wrapper:focus-within {
-    border-color: var(--omni-primary);
-    box-shadow: 0 0 0 3px rgba(0, 51, 153, 0.08);
-}
-
-.header-date-wrapper span {
-    font-size: 11px;
-    color: rgba(26, 35, 50, 0.4);
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.header-date-input {
-    border: none;
-    outline: none;
-    background: transparent;
-    color: #1a2332;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    width: 115px;
-}
-
-.header-date-input::-webkit-calendar-picker-indicator {
-    opacity: 0.5;
-    cursor: pointer;
-    transition: opacity 0.2s ease;
-}
-
-.header-date-input::-webkit-calendar-picker-indicator:hover {
-    opacity: 0.8;
-}
-
-
-/* --- 3. MODAL ACTIONS GROUP (For the Edit Activity form) --- */
-.modal-actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 24px;
-    width: 100%;
-}
-
-.modal-actions .btn-submit {
-    flex: 2;
-    margin-top: 0; /* Override vertical margin for flex alignment */
-}
-
-.btn-cancel-modal {
-    flex: 1;
-    height: 44px;
-    background: var(--glass-bg-dark);
-    color: #1a2332;
-    font-size: 14px;
-    font-weight: 600;
-    border: 1px solid var(--glass-border-dark);
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.btn-cancel-modal:hover {
-    background: rgba(231, 76, 60, 0.08);
-    color: var(--omni-danger);
-    border-color: rgba(231, 76, 60, 0.15);
-}
-
-
-/* --- 4. GENERAL TABLE FALLBACKS --- */
-/* Mapping .dashboard-table classes directly to the standard glass table design */
-.dashboard-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    margin-bottom: 8px;
-}
-
-.dashboard-table th {
-    background: rgba(0, 51, 153, 0.04);
-    color: rgba(26, 35, 50, 0.6);
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    padding: 14px 16px;
-    text-align: left;
-    border-bottom: 2px solid var(--glass-border-dark);
-}
-
-.dashboard-table th:first-child { border-radius: 8px 0 0 8px; }
-.dashboard-table th:last-child { border-radius: 0 8px 8px 0; }
-
-.dashboard-table td {
-    padding: 16px;
-    font-size: 13px;
-    color: #1a2332;
-    border-bottom: 1px solid var(--glass-border-dark);
-    vertical-align: middle;
-}
-
-.dashboard-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-.dashboard-table tbody tr {
-    transition: background-color 0.2s ease;
-}
-
-.dashboard-table tbody tr:hover {
-    background: rgba(0, 51, 153, 0.015);
-}
-
-/* ==========================================================================
-   TEMPLATE BUILDER COMPONENT STYLES - OMNIBsic BANK
-   Split-Grid Layout, Field Badges, Live Previews, and Interactive Actions
-   ========================================================================== */
-
-/* --- 1. TWO-COLUMN SPLIT GRID --- */
-.template-builder-grid {
-    display: grid;
-    grid-template-columns: 420px 1fr;
-    gap: 24px;
-    align-items: start;
-    animation: fadeIn 0.4s ease-out;
-}
-
-/* Base Cards inside grid */
-.builder-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
-    border-radius: 24px;
-    padding: 24px;
-    box-shadow: 0 8px 32px var(--glass-shadow);
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-/* Form Row Spacing */
-.form-row {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    width: 100%;
-}
-
-.form-row label {
-    font-size: 11px;
-    font-weight: 600;
-    color: rgba(26, 35, 50, 0.5);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-
-/* --- 2. FIELD BUILDER CARD & OPTIONS --- */
-.field-builder-form {
-    border-top: 1px solid var(--glass-border-dark);
-    padding-top: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.field-builder-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--glass-border-dark);
-    padding-bottom: 12px;
-    margin-bottom: 4px;
-}
-
-.field-builder-header h4 {
-    margin: 0;
-}
-
-/* Add Field Action Button */
-.btn-add-to-template {
-    width: 100%;
-    height: 40px;
-    background: rgba(0, 51, 153, 0.05);
-    color: var(--omni-primary);
-    border: 1px solid rgba(0, 51, 153, 0.15);
-    border-radius: 10px;
-    font-size: 12.5px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.25s ease;
-}
-
-.btn-add-to-template:hover {
-    background: var(--omni-primary);
-    color: #ffffff;
-    box-shadow: 0 4px 12px rgba(0, 51, 153, 0.15);
-    transform: translateY(-1px);
-}
-
-
-/* --- 3. DYNAMIC TEMPLATE FIELD LIST ITEMS --- */
-.field-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    max-height: 380px;
-    overflow-y: auto;
-    padding-right: 4px;
-}
-
-/* Drag/Grip-Friendly Field Item Card */
-.field-item {
-    background: rgba(255, 255, 255, 0.7);
-    border: 1px solid var(--glass-border-dark);
-    border-radius: 12px;
-    padding: 12px 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: all 0.25s ease;
-}
-
-.field-item:hover {
-    background: #ffffff;
-    border-color: rgba(0, 51, 153, 0.15);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-}
-
-.field-item-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-/* Vertical grid drag icon style */
-.field-item-left i.fa-grip-vertical {
-    color: rgba(26, 35, 50, 0.25);
-    cursor: grab;
-}
-
-.field-label {
+.text-center i {
+    font-size: 32px;
     display: block;
-    font-size: 13px;
-    font-weight: 600;
+    margin-bottom: 8px;
+    opacity: 0.3;
     color: #1a2332;
 }
 
-.field-item-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+.text-center {
+    padding: 30px;
+    color: #9ca3af;
 }
 
-/* Specific Metadata Badges for Fields */
-.field-type-badge,
-.field-source-badge,
-.field-required-badge,
-.field-count-badge {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 3px 8px;
-    border-radius: 6px;
-}
+/* ==========================================================================
+   8. RESPONSIVE DESIGN
+   ========================================================================== */
 
-.field-type-badge {
-    background: rgba(0, 163, 224, 0.08);
-    color: var(--omni-accent);
-    display: inline-block;
-    margin-top: 2px;
-}
-
-.field-source-badge {
-    background: rgba(201, 168, 76, 0.12);
-    color: var(--omni-gold-dark);
-}
-
-.field-required-badge {
-    background: rgba(231, 76, 60, 0.08);
-    color: var(--omni-danger);
-}
-
-.field-count-badge {
-    background: rgba(0, 51, 153, 0.06);
-    color: var(--omni-primary);
-    border-radius: 12px;
-}
-
-/* Remove Field Trash Button */
-.btn-remove-field {
-    background: transparent;
-    border: none;
-    color: rgba(26, 35, 50, 0.3);
-    cursor: pointer;
-    font-size: 13px;
-    padding: 6px;
-    border-radius: 6px;
-    transition: all 0.2s ease;
-}
-
-.btn-remove-field:hover {
-    background: rgba(231, 76, 60, 0.08);
-    color: var(--omni-danger);
-}
-
-/* Empty States Placeholder */
-.empty-fields {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    padding: 48px 24px;
-    color: rgba(26, 35, 50, 0.35);
-    font-size: 13px;
-    text-align: center;
-    border: 1px dashed var(--glass-border-dark);
-    border-radius: 16px;
-    background: rgba(0, 0, 0, 0.01);
-}
-
-.empty-fields i {
-    font-size: 28px;
-    color: rgba(0, 51, 153, 0.15);
-}
-
-
-/* --- 4. LIVE TEMPLATE PREVIEW --- */
-.preview-section {
-    border-top: 1px solid var(--glass-border-dark);
-    padding-top: 24px;
-    margin-top: 10px;
-}
-
-.preview-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-}
-
-.preview-label {
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--omni-success);
-    background: rgba(0, 168, 89, 0.08);
-    padding: 3px 8px;
-    border-radius: 6px;
-    text-transform: uppercase;
-}
-
-.preview-table {
-    background: #ffffff;
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid var(--glass-border-dark);
-}
-
-/* Interactive custom placeholder row (Add New Row button in Preview) */
-.add-row-placeholder {
-    cursor: pointer;
-    background: rgba(0, 51, 153, 0.01);
-    transition: all 0.2s ease;
-}
-
-.add-row-placeholder td {
-    text-align: center;
-    color: rgba(26, 35, 50, 0.4) !important;
-    font-weight: 500;
-    padding: 16px !important;
-    border: 1px dashed var(--glass-border-dark);
-}
-
-.add-row-placeholder:hover td {
-    background: rgba(0, 51, 153, 0.03);
-    color: var(--omni-primary) !important;
-}
-
-.add-row-placeholder i {
-    margin-right: 6px;
-}
-
-
-/* --- 5. RESPONSIVE OPTIMIZATION --- */
-@media (max-width: 1200px) {
-    .template-builder-grid {
-        grid-template-columns: 1fr;
+/* Tablet */
+@media (max-width: 1024px) {
+    .users-table {
+        font-size: 12px;
+    }
+    
+    .users-table thead th,
+    .users-table tbody td {
+        padding: 10px 12px;
+    }
+    
+    .table-input,
+    .table-select {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    
+    .btn-create,
+    .btn-edit,
+    .btn-delete {
+        font-size: 11px;
+        padding: 4px 10px;
+    }
+    
+    .status-toggle-container {
+        gap: 8px;
+    }
+    
+    .switch {
+        width: 38px;
+        height: 20px;
+    }
+    
+    .slider:before {
+        height: 14px;
+        width: 14px;
+        left: 3px;
+        bottom: 3px;
+    }
+    
+    .switch input:checked + .slider:before {
+        transform: translateX(18px);
     }
 }
 
-/* ==========================================================================
-   CHECKLIST BUILDER COMPONENT STYLES - OMNIBsic BANK
-   Task List Management, Delete Buttons, List Items, and Assignment Badges
-   ========================================================================== */
-
-/* --- 1. DYNAMIC TASK CREATOR GROUP --- */
-.task-input-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
+/* Mobile */
+@media (max-width: 768px) {
+    .table-container {
+        padding: var(--space-md);
+        border-radius: 12px;
+    }
+    
+    .table-container h4 {
+        font-size: 14px;
+    }
+    
+    .users-table {
+        font-size: 11px;
+        display: block;
+        overflow-x: auto;
+    }
+    
+    .users-table thead,
+    .users-table tbody,
+    .users-table tr {
+        display: block;
+    }
+    
+    .users-table thead {
+        display: none;
+    }
+    
+    .users-table tbody tr {
+        margin-bottom: 16px;
+        padding: 12px;
+        border: 1px solid var(--glass-border-dark);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.5);
+    }
+    
+    .users-table tbody tr.editing {
+        padding: 8px;
+    }
+    
+    .users-table tbody td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 4px;
+        border-bottom: none;
+        font-size: 12px;
+    }
+    
+    .users-table tbody td:before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: rgba(26, 35, 50, 0.5);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-right: 8px;
+        min-width: 80px;
+    }
+    
+    .users-table tbody td:last-child {
+        border-bottom: none;
+    }
+    
+    .users-table tbody td.text-center {
+        justify-content: center;
+    }
+    
+    .users-table tbody td.text-center:before {
+        display: none;
+    }
+    
+    .table-input,
+    .table-select {
+        font-size: 11px;
+        padding: 4px 8px;
+        flex: 1;
+    }
+    
+    .status-toggle-container {
+        justify-content: flex-end;
+        flex: 1;
+    }
+    
+    .status-text {
+        font-size: 11px;
+    }
+    
+    .actions-cell {
+        justify-content: flex-end;
+        min-width: auto;
+        gap: 4px;
+    }
+    
+    .actions-cell .btn-edit,
+    .actions-cell .btn-delete,
+    .actions-cell .btn-create {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+    
+    .btn-create {
+        font-size: 12px;
+        padding: 6px 12px;
+    }
+    
+    .switch {
+        width: 34px;
+        height: 18px;
+    }
+    
+    .slider:before {
+        height: 12px;
+        width: 12px;
+        left: 3px;
+        bottom: 3px;
+    }
+    
+    .switch input:checked + .slider:before {
+        transform: translateX(16px);
+    }
 }
 
-.task-input-group .table-input,
-.task-input-group .form-control {
-    flex: 1;
-    margin-bottom: 6px !important; /* Match standard vertical alignment */
-}
-
-/* Dynamic Trash/Delete icon for tasks */
-.remove-task {
-    color: rgba(26, 35, 50, 0.3);
-    cursor: pointer;
-    font-size: 14px;
-    padding: 8px;
-    border-radius: 8px;
-    transition: all 0.2s ease;
-    margin-bottom: 6px; /* Align perfectly with input fields */
-}
-
-.remove-task:hover {
-    color: var(--omni-danger);
-    background: rgba(231, 76, 60, 0.08);
-}
-
-/* Styled "Add Task" Action Link */
-.btn-add-task {
-    background: rgba(0, 51, 153, 0.05);
-    color: var(--omni-primary);
-    border: 1px dashed rgba(0, 51, 153, 0.2);
-    padding: 6px 12px;
-    font-size: 11px;
-    font-weight: 600;
-    border-radius: 8px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.2s ease;
-    margin-top: 4px;
-}
-
-.btn-add-task:hover {
-    background: var(--omni-primary);
-    color: #ffffff;
-    border-style: solid;
-    box-shadow: 0 4px 12px rgba(0, 51, 153, 0.1);
-}
-
-
-/* --- 2. EXISTING CHECKLIST TABLE ITEMS --- */
-
-/* Task Items list with custom FontAwesome bullet points */
-.task-description-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.task-description-list li {
-    position: relative;
-    font-size: 12.5px;
-    color: #1a2332;
-    padding-left: 20px;
-    line-height: 1.4;
-}
-
-.task-description-list li::before {
-    content: "\f00c"; /* FontAwesome check icon code */
-    font-family: "Font Awesome 6 Free";
-    font-weight: 900;
-    position: absolute;
-    left: 0;
-    top: 2px;
-    font-size: 10px;
-    color: var(--omni-success);
-}
-
-/* Assignment Badges */
-.assignment-tag-all {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 10px;
-    font-size: 10.5px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-radius: 12px;
-    background: rgba(0, 51, 153, 0.08);
-    color: var(--omni-primary);
-    border: 1px solid rgba(0, 51, 153, 0.12);
-}
-
-/* User pill configurations when assigning checklists to specific users */
-.assignment-tag-all + ul {
-    margin-top: 6px !important;
-}
-
-.assignment-tag-all + ul li {
-    font-size: 11px;
-    color: #1a2332 !important;
-    background: rgba(0, 0, 0, 0.04);
-    border: 1px solid rgba(0, 0, 0, 0.04);
-    padding: 2px 8px;
-    border-radius: 4px;
-    display: inline-block;
-    margin-right: 4px;
-    margin-bottom: 4px;
-}
-
-
-/* --- 3. ALIGNMENT FIX FOR MULTIPLE SELECTION SUB-TEXT --- */
-#user-assignment-group small,
-#edit-user-assignment-group small {
-    display: block;
-    margin-top: 4px;
-    font-size: 10.5px;
-    color: rgba(26, 35, 50, 0.4);
-    font-weight: 500;
+/* Small Mobile */
+@media (max-width: 480px) {
+    .table-container {
+        padding: 12px;
+    }
+    
+    .users-table tbody td {
+        font-size: 11px;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    
+    .users-table tbody td:before {
+        min-width: 60px;
+        font-size: 9px;
+    }
+    
+    .table-input,
+    .table-select {
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+    
+    .status-text {
+        font-size: 10px;
+    }
+    
+    .switch {
+        width: 30px;
+        height: 16px;
+    }
+    
+    .slider:before {
+        height: 10px;
+        width: 10px;
+        left: 3px;
+        bottom: 3px;
+    }
+    
+    .switch input:checked + .slider:before {
+        transform: translateX(14px);
+    }
+    
+    .actions-cell .btn-edit,
+    .actions-cell .btn-delete {
+        font-size: 9px;
+        padding: 3px 6px;
+    }
+    
+    .btn-create {
+        font-size: 11px;
+        padding: 4px 10px;
+    }
 }

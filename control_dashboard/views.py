@@ -1,41 +1,51 @@
-# control_dashboard/views.py
-
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.db import models  # Add this import
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import login as auth_login, logout as auth_logout
 from django.contrib.auth.models import User as DjangoUser
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from django.contrib import messages
-from django.db.models import Q, Count
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from django.utils import timezone
-from django.conf import settings
-import json
-import csv
-from datetime import datetime, date, timedelta
+from django.db.models import Q, Count  # Keep this too
 from django.contrib.auth.decorators import login_required
-from django import template
-from django.template.defaultfilters import stringfilter
-from control_dashboard.models import ReportTemplate, TemplateField
+import json
+from datetime import datetime, timedelta
+from django.utils import timezone
 
 from .models import (
-    UserProfile, ActivityLog, Report, ReportTemplate, TemplateField, 
-    TemplateAssignment, Checklist, ChecklistTask, Draft, DraftReview,
-    Branch, ExceptionCategory
+    UserProfile, 
+    Report,
+    ReportTemplate,
+    TemplateField,
+    Checklist,
+    ChecklistTask,
+    ChecklistLog,  
+    ReportSubmission,
+    ActivityLog,
+    AdHocDeduction,
 )
+from .forms import UserProfileForm
 
 
-# ==================== AUTHENTICATION VIEWS ====================
+# ==================== HELPER FUNCTIONS ====================
 
-def login_page(request):
+def log_activity(user, activity_type, details, request=None):
     """
-    Login page view - redirects to landing page since login.html was deleted.
-    The landing page (index.html) contains the login form.
+    Helper function to log user activities.
     """
-    if request.user.is_authenticated:
-        return redirect_dashboard(request.user)
-    
-    return redirect('control_dashboard:landing_page')
+    try:
+        from .models import ActivityLog
+        ip_address = request.META.get('REMOTE_ADDR') if request else None
+        user_agent = request.META.get('HTTP_USER_AGENT', '') if request else ''
+        ActivityLog.objects.create(
+            user=user,
+            activity_type=activity_type,
+            details=details,
+            ip_address=ip_address,
+            user_agent=user_agent
+        )
+    except Exception:
+        pass
 
 
 def redirect_dashboard(user):
@@ -44,18 +54,51 @@ def redirect_dashboard(user):
     """
     try:
         user_profile = UserProfile.objects.get(email=user.email)
-        
-        if user_profile.role == 'admin':
-            return redirect('/adminboard/admin/')
-        elif user_profile.role == 'supervisor':
-            return redirect('/adminboard/supervisor/')
-        else:
-            return redirect('/adminboard/member/')
+        redirect_urls = {
+            'admin': '/adminboard/admin/',
+            'supervisor': '/adminboard/supervisor/',
+            'member': '/adminboard/member/'
+        }
+        return redirect(redirect_urls.get(user_profile.role, '/adminboard/member/'))
     except UserProfile.DoesNotExist:
         return redirect('/adminboard/member/')
+    
+
+# ==================== LOGIN VIEWS ====================
+
+def landing_page(request):
+    """
+    Landing page / Login page view.
+    """
+    if request.user.is_authenticated:
+        return redirect_dashboard(request.user)
+    return render(request, 'control_dashboard/index.html')
 
 
-# ==================== API - EMAIL LOGIN ====================
+# ==================== LOGOUT VIEW ====================
+
+def logout_view(request):
+    """
+    Logout view - this is already correctly linked to the logout button.
+    """
+    if request.user.is_authenticated:
+        try:
+            user_profile = UserProfile.objects.get(email=request.user.email)
+            log_activity(
+                user=user_profile,
+                activity_type='logout',
+                details=f'User {request.user.email} logged out',
+                request=request
+            )
+        except:
+            pass
+    
+    auth_logout(request)
+    messages.info(request, 'You have been logged out successfully.')
+    return redirect('control_dashboard:landing_page')
+
+
+# ==================== API - AUTHENTICATION ====================
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -130,250 +173,6 @@ def api_email_login(request):
 
 
 @csrf_exempt
-@require_http_methods(["POST"])
-def api_test_login(request):
-    """
-    API endpoint for test login with role-based authentication.
-    """
-    try:
-        data = json.loads(request.body)
-        role = data.get('role', 'member')
-        
-        test_users = {
-            'admin': {
-                'email': 'admin@test.com',
-                'full_name': 'Admin User',
-                'position': 'hoc',
-                'role': 'admin',
-                'status': 'active',
-                'password': 'Admin@123'
-            },
-            'supervisor': {
-                'email': 'supervisor@test.com',
-                'full_name': 'Supervisor User',
-                'position': 'cc',
-                'role': 'supervisor',
-                'status': 'active',
-                'password': 'Supervisor@123'
-            },
-            'member': {
-                'email': 'member@test.com',
-                'full_name': 'Member User',
-                'position': 'hoc',
-                'role': 'member',
-                'status': 'active',
-                'password': 'Member@123'
-            }
-        }
-        
-        if role not in test_users:
-            return JsonResponse({'success': False, 'error': 'Invalid user role'}, status=400)
-        
-        user_data = test_users[role]
-        
-        django_user, created = DjangoUser.objects.get_or_create(
-            username=user_data['email'],
-            defaults={
-                'email': user_data['email'],
-                'first_name': user_data['full_name']
-            }
-        )
-        
-        if created:
-            django_user.set_password(user_data['password'])
-            django_user.save()
-        
-        user_profile, created = UserProfile.objects.get_or_create(
-            email=user_data['email'],
-            defaults={
-                'full_name': user_data['full_name'],
-                'position': user_data['position'],
-                'role': user_data['role'],
-                'status': user_data['status']
-            }
-        )
-        
-        if not created and user_profile.role != user_data['role']:
-            user_profile.role = user_data['role']
-            user_profile.save()
-        
-        auth_login(request, django_user)
-        
-        log_activity(
-            user=user_profile,
-            activity_type='login',
-            details=f'User {user_data["email"]} logged in via test login as {role}',
-            request=request
-        )
-        
-        redirect_urls = {
-            'admin': '/adminboard/admin/',
-            'supervisor': '/adminboard/supervisor/',
-            'member': '/adminboard/member/'
-        }
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Welcome {user_data["full_name"]}!',
-            'redirect_url': redirect_urls.get(role, '/adminboard/member/'),
-            'user': {
-                'id': user_profile.id,
-                'email': user_profile.email,
-                'full_name': user_profile.full_name,
-                'role': user_profile.role,
-                'position': user_profile.position
-            }
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-def logout_view(request):
-    """
-    Logout view.
-    """
-    if request.user.is_authenticated:
-        try:
-            user_profile = UserProfile.objects.get(email=request.user.email)
-            log_activity(
-                user=user_profile,
-                activity_type='logout',
-                details=f'User {request.user.email} logged out',
-                request=request
-            )
-        except:
-            pass
-    
-    auth_logout(request)
-    messages.info(request, 'You have been logged out successfully.')
-    return redirect('control_dashboard:landing_page')
-
-
-def landing_page(request):
-    """
-    Landing page view - the first page users see.
-    Renders index.html which contains the login form.
-    """
-    if request.user.is_authenticated:
-        return redirect_dashboard(request.user)
-    
-    return render(request, 'control_dashboard/index.html')
-
-
-# ==================== HELPER FUNCTIONS ====================
-
-def log_activity(user, activity_type, details, request=None):
-    """
-    Helper function to log user activities.
-    """
-    try:
-        ip_address = None
-        user_agent = ''
-        
-        if request:
-            ip_address = request.META.get('REMOTE_ADDR')
-            user_agent = request.META.get('HTTP_USER_AGENT', '')
-        
-        ActivityLog.objects.create(
-            user=user,
-            activity_type=activity_type,
-            details=details,
-            ip_address=ip_address,
-            user_agent=user_agent
-        )
-    except Exception as e:
-        pass
-
-
-def get_or_create_user_profile(django_user):
-    """
-    Helper function to get or create UserProfile from Django user.
-    """
-    try:
-        user_profile = UserProfile.objects.get(email=django_user.email)
-    except UserProfile.DoesNotExist:
-        user_profile = UserProfile.objects.create(
-            email=django_user.email,
-            full_name=django_user.get_full_name() or django_user.username,
-            position='hoc',
-            role='member',
-            status='active'
-        )
-    return user_profile
-
-
-# ==================== LEGACY VIEWS ====================
-
-def login_view(request):
-    """Legacy login page view - redirects to the new login page."""
-    return redirect('control_dashboard:login')
-
-
-def microsoft_login(request):
-    """Redirect to Microsoft login."""
-    messages.info(request, 'Microsoft login is being configured. Using email login for now.')
-    return redirect('control_dashboard:login')
-
-
-def test_login(request, role):
-    """Development-only test login via URL."""
-    if not settings.DEBUG:
-        return redirect('control_dashboard:login')
-    
-    role_emails = {
-        'admin': 'admin@test.com',
-        'member': 'member@test.com',
-        'supervisor': 'supervisor@test.com'
-    }
-    
-    email = role_emails.get(role)
-    if not email:
-        messages.error(request, 'Invalid test role')
-        return redirect('control_dashboard:login')
-    
-    django_user, created = DjangoUser.objects.get_or_create(
-        username=email,
-        defaults={'email': email}
-    )
-    
-    if created:
-        django_user.set_password('Test@123')
-        django_user.save()
-    
-    try:
-        user_profile = UserProfile.objects.get(email=email)
-    except UserProfile.DoesNotExist:
-        role_map = {
-            'admin': {'position': 'hoc', 'role': 'admin'},
-            'member': {'position': 'hoc', 'role': 'member'},
-            'supervisor': {'position': 'cc', 'role': 'supervisor'}
-        }
-        role_data = role_map.get(role, {'position': 'hoc', 'role': 'member'})
-        
-        user_profile = UserProfile.objects.create(
-            email=email,
-            full_name=f'{role.capitalize()} User',
-            position=role_data['position'],
-            role=role_data['role'],
-            status='active'
-        )
-    
-    auth_login(request, django_user)
-    
-    log_activity(
-        user=user_profile,
-        activity_type='login',
-        details=f'Test login as {role}',
-        request=request
-    )
-    
-    return redirect_dashboard(django_user)
-
-
-@csrf_exempt
 @require_http_methods(["GET"])
 def get_user_profile_api(request):
     """
@@ -402,1629 +201,86 @@ def get_user_profile_api(request):
                 'email': request.user.email,
                 'full_name': request.user.get_full_name() or request.user.username,
                 'role': 'member',
-                'position': 'hoc'
+                'position': 'member'
             }
         })
 
 
-# ==================== ADMIN PAGE ====================
+# ==================== ADMIN VIEWS ====================
 
+@login_required
 def admin_page(request):
     """
-    Main admin dashboard view with filtering and search.
+    Admin dashboard view with user management.
     """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+        if user_profile.role != 'admin':
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect_dashboard(request.user)
+    except UserProfile.DoesNotExist:
+        return redirect_dashboard(request.user)
     
-    search_query = request.GET.get('search', '').strip()
-    status_filter = request.GET.get('status', '')
-    position_filter = request.GET.get('position', '')
+    # Get all users
+    users = UserProfile.objects.all().order_by('full_name')
     
-    users = UserProfile.objects.all()
-    
-    if search_query:
-        users = users.filter(
-            Q(email__icontains=search_query) |
-            Q(full_name__icontains=search_query)
-        )
-    
-    if status_filter:
-        users = users.filter(status=status_filter)
-    
-    if position_filter:
-        users = users.filter(position=position_filter)
-    
-    total_users = UserProfile.objects.count()
-    active_users = UserProfile.objects.filter(status='active').count()
-    inactive_users = UserProfile.objects.filter(status='inactive').count()
-    hoc_users = UserProfile.objects.filter(position='hoc').count()
-    cc_users = UserProfile.objects.filter(position='cc').count()
-    
-    # Get branches and categories for dropdowns
-    branches = Branch.objects.filter(is_active=True).order_by('name')
-    categories = ExceptionCategory.objects.filter(is_active=True).order_by('name')
+    # Get choices for dropdowns
+    positions = UserProfile.POSITION_CHOICES
+    roles = UserProfile.ROLE_CHOICES
+    statuses = UserProfile.STATUS_CHOICES
     
     context = {
+        'user_profile': user_profile,
         'users': users,
-        'total_users': total_users,
-        'active_users': active_users,
-        'inactive_users': inactive_users,
-        'hoc_users': hoc_users,
-        'cc_users': cc_users,
-        'search_query': search_query,
-        'status_filter': status_filter,
-        'position_filter': position_filter,
-        'statuses': UserProfile.STATUS_CHOICES,
-        'positions': UserProfile.POSITION_CHOICES,
-        'roles': UserProfile.ROLE_CHOICES,
-        'branches': branches,
-        'categories': categories,
+        'positions': positions,
+        'roles': roles,
+        'statuses': statuses,
     }
     
     return render(request, 'control_dashboard/adminboard.html', context)
 
 
-# ==================== REPORT CENTER ====================
-
-def report_center(request):
-    """
-    Report Center view with filtering.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    status_filter = request.GET.get('status', '')
-    user_filter = request.GET.get('user', '')
-    
-    reports = Report.objects.all()
-    
-    if status_filter and status_filter != 'all':
-        reports = reports.filter(status=status_filter)
-    
-    if user_filter and user_filter != 'all':
-        reports = reports.filter(assigned_to__id=user_filter)
-    
-    total_reports = Report.objects.count()
-    assigned_reports = Report.objects.filter(status='assigned').count()
-    in_progress_reports = Report.objects.filter(status='in_progress').count()
-    completed_reports = Report.objects.filter(status='completed').count()
-    
-    users = UserProfile.objects.all()
-    
-    # Get branches and categories
-    branches = Branch.objects.filter(is_active=True).order_by('name')
-    categories = ExceptionCategory.objects.filter(is_active=True).order_by('name')
-    
-    context = {
-        'reports': reports,
-        'users': users,
-        'branches': branches,
-        'categories': categories,
-        'total_reports': total_reports,
-        'assigned_reports': assigned_reports,
-        'in_progress_reports': in_progress_reports,
-        'completed_reports': completed_reports,
-        'status_filter': status_filter,
-        'user_filter': user_filter,
-        'report_statuses': Report.STATUS_CHOICES,
-    }
-    
-    return render(request, 'control_dashboard/reportcenter.html', context)
-
-
-# ==================== ACTIVITY LOGS ====================
-
-def activity_logs(request):
-    """
-    Activity logs view with filtering.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    start_date = request.GET.get('start_date', '')
-    end_date = request.GET.get('end_date', '')
-    activity_filter = request.GET.get('activity', '')
-    user_filter = request.GET.get('user', '')
-    
-    logs = ActivityLog.objects.all()
-    
-    if start_date:
-        try:
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            logs = logs.filter(created_at__date__gte=start)
-        except:
-            pass
-    
-    if end_date:
-        try:
-            end = datetime.strptime(end_date, '%Y-%m-%d')
-            logs = logs.filter(created_at__date__lte=end)
-        except:
-            pass
-    
-    if activity_filter and activity_filter != 'all':
-        logs = logs.filter(activity_type=activity_filter)
-    
-    if user_filter and user_filter != 'all':
-        logs = logs.filter(user_id=user_filter)
-    
-    users = UserProfile.objects.all()
-    
-    context = {
-        'activity_logs': logs,
-        'users': users,
-        'activity_types': ActivityLog.ACTIVITY_CHOICES,
-        'start_date': start_date,
-        'end_date': end_date,
-        'activity_filter': activity_filter,
-        'user_filter': user_filter,
-    }
-    
-    return render(request, 'control_dashboard/activity.html', context)
-
-
-# ==================== EXPORT LOGS ====================
-
-def export_logs(request):
-    """
-    Export activity logs as CSV.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    start_date = request.GET.get('start_date', '')
-    end_date = request.GET.get('end_date', '')
-    activity_filter = request.GET.get('activity', '')
-    user_filter = request.GET.get('user', '')
-    
-    logs = ActivityLog.objects.all()
-    
-    if start_date:
-        try:
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            logs = logs.filter(created_at__date__gte=start)
-        except:
-            pass
-    
-    if end_date:
-        try:
-            end = datetime.strptime(end_date, '%Y-%m-%d')
-            logs = logs.filter(created_at__date__lte=end)
-        except:
-            pass
-    
-    if activity_filter and activity_filter != 'all':
-        logs = logs.filter(activity_type=activity_filter)
-    
-    if user_filter and user_filter != 'all':
-        logs = logs.filter(user_id=user_filter)
-    
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="activity_logs_{timezone.now().date()}.csv"'
-    
-    writer = csv.writer(response)
-    writer.writerow(['Date & Time', 'User', 'Activity', 'Details', 'IP Address'])
-    
-    for log in logs:
-        writer.writerow([
-            log.created_at.strftime('%Y-%m-%d %H:%M'),
-            log.user.full_name or log.user.email,
-            log.get_activity_type_display(),
-            log.details,
-            log.ip_address or 'N/A'
-        ])
-    
-    try:
-        user = UserProfile.objects.first()
-        if user:
-            log_activity(
-                user=user,
-                activity_type='export',
-                details=f'Exported activity logs ({logs.count()} records)',
-                request=request
-            )
-    except:
-        pass
-    
-    return response
-
-
-# ==================== TEMPLATE BUILDER ====================
-
-def template_builder(request):
-    """
-    Template Builder view.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    templates = ReportTemplate.objects.all().order_by('-created_at')
-    users = UserProfile.objects.all()
-    
-    report_types = Report.objects.values_list('report_type', flat=True).distinct()
-    template_report_types = ReportTemplate.objects.values_list('name', flat=True).distinct()
-    all_report_types = list(set(list(report_types) + list(template_report_types)))
-    all_report_types.sort()
-    
-    # Get branches and categories
-    branches = Branch.objects.filter(is_active=True).order_by('name')
-    categories = ExceptionCategory.objects.filter(is_active=True).order_by('name')
-    
-    context = {
-        'templates': templates,
-        'users': users,
-        'branches': branches,
-        'categories': categories,
-        'field_types': ReportTemplate.FIELD_TYPES,
-        'data_sources': ReportTemplate.DATA_SOURCES,
-        'report_types': all_report_types,
-    }
-    
-    return render(request, 'control_dashboard/reporttemplate.html', context)
-
-
-# ==================== CHECKLIST BUILDER ====================
-
-def checklist_builder(request):
-    """
-    Checklist Builder view.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    checklists = Checklist.objects.all().order_by('-created_at')
-    users = UserProfile.objects.all()
-    
-    context = {
-        'checklists': checklists,
-        'users': users,
-        'frequencies': Checklist.FREQUENCY_CHOICES,
-        'assignments': Checklist.ASSIGNMENT_CHOICES,
-    }
-    
-    return render(request, 'control_dashboard/checklist.html', context)
-
-
-# ==================== MEMBER DASHBOARD ====================
-
-def member_dashboard(request):
-    """
-    Member Dashboard view.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    try:
-        user_profile = UserProfile.objects.get(email=request.user.email)
-    except UserProfile.DoesNotExist:
-        user_profile = get_or_create_user_profile(request.user)
-    
-    today = timezone.now().date()
-    days_since_thursday = (today.weekday() - 3) % 7
-    week_start = today - timedelta(days=days_since_thursday)
-    week_end = week_start + timedelta(days=6)
-    
-    daily_checklists = Checklist.objects.filter(
-        frequency='daily'
-    ).filter(
-        Q(assigned_users=user_profile) | 
-        Q(assignment_target='all')
-    ).distinct().order_by('-created_at')[:10]
-    
-    exceptions_this_week = ActivityLog.objects.filter(
-        user=user_profile,
-        activity_type='exception',
-        created_at__date__gte=week_start,
-        created_at__date__lte=week_end
-    ).count()
-    
-    assigned_this_week = Checklist.objects.filter(
-        Q(assigned_users=user_profile) | 
-        Q(assignment_target='all')
-    ).filter(
-        created_at__date__gte=week_start,
-        created_at__date__lte=week_end
-    ).count()
-    
-    pending_submissions = Report.objects.filter(
-        assigned_to=user_profile,
-        status__in=['assigned', 'in_progress']
-    ).count()
-    
-    recent_submissions = Report.objects.filter(
-        created_by=user_profile
-    ).order_by('-created_at')[:5]
-    
-    context = {
-        'user_profile': user_profile,
-        'daily_checklists': daily_checklists,
-        'recent_submissions': recent_submissions,
-        'assigned_this_week': assigned_this_week,
-        'exceptions_this_week': exceptions_this_week,
-        'pending_submissions': pending_submissions,
-        'today': timezone.now(),
-        'week_start': week_start,
-        'week_end': week_end,
-    }
-    
-    return render(request, 'control_dashboard/memberboard.html', context)
-
-
-# ==================== MEMBER CHECKLIST ====================
-
-def member_checklist(request):
-    """
-    Member Checklist view - shows checklists assigned to the user.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    try:
-        user_profile = UserProfile.objects.get(email=request.user.email)
-    except UserProfile.DoesNotExist:
-        user_profile = get_or_create_user_profile(request.user)
-    
-    # Get all checklists assigned to the user
-    checklists = Checklist.objects.filter(
-        Q(assigned_users=user_profile) | 
-        Q(assignment_target='all')
-    ).distinct().order_by('-created_at')
-    
-    checklist_data = []
-    for checklist in checklists:
-        # Query ALL activity logs for this user with checklist_updated type
-        # Then filter by checklist name in the details
-        logs = ActivityLog.objects.filter(
-            user=user_profile,
-            activity_type='checklist_updated'
-        ).filter(
-            Q(details__icontains=checklist.name) |
-            Q(details__icontains=f'"{checklist.name}"')
-        )
-        
-        # Extract dates from the logs
-        log_dates = []
-        for log in logs:
-            # Extract date from the details string
-            # Format: "Completed checklist "X" on 2024-01-15"
-            import re
-            match = re.search(r'on\s+(\d{4}-\d{2}-\d{2})', log.details)
-            if match:
-                log_dates.append(match.group(1))
-            else:
-                # Fallback: use the created_at date
-                log_dates.append(log.created_at.strftime('%Y-%m-%d'))
-        
-        # Remove duplicates
-        log_dates = list(set(log_dates))
-        
-        # Debug print
-        print(f"Checklist: {checklist.name}, Logs found: {len(log_dates)}")
-        print(f"Log dates: {log_dates}")
-        
-        checklist_data.append({
-            'id': checklist.id,
-            'name': checklist.name,
-            'frequency': checklist.frequency,
-            'frequency_display': checklist.get_frequency_display(),
-            'tasks': checklist.tasks.all(),
-            'logs': log_dates,
-        })
-    
-    context = {
-        'user_profile': user_profile,
-        'checklist_data': checklist_data,
-        'today': timezone.now(),
-    }
-    
-    return render(request, 'control_dashboard/checklist-mem.html', context)
-
-
-# ==================== API - LOG CHECKLIST (FIXED) ====================
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_log_checklist(request):
-    """
-    API endpoint to log or unlog a checklist completion.
-    """
-    try:
-        data = json.loads(request.body)
-        checklist_id = data.get('checklist_id')
-        log_date = data.get('log_date')
-        action = data.get('action', 'log')
-        
-        print(f"=== API Log Checklist Called ===")
-        print(f"checklist_id: {checklist_id}")
-        print(f"log_date: {log_date}")
-        print(f"action: {action}")
-        
-        if not checklist_id or not log_date:
-            return JsonResponse({'success': False, 'error': 'Checklist ID and log date are required'}, status=400)
-        
-        try:
-            checklist = Checklist.objects.get(id=checklist_id)
-            print(f"Checklist found: {checklist.name}")
-        except Checklist.DoesNotExist:
-            print(f"Checklist not found with ID: {checklist_id}")
-            return JsonResponse({'success': False, 'error': 'Checklist not found'}, status=404)
-        
-        try:
-            user = UserProfile.objects.get(email=request.user.email)
-            print(f"User found: {user.email}")
-        except (UserProfile.DoesNotExist, AttributeError):
-            user = UserProfile.objects.first()
-            print(f"Using fallback user: {user.email if user else 'None'}")
-        
-        if not user:
-            return JsonResponse({'success': False, 'error': 'No user found'}, status=400)
-        
-        # Check if the user is assigned to this checklist
-        is_assigned = checklist.assigned_users.filter(id=user.id).exists() or checklist.assignment_target == 'all'
-        print(f"Is user assigned? {is_assigned}")
-        if not is_assigned:
-            return JsonResponse({'success': False, 'error': 'You are not assigned to this checklist'}, status=403)
-        
-        # Parse the log date
-        try:
-            log_date_obj = datetime.strptime(log_date, '%Y-%m-%d').date()
-            print(f"Parsed date: {log_date_obj}")
-        except ValueError:
-            return JsonResponse({'success': False, 'error': 'Invalid date format. Use YYYY-MM-DD'}, status=400)
-        
-        if action == 'unlog':
-            # Find and delete the log entry - FIXED: using Q objects for multiple conditions
-            activity_log = ActivityLog.objects.filter(
-                user=user,
-                activity_type='checklist_updated'
-            ).filter(
-                Q(details__icontains=checklist.name) &
-                Q(details__icontains=log_date)
-            ).first()
-            
-            if activity_log:
-                activity_log.delete()
-                print(f"Unlogged: {checklist.name} for {log_date}")
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Checklist "{checklist.name}" unlogged for {log_date}'
-                })
-            else:
-                print(f"No log entry found to remove for {checklist.name} on {log_date}")
-                return JsonResponse({
-                    'success': True,
-                    'message': 'No log entry found to remove'
-                })
-        else:
-            # Check if already logged for this date - FIXED: using Q objects
-            existing_log = ActivityLog.objects.filter(
-                user=user,
-                activity_type='checklist_updated'
-            ).filter(
-                Q(details__icontains=checklist.name) &
-                Q(details__icontains=log_date)
-            ).exists()
-            
-            if existing_log:
-                print(f"Already logged for {log_date}")
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Already logged for {log_date}',
-                    'already_logged': True
-                })
-            
-            # Create the log entry
-            log_entry = ActivityLog.objects.create(
-                user=user,
-                activity_type='checklist_updated',
-                details=f'Completed checklist "{checklist.name}" on {log_date}',
-                ip_address=request.META.get('REMOTE_ADDR'),
-                user_agent=request.META.get('HTTP_USER_AGENT', '')
-            )
-            
-            print(f"Created ActivityLog entry: ID={log_entry.id}")
-            print(f"Details: {log_entry.details}")
-            
-            return JsonResponse({
-                'success': True,
-                'message': f'Checklist "{checklist.name}" logged for {log_date}'
-            })
-        
-    except json.JSONDecodeError as e:
-        print(f"JSON Decode Error: {e}")
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
-    except Exception as e:
-        print(f"Error in api_log_checklist: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-# ==================== MEMBER ACTIVITY LOGS ====================
-
-def member_activity_logs(request):
-    """
-    Member Activity Logs view - shows user's own activities only.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    try:
-        user_profile = UserProfile.objects.get(email=request.user.email)
-    except UserProfile.DoesNotExist:
-        user_profile = get_or_create_user_profile(request.user)
-    
-    start_date = request.GET.get('start_date', '')
-    end_date = request.GET.get('end_date', '')
-    activity_filter = request.GET.get('activity', '')
-    
-    logs = ActivityLog.objects.filter(user=user_profile)
-    
-    if start_date:
-        try:
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            logs = logs.filter(created_at__date__gte=start)
-        except:
-            pass
-    
-    if end_date:
-        try:
-            end = datetime.strptime(end_date, '%Y-%m-%d')
-            logs = logs.filter(created_at__date__lte=end)
-        except:
-            pass
-    
-    if activity_filter and activity_filter != 'all':
-        logs = logs.filter(activity_type=activity_filter)
-    
-    context = {
-        'user_profile': user_profile,
-        'activity_logs': logs,
-        'activity_types': ActivityLog.ACTIVITY_CHOICES,
-        'start_date': start_date,
-        'end_date': end_date,
-        'activity_filter': activity_filter,
-    }
-    
-    return render(request, 'control_dashboard/activity-mem.html', context)
-
-
-# ==================== SUPERVISOR DASHBOARD ====================
-
-def supervisor_dashboard(request):
-    """
-    Supervisor Dashboard view with real-time metrics.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    try:
-        user_profile = UserProfile.objects.get(email=request.user.email)
-    except UserProfile.DoesNotExist:
-        user_profile = get_or_create_user_profile(request.user)
-    
-    today = timezone.now().date()
-    week_start = today - timedelta(days=today.weekday())
-    week_end = week_start + timedelta(days=6)
-    
-    weekly_exceptions = Draft.objects.filter(
-        created_at__date__gte=week_start,
-        created_at__date__lte=week_end,
-        status__in=['draft', 'rejected', 'submitted', 'in_review', 'approved']
-    )
-    total_exceptions = weekly_exceptions.count()
-    today_exceptions = weekly_exceptions.filter(created_at__date=today).count()
-    
-    pending_reviews = Draft.objects.filter(
-        status__in=['submitted', 'in_review']
-    ).count()
-    
-    team_drafts = Draft.objects.filter(
-        created_by__role__in=['member', 'supervisor']
-    )
-    
-    total_drafts = team_drafts.count()
-    completed_drafts = team_drafts.filter(
-        status__in=['approved', 'rejected']
-    ).count()
-    
-    completion_rate = round((completed_drafts / total_drafts) * 100) if total_drafts > 0 else 0
-    
-    overage_threshold = today - timedelta(days=7)
-    outstanding_exceptions = Draft.objects.filter(
-        status__in=['draft', 'submitted', 'in_review', 'rejected'],
-        created_at__date__lte=overage_threshold
-    ).order_by('created_at')[:10]
-    
-    team_members = UserProfile.objects.filter(
-        role__in=['member', 'supervisor']
-    ).annotate(
-        total_drafts=Count('drafts'),
-        submitted_drafts=Count('drafts', filter=Q(drafts__status='submitted')),
-        approved_drafts=Count('drafts', filter=Q(drafts__status='approved')),
-        rejected_drafts=Count('drafts', filter=Q(drafts__status='rejected')),
-        in_review_drafts=Count('drafts', filter=Q(drafts__status='in_review')),
-    )
-    
-    team_performance = []
-    for member in team_members:
-        total = member.total_drafts
-        if total > 0:
-            completed = member.approved_drafts + member.rejected_drafts
-            percentage = round((completed / total) * 100)
-        else:
-            percentage = 0
-        
-        team_performance.append({
-            'user': member,
-            'total': total,
-            'submitted': member.submitted_drafts,
-            'approved': member.approved_drafts,
-            'rejected': member.rejected_drafts,
-            'in_review': member.in_review_drafts,
-            'percentage': percentage,
-            'status': 'success' if percentage >= 90 else 'warning' if percentage >= 70 else 'danger'
-        })
-    
-    team_performance.sort(key=lambda x: x['percentage'], reverse=True)
-    
-    recent_exceptions = Draft.objects.filter(
-        status__in=['draft', 'rejected', 'submitted', 'in_review']
-    ).order_by('-created_at')[:10]
-    
-    context = {
-        'user_profile': user_profile,
-        'total_exceptions': total_exceptions,
-        'pending_reviews': pending_reviews,
-        'in_review': Draft.objects.filter(status='in_review').count(),
-        'today_exceptions': today_exceptions,
-        'recent_exceptions': recent_exceptions,
-        'team_performance': team_performance,
-        'completion_rate': completion_rate,
-        'outstanding_exceptions': outstanding_exceptions,
-        'week_start': week_start,
-        'week_end': week_end,
-        'today': today,
-    }
-    
-    return render(request, 'control_dashboard/supervisorboard.html', context)
-
-
-# ==================== SUPERVISOR EXCEPTIONS ====================
-
-def supervisor_exceptions(request):
-    """
-    Supervisor view for logged exceptions with filtering and review capabilities.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    try:
-        user_profile = UserProfile.objects.get(email=request.user.email)
-    except UserProfile.DoesNotExist:
-        user_profile = get_or_create_user_profile(request.user)
-    
-    status_filter = request.GET.get('status', '')
-    date_filter = request.GET.get('date', '')
-    search_query = request.GET.get('search', '')
-    branch_filter = request.GET.get('branch', '')
-    category_filter = request.GET.get('category', '')
-    
-    exceptions = Draft.objects.filter(
-        status__in=['draft', 'rejected', 'submitted', 'in_review', 'approved']
-    )
-    
-    if status_filter and status_filter != 'all':
-        exceptions = exceptions.filter(status=status_filter)
-    
-    if date_filter:
-        try:
-            filter_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
-            exceptions = exceptions.filter(created_at__date=filter_date)
-        except:
-            pass
-    
-    if search_query:
-        exceptions = exceptions.filter(
-            Q(report_type__icontains=search_query) |
-            Q(data__header__icontains=search_query) |
-            Q(data__details__icontains=search_query) |
-            Q(created_by__full_name__icontains=search_query)
-        )
-    
-    if branch_filter and branch_filter != 'all':
-        exceptions = exceptions.filter(
-            Q(data__branch__icontains=branch_filter) |
-            Q(data__unit__icontains=branch_filter)
-        )
-    
-    if category_filter and category_filter != 'all':
-        exceptions = exceptions.filter(report_type__icontains=category_filter)
-    
-    status_counts = {
-        'draft': Draft.objects.filter(status='draft').count(),
-        'submitted': Draft.objects.filter(status='submitted').count(),
-        'in_review': Draft.objects.filter(status='in_review').count(),
-        'approved': Draft.objects.filter(status='approved').count(),
-        'rejected': Draft.objects.filter(status='rejected').count(),
-    }
-    
-    # Get branches and categories for filters
-    branches = Branch.objects.filter(is_active=True).order_by('name')
-    categories = ExceptionCategory.objects.filter(is_active=True).order_by('name')
-    
-    context = {
-        'user_profile': user_profile,
-        'exceptions': exceptions,
-        'branches': branches,
-        'categories': categories,
-        'status_counts': status_counts,
-        'status_filter': status_filter,
-        'branch_filter': branch_filter,
-        'category_filter': category_filter,
-        'date_filter': date_filter,
-        'search_query': search_query,
-        'statuses': Draft.STATUS_CHOICES,
-    }
-    
-    return render(request, 'control_dashboard/supervisor_exceptions.html', context)
-
-
-# ==================== TEAM PERFORMANCE ====================
-
-# ==================== TEAM PERFORMANCE ====================
-
-def team_performance(request):
-    """
-    Team Performance view - shows all team members and their performance metrics.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    try:
-        user_profile = UserProfile.objects.get(email=request.user.email)
-    except UserProfile.DoesNotExist:
-        user_profile = get_or_create_user_profile(request.user)
-    
-    search_query = request.GET.get('search', '')
-    
-    # Get all team members - include all active users except the current user
-    # Or you can include all users with role 'member' or 'supervisor'
-    team_members = UserProfile.objects.filter(
-        status='active'
-    ).exclude(
-        id=user_profile.id  # Exclude the current user
-    )
-    
-    # Alternative: If you only want members and supervisors:
-    # team_members = UserProfile.objects.filter(
-    #     role__in=['member', 'supervisor'],
-    #     status='active'
-    # )
-    
-    if search_query:
-        team_members = team_members.filter(
-            Q(full_name__icontains=search_query) |
-            Q(email__icontains=search_query)
-        )
-    
-    team_members = team_members.annotate(
-        total_drafts=Count('drafts'),
-        submitted_drafts=Count('drafts', filter=Q(drafts__status='submitted')),
-        approved_drafts=Count('drafts', filter=Q(drafts__status='approved')),
-        rejected_drafts=Count('drafts', filter=Q(drafts__status='rejected')),
-        in_review_drafts=Count('drafts', filter=Q(drafts__status='in_review')),
-        completed_drafts=Count('drafts', filter=Q(drafts__status__in=['approved', 'rejected'])),
-    )
-    
-    team_data = []
-    for member in team_members:
-        total = member.total_drafts
-        completed = member.completed_drafts
-        
-        if total > 0:
-            base_percentage = round((completed / total) * 100)
-        else:
-            base_percentage = 0
-        
-        # Get ad-hoc deductions
-        ad_hoc_deductions = ActivityLog.objects.filter(
-            user=member,
-            activity_type='ad_hoc_deduction'
-        )
-        
-        total_deduction = 0
-        for deduction in ad_hoc_deductions:
-            try:
-                details = deduction.details
-                if 'Deduction:' in details:
-                    parts = details.split(' - ')
-                    if len(parts) >= 1:
-                        points_part = parts[0].replace('Deduction: ', '').strip()
-                        total_deduction += int(points_part)
-            except (ValueError, IndexError):
-                pass
-        
-        final_percentage = max(0, base_percentage - total_deduction)
-        
-        if final_percentage >= 90:
-            status = 'success'
-            status_text = 'Excellent'
-        elif final_percentage >= 70:
-            status = 'warning'
-            status_text = 'Good'
-        elif final_percentage >= 50:
-            status = 'info'
-            status_text = 'Average'
-        else:
-            status = 'danger'
-            status_text = 'Needs Improvement'
-        
-        team_data.append({
-            'user': member,
-            'total_tasks': total,
-            'submitted': member.submitted_drafts,
-            'approved': member.approved_drafts,
-            'rejected': member.rejected_drafts,
-            'in_review': member.in_review_drafts,
-            'completed': completed,
-            'base_percentage': base_percentage,
-            'total_deduction': total_deduction,
-            'percentage': final_percentage,
-            'status': status,
-            'status_text': status_text,
-        })
-    
-    team_data.sort(key=lambda x: x['percentage'], reverse=True)
-    
-    total_members = len(team_data)
-    total_tasks = sum(m['total_tasks'] for m in team_data)
-    total_completed = sum(m['completed'] for m in team_data)
-    overall_completion = round((total_completed / total_tasks) * 100) if total_tasks > 0 else 0
-    
-    context = {
-        'user_profile': user_profile,
-        'team_data': team_data,
-        'total_members': total_members,
-        'total_tasks': total_tasks,
-        'total_completed': total_completed,
-        'overall_completion': overall_completion,
-        'search_query': search_query,
-    }
-    
-    return render(request, 'control_dashboard/team.html', context)
-
-
-# ==================== SUPERVISOR ACTIVITY LOGS ====================
-
-def supervisor_activity_logs(request):
-    """
-    Supervisor Activity Logs view - shows all activities with filtering.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    try:
-        user_profile = UserProfile.objects.get(email=request.user.email)
-    except UserProfile.DoesNotExist:
-        user_profile = get_or_create_user_profile(request.user)
-    
-    start_date = request.GET.get('start_date', '')
-    end_date = request.GET.get('end_date', '')
-    activity_filter = request.GET.get('activity', '')
-    user_filter = request.GET.get('user', '')
-    
-    logs = ActivityLog.objects.all()
-    
-    if start_date:
-        try:
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            logs = logs.filter(created_at__date__gte=start)
-        except:
-            pass
-    
-    if end_date:
-        try:
-            end = datetime.strptime(end_date, '%Y-%m-%d')
-            logs = logs.filter(created_at__date__lte=end)
-        except:
-            pass
-    
-    if activity_filter and activity_filter != 'all':
-        logs = logs.filter(activity_type=activity_filter)
-    
-    if user_filter and user_filter != 'all':
-        logs = logs.filter(user_id=user_filter)
-    
-    users = UserProfile.objects.all()
-    
-    activity_counts = {}
-    for log in logs:
-        activity_counts[log.activity_type] = activity_counts.get(log.activity_type, 0) + 1
-    
-    context = {
-        'user_profile': user_profile,
-        'activity_logs': logs,
-        'users': users,
-        'activity_types': ActivityLog.ACTIVITY_CHOICES,
-        'start_date': start_date,
-        'end_date': end_date,
-        'activity_filter': activity_filter,
-        'user_filter': user_filter,
-        'total_logs': logs.count(),
-        'activity_counts': activity_counts,
-    }
-    
-    return render(request, 'control_dashboard/activity-sup.html', context)
-
-
-# ==================== SUPERVISOR CHECKLIST ====================
-
-def supervisor_checklist(request):
-    """
-    Supervisor Activity Checklist view - shows all users and their checklist completion.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    try:
-        user_profile = UserProfile.objects.get(email=request.user.email)
-    except UserProfile.DoesNotExist:
-        user_profile = get_or_create_user_profile(request.user)
-    
-    users = UserProfile.objects.filter(
-        role__in=['member', 'supervisor']
-    )
-    
-    all_checklists = Checklist.objects.filter(is_active=True)
-    
-    user_completion_data = []
-    for user in users:
-        assigned_checklists = all_checklists.filter(
-            Q(assigned_users=user) | 
-            Q(assignment_target='all')
-        ).distinct()
-        
-        total_checklists = assigned_checklists.count()
-        completed_checklists = 0
-        checklist_details = []
-        
-        for checklist in assigned_checklists:
-            is_completed = ActivityLog.objects.filter(
-                user=user,
-                activity_type='checklist_updated',
-                details__icontains=checklist.name
-            ).exists()
-            
-            if is_completed:
-                completed_checklists += 1
-            
-            tasks = checklist.tasks.all()
-            completed_tasks = 0
-            task_details = []
-            
-            for task in tasks:
-                task_completed = ActivityLog.objects.filter(
-                    user=user,
-                    activity_type='task_status_changed',
-                    details__icontains=task.description
-                ).filter(
-                    details__icontains='Completed'
-                ).exists()
-                
-                if task_completed:
-                    completed_tasks += 1
-                
-                task_details.append({
-                    'id': task.id,
-                    'description': task.description,
-                    'is_completed': task_completed
-                })
-            
-            checklist_details.append({
-                'id': checklist.id,
-                'name': checklist.name,
-                'frequency': checklist.get_frequency_display(),
-                'is_completed': is_completed,
-                'tasks': task_details,
-                'total_tasks': len(task_details),
-                'completed_tasks': completed_tasks,
-                'task_completion_rate': round((completed_tasks / len(task_details)) * 100) if len(task_details) > 0 else 0
-            })
-        
-        completion_rate = round((completed_checklists / total_checklists) * 100) if total_checklists > 0 else 0
-        
-        if completion_rate >= 90:
-            status = 'success'
-        elif completion_rate >= 70:
-            status = 'warning'
-        else:
-            status = 'danger'
-        
-        user_completion_data.append({
-            'user': user,
-            'total_checklists': total_checklists,
-            'completed_checklists': completed_checklists,
-            'completion_rate': completion_rate,
-            'status': status,
-            'checklist_details': checklist_details,
-        })
-    
-    user_completion_data.sort(key=lambda x: x['completion_rate'], reverse=True)
-    
-    total_users = len(user_completion_data)
-    avg_completion = sum(u['completion_rate'] for u in user_completion_data) / total_users if total_users > 0 else 0
-    
-    context = {
-        'user_profile': user_profile,
-        'user_completion_data': user_completion_data,
-        'total_users': total_users,
-        'avg_completion': round(avg_completion),
-        'all_checklists': all_checklists,
-    }
-    
-    return render(request, 'control_dashboard/checklist-sup.html', context)
-
-
-# ==================== SUBMITTED REPORTS ====================
-
-def submitted_reports(request):
-    """
-    Submitted Reports view - shows all submitted reports with scoring.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    try:
-        user_profile = UserProfile.objects.get(email=request.user.email)
-    except UserProfile.DoesNotExist:
-        user_profile = get_or_create_user_profile(request.user)
-    
-    user_filter = request.GET.get('user', '')
-    category_filter = request.GET.get('category', '')
-    start_date = request.GET.get('start_date', '')
-    end_date = request.GET.get('end_date', '')
-    
-    reports = Draft.objects.filter(
-        status__in=['submitted', 'in_review', 'approved', 'rejected', 'revision_requested']
-    )
-    
-    if user_filter and user_filter != 'all':
-        reports = reports.filter(created_by__id=user_filter)
-    
-    if category_filter and category_filter != 'all':
-        reports = reports.filter(report_type__icontains=category_filter)
-    
-    if start_date:
-        try:
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            reports = reports.filter(created_at__date__gte=start)
-        except:
-            pass
-    
-    if end_date:
-        try:
-            end = datetime.strptime(end_date, '%Y-%m-%d')
-            reports = reports.filter(created_at__date__lte=end)
-        except:
-            pass
-    
-    users = UserProfile.objects.filter(role__in=['member', 'supervisor'])
-    categories = reports.values_list('report_type', flat=True).distinct()
-    
-    report_data = []
-    for report in reports:
-        status_scores = {
-            'submitted': 70,
-            'in_review': 80,
-            'approved': 100,
-            'rejected': 50,
-            'revision_requested': 60,
-        }
-        base_score = status_scores.get(report.status, 50)
-        
-        manual_deduction = report.data.get('manual_deduction', 0) if report.data else 0
-        final_score = max(0, base_score - manual_deduction)
-        
-        if final_score >= 90:
-            badge_class = 'badge-success'
-        elif final_score >= 70:
-            badge_class = 'badge-warning'
-        elif final_score >= 50:
-            badge_class = 'badge-info'
-        else:
-            badge_class = 'badge-danger'
-        
-        report_data.append({
-            'report': report,
-            'created_by': report.created_by,
-            'report_type': report.report_type,
-            'created_at': report.created_at,
-            'submitted_at': report.submitted_at or report.created_at,
-            'status': report.status,
-            'status_display': report.get_status_display(),
-            'base_score': base_score,
-            'manual_deduction': manual_deduction,
-            'final_score': final_score,
-            'badge_class': badge_class,
-        })
-    
-    context = {
-        'user_profile': user_profile,
-        'report_data': report_data,
-        'users': users,
-        'categories': categories,
-        'user_filter': user_filter,
-        'category_filter': category_filter,
-        'start_date': start_date,
-        'end_date': end_date,
-        'total_reports': len(report_data),
-    }
-    
-    return render(request, 'control_dashboard/submitted.html', context)
-
-
-# ==================== AD-HOC SCORECARD ====================
-
-def ad_hoc_scorecard(request):
-    """
-    Ad-Hoc Scorecard view - manage manual deductions for users.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    try:
-        user_profile = UserProfile.objects.get(email=request.user.email)
-    except UserProfile.DoesNotExist:
-        user_profile = get_or_create_user_profile(request.user)
-    
-    user_filter = request.GET.get('user', '')
-    
-    deductions = ActivityLog.objects.filter(activity_type='ad_hoc_deduction')
-    
-    if user_filter and user_filter != 'all':
-        deductions = deductions.filter(user_id=user_filter)
-    
-    users = UserProfile.objects.filter(role__in=['member', 'supervisor'])
-    
-    deduction_data = []
-    for deduction in deductions:
-        details = deduction.details
-        parts = details.split(' - ')
-        if len(parts) >= 2:
-            points_part = parts[0].replace('Deduction: ', '')
-            reason_part = parts[1] if len(parts) > 1 else ''
-            task_desc = parts[2] if len(parts) > 2 else ''
-        else:
-            points_part = '0'
-            reason_part = details
-            task_desc = ''
-        
-        try:
-            points = int(points_part)
-        except:
-            points = 0
-        
-        deduction_data.append({
-            'id': deduction.id,
-            'user': deduction.user,
-            'points': points,
-            'reason': reason_part,
-            'task_description': task_desc,
-            'created_at': deduction.created_at,
-            'user_name': deduction.user.full_name or deduction.user.email,
-        })
-    
-    context = {
-        'user_profile': user_profile,
-        'deductions': deduction_data,
-        'users': users,
-        'user_filter': user_filter,
-        'total_deductions': len(deduction_data),
-    }
-    
-    return render(request, 'control_dashboard/ad-hoc.html', context)
-
-
-# ==================== LOGGED EXCEPTIONS ====================
-
-def logged_exceptions(request):
-    """
-    Logged Exceptions view - shows all exceptions with filtering and management.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    try:
-        user_profile = UserProfile.objects.get(email=request.user.email)
-    except UserProfile.DoesNotExist:
-        user_profile = get_or_create_user_profile(request.user)
-    
-    branch_filter = request.GET.get('branch', '')
-    category_filter = request.GET.get('category', '')
-    status_filter = request.GET.get('status', '')
-    start_date = request.GET.get('start_date', '')
-    end_date = request.GET.get('end_date', '')
-    search_query = request.GET.get('search', '')
-    
-    exceptions = Draft.objects.all().order_by('-created_at')
-    
-    if branch_filter and branch_filter != 'all':
-        exceptions = exceptions.filter(
-            Q(data__branch__icontains=branch_filter) |
-            Q(data__unit__icontains=branch_filter)
-        )
-    
-    if category_filter and category_filter != 'all':
-        exceptions = exceptions.filter(report_type__icontains=category_filter)
-    
-    if status_filter and status_filter != 'all':
-        exceptions = exceptions.filter(status=status_filter)
-    
-    if start_date:
-        try:
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            exceptions = exceptions.filter(created_at__date__gte=start)
-        except:
-            pass
-    
-    if end_date:
-        try:
-            end = datetime.strptime(end_date, '%Y-%m-%d')
-            exceptions = exceptions.filter(created_at__date__lte=end)
-        except:
-            pass
-    
-    if search_query:
-        exceptions = exceptions.filter(
-            Q(report_type__icontains=search_query) |
-            Q(data__header__icontains=search_query) |
-            Q(data__details__icontains=search_query) |
-            Q(data__branch__icontains=search_query) |
-            Q(created_by__full_name__icontains=search_query)
-        )
-    
-    # Get branches and categories for filters
-    branches = Branch.objects.filter(is_active=True).order_by('name')
-    categories = ExceptionCategory.objects.filter(is_active=True).order_by('name')
-    
-    status_counts = {
-        'draft': Draft.objects.filter(status='draft').count(),
-        'submitted': Draft.objects.filter(status='submitted').count(),
-        'in_review': Draft.objects.filter(status='in_review').count(),
-        'approved': Draft.objects.filter(status='approved').count(),
-        'rejected': Draft.objects.filter(status='rejected').count(),
-        'revision_requested': Draft.objects.filter(status='revision_requested').count(),
-    }
-    
-    context = {
-        'user_profile': user_profile,
-        'exceptions': exceptions,
-        'branches': branches,
-        'categories': categories,
-        'status_counts': status_counts,
-        'branch_filter': branch_filter,
-        'category_filter': category_filter,
-        'status_filter': status_filter,
-        'start_date': start_date,
-        'end_date': end_date,
-        'search_query': search_query,
-        'total_exceptions': exceptions.count(),
-    }
-    
-    return render(request, 'control_dashboard/logged.html', context)
-
-# Add this to control_dashboard/views.py
-
-@csrf_exempt
-@require_http_methods(["GET"])
-def api_user_checklist_detail(request, user_id):
-    """
-    API endpoint to get detailed checklist completion for a specific user.
-    """
-    try:
-        user = get_object_or_404(UserProfile, id=user_id)
-        
-        all_checklists = Checklist.objects.filter(is_active=True)
-        
-        assigned_checklists = all_checklists.filter(
-            Q(assigned_users=user) | 
-            Q(assignment_target='all')
-        ).distinct()
-        
-        checklist_details = []
-        completed_count = 0
-        
-        for checklist in assigned_checklists:
-            is_completed = ActivityLog.objects.filter(
-                user=user,
-                activity_type='checklist_updated',
-                details__icontains=checklist.name
-            ).exists()
-            
-            if is_completed:
-                completed_count += 1
-            
-            tasks = checklist.tasks.all()
-            completed_tasks = 0
-            task_list = []
-            
-            for task in tasks:
-                task_completed = ActivityLog.objects.filter(
-                    user=user,
-                    activity_type='task_status_changed',
-                    details__icontains=task.description
-                ).filter(
-                    details__icontains='Completed'
-                ).exists()
-                
-                if task_completed:
-                    completed_tasks += 1
-                
-                task_list.append({
-                    'id': task.id,
-                    'description': task.description,
-                    'is_completed': task_completed
-                })
-            
-            checklist_details.append({
-                'id': checklist.id,
-                'name': checklist.name,
-                'frequency': checklist.get_frequency_display(),
-                'is_completed': is_completed,
-                'tasks': task_list,
-                'total_tasks': len(task_list),
-                'completed_tasks': completed_tasks,
-                'task_completion_rate': round((completed_tasks / len(task_list)) * 100) if len(task_list) > 0 else 0
-            })
-        
-        total_checklists = len(assigned_checklists)
-        completion_rate = round((completed_count / total_checklists) * 100) if total_checklists > 0 else 0
-        
-        return JsonResponse({
-            'success': True,
-            'user': {
-                'id': user.id,
-                'full_name': user.full_name or user.email,
-                'email': user.email,
-                'position': user.get_position_display(),
-                'total_checklists': total_checklists,
-                'completed_checklists': completed_count,
-                'completion_rate': completion_rate,
-                'checklist_details': checklist_details,
-            }
-        })
-        
-    except Exception as e:
-        print(f"Error in api_user_checklist_detail: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-# ==================== DRAFTS & REPORTS ====================
-
-def drafts_page(request):
-    """
-    Drafts page view - shows templates and drafts.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    try:
-        user_profile = UserProfile.objects.get(email=request.user.email)
-    except UserProfile.DoesNotExist:
-        user_profile = get_or_create_user_profile(request.user)
-    
-    templates = ReportTemplate.objects.filter(is_active=True).order_by('name')
-    report_types = templates.values_list('name', flat=True).distinct()
-    
-    drafts = Draft.objects.filter(created_by=user_profile).order_by('-created_at')
-    
-    supervisors = UserProfile.objects.filter(Q(role='admin') | Q(role='supervisor'))
-    
-    # Get branches and categories
-    branches = Branch.objects.filter(is_active=True).order_by('name')
-    categories = ExceptionCategory.objects.filter(is_active=True).order_by('name')
-    
-    context = {
-        'user_profile': user_profile,
-        'templates': templates,
-        'branches': branches,
-        'categories': categories,
-        'report_types': list(report_types),
-        'drafts': drafts,
-        'supervisors': supervisors,
-        'today': timezone.now(),
-        'statuses': Draft.STATUS_CHOICES,
-    }
-    
-    return render(request, 'control_dashboard/draft.html', context)
-
-
-def reports_page(request):
-    """
-    Reports page view - shows all saved reports.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    try:
-        user_profile = UserProfile.objects.get(email=request.user.email)
-    except UserProfile.DoesNotExist:
-        user_profile = get_or_create_user_profile(request.user)
-    
-    # Get all reports (drafts) created by this user - no status filter
-    reports = Draft.objects.filter(created_by=user_profile).order_by('-created_at')
-    
-    report_types = reports.values_list('report_type', flat=True).distinct()
-    
-    context = {
-        'user_profile': user_profile,
-        'reports': reports,
-        'report_types': list(report_types),
-        'today': timezone.now(),
-    }
-    
-    return render(request, 'control_dashboard/reports.html', context)
-
-
-@csrf_exempt
-@require_http_methods(["GET"])
-def api_get_draft(request, draft_id):
-    try:
-        draft = get_object_or_404(Draft, id=draft_id)
-        return JsonResponse({
-            'success': True,
-            'draft': {
-                'id': draft.id,
-                'report_type': draft.report_type,
-                'data': draft.data,
-                'status': draft.status,
-                'created_at': draft.created_at.isoformat(),
-                'updated_at': draft.updated_at.isoformat(),
-            }
-        })
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-@csrf_exempt
-@require_http_methods(["PUT", "POST"])
-def api_edit_draft(request, draft_id):
-    try:
-        draft = get_object_or_404(Draft, id=draft_id)
-        data = json.loads(request.body)
-        
-        form_data = data.get('form_data', {})
-        status = data.get('status', draft.status)
-        
-        # Update the draft
-        draft.data = form_data
-        draft.status = status
-        draft.save()
-        
-        log_activity(
-            user=draft.created_by,
-            activity_type='report_updated',
-            details=f'Updated report: {draft.report_type}',
-            request=request
-        )
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'Report updated successfully'
-        })
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-def submit_page(request):
-    """
-    Submit page view - shows available exceptions for email submission.
-    """
-    if not request.user.is_authenticated:
-        return redirect('control_dashboard:login')
-    
-    try:
-        user_profile = UserProfile.objects.get(email=request.user.email)
-    except UserProfile.DoesNotExist:
-        user_profile = get_or_create_user_profile(request.user)
-    
-    exceptions = Draft.objects.filter(
-        created_by=user_profile,
-        status__in=['draft', 'rejected']
-    ).order_by('-created_at')
-    
-    report_types = Draft.objects.filter(
-        created_by=user_profile
-    ).values_list('report_type', flat=True).distinct()
-    
-    categories = []
-    category_names = set()
-    for exception in exceptions:
-        category_name = exception.data.get('unit', '') or exception.data.get('branch', '') or 'Uncategorized'
-        if category_name not in category_names:
-            category_names.add(category_name)
-            categories.append({
-                'id': category_name.lower().replace(' ', '-'),
-                'name': category_name
-            })
-    
-    email_recipients = [
-        {'email': 'hoc@bank.com', 'name': 'Head of Control', 'department': 'Control'},
-        {'email': 'cc@bank.com', 'name': 'Control Committee', 'department': 'Control'},
-        {'email': 'operations@bank.com', 'name': 'Operations Team', 'department': 'Operations'},
-        {'email': 'risk@bank.com', 'name': 'Risk Management', 'department': 'Risk'},
-    ]
-    
-    exceptions_json = []
-    for exception in exceptions:
-        status_display = dict(Draft.STATUS_CHOICES).get(exception.status, exception.status)
-        category = exception.data.get('unit', '') or exception.data.get('branch', '') or 'Uncategorized'
-        category_id = category.lower().replace(' ', '-')
-        
-        exceptions_json.append({
-            'id': exception.id,
-            'report_type': exception.report_type,
-            'status': exception.status,
-            'status_display': status_display,
-            'data': exception.data,
-            'created_at': exception.created_at.strftime('%b %d, %Y'),
-            'category': category_id,
-            'unit': exception.data.get('unit', '') or exception.data.get('branch', '') or 'N/A',
-        })
-    
-    user_data = {
-        'name': user_profile.full_name if user_profile else 'Test User',
-        'email': user_profile.email if user_profile else 'test@bank.com',
-        'department': user_profile.get_position_display() if user_profile else 'Member',
-    }
-    
-    # Get branches and categories
-    branches = Branch.objects.filter(is_active=True).order_by('name')
-    exception_categories = ExceptionCategory.objects.filter(is_active=True).order_by('name')
-    
-    context = {
-        'user_profile': user_profile,
-        'exceptions_json': json.dumps(exceptions_json, default=str),
-        'exceptions': exceptions,
-        'branches': branches,
-        'categories': exception_categories,
-        'report_types': list(report_types),
-        'categories_list': categories,
-        'email_recipients': email_recipients,
-        'user_data': user_data,
-    }
-    
-    return render(request, 'control_dashboard/submit.html', context)
-
-
-# ==================== API - USER ENDPOINTS ====================
+# ==================== API - ADMIN USER MANAGEMENT ====================
 
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_create_user(request):
     """
-    API endpoint to create a new user with activity logging.
+    API endpoint to create a new user.
     """
     try:
         data = json.loads(request.body)
         email = data.get('email', '').strip()
+        full_name = data.get('full_name', '').strip()
+        position = data.get('position', 'member')
+        role = data.get('role', 'member')
+        status = data.get('status', 'active')
         
         if not email:
             return JsonResponse({'success': False, 'error': 'Email is required'}, status=400)
         
-        if UserProfile.objects.filter(email=email).exists():
-            return JsonResponse({'success': False, 'error': 'User with this email already exists'}, status=400)
+        if not full_name:
+            return JsonResponse({'success': False, 'error': 'Full name is required'}, status=400)
+        
+        if UserProfile.objects.filter(email__iexact=email).exists():
+            return JsonResponse({'success': False, 'error': 'A user with this email already exists'}, status=400)
         
         user = UserProfile.objects.create(
-            email=email,
-            full_name=data.get('full_name', '').strip(),
-            position=data.get('position', 'hoc'),
-            role=data.get('role', 'member'),
-            status=data.get('status', 'active')
+            email=email.lower(),
+            full_name=full_name,
+            position=position,
+            role=role,
+            status=status
         )
+        
+        # Also create Django user for authentication
+        django_user, created = DjangoUser.objects.get_or_create(
+            username=email.lower(),
+            defaults={'email': email.lower()}
+        )
+        
+        if created:
+            django_user.save()
         
         log_activity(
             user=user,
@@ -2049,23 +305,24 @@ def api_create_user(request):
 @require_http_methods(["PUT", "POST"])
 def api_edit_user(request, user_id):
     """
-    API endpoint to edit an existing user with activity logging.
+    API endpoint to edit an existing user.
     """
     try:
         user = get_object_or_404(UserProfile, id=user_id)
         data = json.loads(request.body)
         
         changes = []
+        old_email = user.email  # Store old email for Django user update
         
         if 'email' in data:
-            new_email = data['email'].strip()
+            new_email = data['email'].strip().lower()
             if new_email and new_email != user.email:
                 if UserProfile.objects.filter(email=new_email).exclude(id=user_id).exists():
                     return JsonResponse({'success': False, 'error': 'Email already in use'}, status=400)
                 changes.append(f'Email changed from {user.email} to {new_email}')
                 user.email = new_email
         
-        if 'full_name' in data and data['full_name'] != user.full_name:
+        if 'full_name' in data and data['full_name'].strip() != user.full_name:
             changes.append(f'Full name changed to {data["full_name"]}')
             user.full_name = data['full_name'].strip()
         
@@ -2085,6 +342,23 @@ def api_edit_user(request, user_id):
             changes.append(f'Status changed from {old_status} to {user.get_status_display()}')
         
         user.save()
+        
+        # Update Django user if email changed
+        if 'email' in data and data['email'].strip().lower() != old_email:
+            try:
+                # Try to find Django user by old email/username
+                django_user = DjangoUser.objects.get(username=old_email)
+                django_user.username = user.email
+                django_user.email = user.email
+                django_user.save()
+            except DjangoUser.DoesNotExist:
+                # If not found, create a new one
+                django_user, created = DjangoUser.objects.get_or_create(
+                    username=user.email,
+                    defaults={'email': user.email}
+                )
+                if created:
+                    django_user.save()
         
         if changes:
             log_activity(
@@ -2109,7 +383,7 @@ def api_edit_user(request, user_id):
 @require_http_methods(["POST"])
 def api_update_status(request, user_id):
     """
-    API endpoint to toggle user status with activity logging.
+    API endpoint to toggle user status.
     """
     try:
         user = get_object_or_404(UserProfile, id=user_id)
@@ -2125,7 +399,7 @@ def api_update_status(request, user_id):
         
         log_activity(
             user=user,
-            activity_type='user_status_changed',
+            activity_type='user_updated',
             details=f'User {user.email} status changed from {old_status} to {user.get_status_display()}',
             request=request
         )
@@ -2145,7 +419,7 @@ def api_update_status(request, user_id):
 @require_http_methods(["DELETE"])
 def api_delete_user(request, user_id):
     """
-    API endpoint to delete a user with activity logging.
+    API endpoint to delete a user.
     """
     try:
         user = get_object_or_404(UserProfile, id=user_id)
@@ -2169,95 +443,147 @@ def api_delete_user(request, user_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
-# ==================== API - REPORT ENDPOINTS ====================
+# ==================== SUPERVISOR VIEWS ====================
+
+@login_required
+def supervisor_dashboard(request):
+    """
+    Supervisor dashboard view.
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+        if user_profile.role != 'supervisor' and user_profile.role != 'admin':
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect_dashboard(request.user)
+    except UserProfile.DoesNotExist:
+        return redirect_dashboard(request.user)
+    
+    context = {
+        'user_profile': user_profile,
+        'today': timezone.now(),
+    }
+    
+    return render(request, 'control_dashboard/supervisorboard.html', context)
+
+
+# ==================== REPORT CENTER VIEWS ====================
+
+@login_required
+def report_center(request):
+    """
+    Report Center view for creating and managing reports.
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+        if user_profile.role != 'admin':
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect_dashboard(request.user)
+    except UserProfile.DoesNotExist:
+        return redirect_dashboard(request.user)
+    
+    # Get all reports
+    reports = Report.objects.all().order_by('-created_at')
+    
+    # Filter by user
+    user_filter = request.GET.get('user', '')
+    if user_filter and user_filter != 'all':
+        reports = reports.filter(assigned_to__id=user_filter)
+    
+    # Get only MEMBER users for assignment (no admin or supervisor)
+    users = UserProfile.objects.filter(role='member', status='active').order_by('full_name')
+    
+    context = {
+        'user_profile': user_profile,
+        'reports': reports,
+        'users': users,
+        'user_filter': user_filter,
+    }
+    
+    return render(request, 'control_dashboard/reportcenter.html', context)
+
+
+# ==================== API - REPORT MANAGEMENT ====================
 
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_create_report(request):
     """
-    API endpoint to create a new report with activity logging.
+    API endpoint to create a new report safely parsing empty string variants.
     """
     try:
+        if not request.body:
+            return JsonResponse({'success': False, 'error': 'Empty layout request payload'}, status=400)
+            
         data = json.loads(request.body)
         
         report_type = data.get('report_type', '').strip()
         frequency = data.get('frequency', 'one-off')
         description = data.get('description', '').strip()
-        deadline_date = data.get('deadline_date', '')
-        deadline_time = data.get('deadline_time', '')
+        
+        # Normalize empty inputs explicitly to None so they drop into DB cleanly as NULL
+        deadline_date = data.get('deadline_date')
+        if not deadline_date or str(deadline_date).strip() == '':
+            deadline_date = None
+            
+        deadline_time = data.get('deadline_time')
+        if not deadline_time or str(deadline_time).strip() == '':
+            deadline_time = None
+            
         assigned_users = data.get('assigned_users', [])
-        branch_id = data.get('branch_id')
-        category_id = data.get('category_id')
+        is_assigned_to_all = data.get('is_assigned_to_all', False)
         
         if not report_type:
             return JsonResponse({'success': False, 'error': 'Report type is required'}, status=400)
         
-        if not assigned_users:
-            return JsonResponse({'success': False, 'error': 'Please assign at least one user'}, status=400)
-        
-        try:
-            created_by = UserProfile.objects.get(email=request.user.email)
-        except (UserProfile.DoesNotExist, AttributeError):
-            created_by = UserProfile.objects.first()
-        
+        # Owner profile resolution fallback strategy
+        created_by = None
+        if request.user and request.user.is_authenticated:
+            created_by = UserProfile.objects.filter(email=request.user.email).first()
+            
         if not created_by:
-            return JsonResponse({'success': False, 'error': 'No user found'}, status=400)
+            created_by = UserProfile.objects.filter(role='admin').first() or UserProfile.objects.first()
+            
+        if not created_by:
+            return JsonResponse({'success': False, 'error': 'No profile accounts exist to take ownership'}, status=400)
         
+        # Instantiate report record parameters safely
         report = Report.objects.create(
             report_type=report_type,
             frequency=frequency,
             description=description,
-            deadline_date=deadline_date if deadline_date else None,
-            deadline_time=deadline_time if deadline_time else None,
+            deadline_date=deadline_date,
+            deadline_time=deadline_time,
+            is_assigned_to_all=is_assigned_to_all,
             created_by=created_by,
             status='assigned'
         )
         
-        # Store branch and category in report data
-        if branch_id:
-            try:
-                branch = Branch.objects.get(id=branch_id)
-                if not report.data:
-                    report.data = {}
-                report.data['branch'] = branch.name
-                report.save()
-            except Branch.DoesNotExist:
-                pass
-        
-        if category_id:
-            try:
-                category = ExceptionCategory.objects.get(id=category_id)
-                if not report.data:
-                    report.data = {}
-                report.data['category'] = category.name
-                report.save()
-            except ExceptionCategory.DoesNotExist:
-                pass
-        
-        assigned_count = 0
-        for user_id in assigned_users:
-            try:
-                user = UserProfile.objects.get(id=user_id)
-                report.assigned_to.add(user)
-                assigned_count += 1
-            except UserProfile.DoesNotExist:
-                pass
-        
-        log_activity(
-            user=created_by,
-            activity_type='report_created',
-            details=f'Created report: {report_type} (Frequency: {frequency}) assigned to {assigned_count} users',
-            request=request
-        )
-        
+        # Assign members securely based on targeted role filter constraints
+        if is_assigned_to_all:
+            all_members = UserProfile.objects.filter(role='member', status='active')
+            report.assigned_to.set(all_members)
+        elif assigned_users:
+            active_members = UserProfile.objects.filter(id__in=assigned_users, role='member', status='active')
+            report.assigned_to.set(active_members)
+            
+        try:
+            log_activity(
+                user=created_by,
+                activity_type='report_created',
+                details=f'Created report: {report_type}',
+                request=request
+            )
+        except NameError:
+            pass 
+            
         return JsonResponse({
             'success': True,
             'message': 'Report created successfully',
             'report_id': report.id
-        })
+        }, status=201)
         
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+        return JsonResponse({'success': False, 'error': 'Malformed JSON structural arguments payload'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
@@ -2282,6 +608,7 @@ def api_get_report(request, report_id):
                 'deadline_date': report.deadline_date.strftime('%Y-%m-%d') if report.deadline_date else '',
                 'deadline_time': report.deadline_time.strftime('%H:%M') if report.deadline_time else '',
                 'assigned_users': list(report.assigned_to.values_list('id', flat=True)),
+                'is_assigned_to_all': report.is_assigned_to_all,
                 'data': report.data or {},
             }
         })
@@ -2294,70 +621,71 @@ def api_get_report(request, report_id):
 @require_http_methods(["PUT", "POST"])
 def api_edit_report(request, report_id):
     """
-    API endpoint to edit a report with activity logging.
+    API endpoint to modify an existing report dataset instance securely.
     """
     try:
         report = get_object_or_404(Report, id=report_id)
+        if not request.body:
+            return JsonResponse({'success': False, 'error': 'Payload structural parameters cannot be blank'}, status=400)
+            
         data = json.loads(request.body)
-        
         changes = []
         
-        if 'report_type' in data and data['report_type'] != report.report_type:
+        if 'report_type' in data and data['report_type'].strip() != report.report_type:
             changes.append(f'Type changed from {report.report_type} to {data["report_type"]}')
-            report.report_type = data['report_type']
+            report.report_type = data['report_type'].strip()
         
         if 'frequency' in data and data['frequency'] != report.frequency:
             old_freq = report.get_frequency_display()
             report.frequency = data['frequency']
             changes.append(f'Frequency changed from {old_freq} to {report.get_frequency_display()}')
-        
-        if 'description' in data:
-            report.description = data['description']
-        
+            
         if 'status' in data and data['status'] != report.status:
             old_status = report.get_status_display()
             report.status = data['status']
             changes.append(f'Status changed from {old_status} to {report.get_status_display()}')
-        
+            
+        if 'description' in data:
+            report.description = data['description'].strip()
+            
         if 'deadline_date' in data:
-            report.deadline_date = data['deadline_date'] if data['deadline_date'] else None
-        
+            val = data['deadline_date']
+            report.deadline_date = val if val and str(val).strip() != '' else None
+            
         if 'deadline_time' in data:
-            report.deadline_time = data['deadline_time'] if data['deadline_time'] else None
+            val = data['deadline_time']
+            report.deadline_time = val if val and str(val).strip() != '' else None
+            
+        is_assigned_to_all = data.get('is_assigned_to_all', report.is_assigned_to_all)
+        assigned_users = data.get('assigned_users', [])
         
-        if 'assigned_users' in data:
-            report.assigned_to.clear()
-            for user_id in data['assigned_users']:
-                try:
-                    user = UserProfile.objects.get(id=user_id)
-                    report.assigned_to.add(user)
-                except UserProfile.DoesNotExist:
-                    pass
-            changes.append('Assigned users updated')
-        
-        if 'data' in data:
-            if not report.data:
-                report.data = {}
-            report.data.update(data['data'])
-            changes.append('Report data updated')
-        
+        if is_assigned_to_all != report.is_assigned_to_all:
+            report.is_assigned_to_all = is_assigned_to_all
+            changes.append('Assignment mode toggled')
+            
+        if is_assigned_to_all:
+            report.assigned_to.set(UserProfile.objects.filter(role='member', status='active'))
+        elif 'assigned_users' in data:
+            report.assigned_to.set(UserProfile.objects.filter(id__in=assigned_users, role='member', status='active'))
+            changes.append('Assigned user profiles refreshed')
+            
         report.save()
         
         if changes:
-            log_activity(
-                user=report.created_by,
-                activity_type='report_updated',
-                details=f'Report {report.report_type} updated: ' + '; '.join(changes),
-                request=request
-            )
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'Report updated successfully'
-        })
+            try:
+                log_activity(
+                    user=report.created_by,
+                    activity_type='report_updated',
+                    details=f'Report {report.report_type} updated: ' + '; '.join(changes),
+                    request=request
+                )
+            except NameError:
+                pass
+                
+        return JsonResponse({'success': True, 'message': 'Report modifications indexed successfully'})
         
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+        return JsonResponse({'success': False, 'error': 'Invalid JSON structure constraints'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
@@ -2366,7 +694,7 @@ def api_edit_report(request, report_id):
 @require_http_methods(["DELETE"])
 def api_delete_report(request, report_id):
     """
-    API endpoint to delete a report with activity logging.
+    API endpoint to delete a report.
     """
     try:
         report = get_object_or_404(Report, id=report_id)
@@ -2389,175 +717,48 @@ def api_delete_report(request, report_id):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+# control_dashboard/views.py - Add these functions
 
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_submit_report(request):
-    """
-    API endpoint to submit a report for review.
-    """
-    try:
-        data = json.loads(request.body)
-        report_id = data.get('report_id')
-        
-        if not report_id:
-            return JsonResponse({'success': False, 'error': 'Report ID is required'}, status=400)
-        
-        report = get_object_or_404(Draft, id=report_id)
-        
-        try:
-            user = UserProfile.objects.get(email=request.user.email)
-        except (UserProfile.DoesNotExist, AttributeError):
-            user = UserProfile.objects.first()
-        
-        if report.created_by != user:
-            return JsonResponse({'success': False, 'error': 'You do not have permission to submit this report'}, status=403)
-        
-        report.status = 'submitted'
-        report.submitted_at = timezone.now()
-        report.save()
-        
-        log_activity(
-            user=user,
-            activity_type='report_created',
-            details=f'Submitted report: {report.report_type} for review',
-            request=request
-        )
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'Report submitted successfully'
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+# ==================== TEMPLATE BUILDER VIEWS ====================
 
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_update_report_score(request):
+@login_required
+def template_builder(request):
     """
-    API endpoint to update report score with manual deduction.
+    Template Builder view for creating and managing report templates.
     """
     try:
-        data = json.loads(request.body)
-        report_id = data.get('report_id')
-        manual_deduction = data.get('manual_deduction', 0)
-        
-        if not report_id:
-            return JsonResponse({'success': False, 'error': 'Report ID is required'}, status=400)
-        
-        report = get_object_or_404(Draft, id=report_id)
-        
-        try:
-            manual_deduction = int(manual_deduction)
-            if manual_deduction < 0:
-                manual_deduction = 0
-            if manual_deduction > 100:
-                manual_deduction = 100
-        except ValueError:
-            manual_deduction = 0
-        
-        if not report.data:
-            report.data = {}
-        report.data['manual_deduction'] = manual_deduction
-        report.save()
-        
-        log_activity(
-            user=report.created_by,
-            activity_type='report_updated',
-            details=f'Updated manual deduction for report {report.report_type} to {manual_deduction}%',
-            request=request
-        )
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'Score updated successfully',
-            'manual_deduction': manual_deduction,
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        user_profile = UserProfile.objects.get(email=request.user.email)
+        if user_profile.role != 'admin':
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect_dashboard(request.user)
+    except UserProfile.DoesNotExist:
+        return redirect_dashboard(request.user)
+    
+    from .models import ReportTemplate, TemplateField
+    
+    templates = ReportTemplate.objects.all().order_by('-created_at')
+    
+    # Get all report types from existing reports and templates
+    report_types = list(Report.objects.values_list('report_type', flat=True).distinct())
+    template_names = list(ReportTemplate.objects.values_list('name', flat=True).distinct())
+    all_report_types = list(set(report_types + template_names))
+    all_report_types.sort()
+    
+    field_types = ReportTemplate.FIELD_TYPES
+    data_sources = ReportTemplate.DATA_SOURCES
+    
+    context = {
+        'user_profile': user_profile,
+        'templates': templates,
+        'report_types': all_report_types,
+        'field_types': field_types,
+        'data_sources': data_sources,
+    }
+    
+    return render(request, 'control_dashboard/reporttemplate.html', context)
 
 
-# ==================== API - ACTIVITY ENDPOINTS ====================
-
-@csrf_exempt
-@require_http_methods(["GET"])
-def api_get_activity(request, activity_id):
-    """
-    API endpoint to get activity details for editing.
-    """
-    try:
-        activity = get_object_or_404(ActivityLog, id=activity_id)
-        
-        return JsonResponse({
-            'success': True,
-            'activity': {
-                'id': activity.id,
-                'user': activity.user.id,
-                'activity_type': activity.activity_type,
-                'details': activity.details,
-            }
-        })
-        
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-@csrf_exempt
-@require_http_methods(["PUT", "POST"])
-def api_edit_activity(request, activity_id):
-    """
-    API endpoint to edit an activity log with logging.
-    """
-    try:
-        activity = get_object_or_404(ActivityLog, id=activity_id)
-        data = json.loads(request.body)
-        
-        changes = []
-        
-        if 'user_id' in data:
-            user = get_object_or_404(UserProfile, id=data['user_id'])
-            old_user = activity.user.email
-            activity.user = user
-            changes.append(f'User changed from {old_user} to {user.email}')
-        
-        if 'activity_type' in data and data['activity_type'] != activity.activity_type:
-            old_type = activity.get_activity_type_display()
-            activity.activity_type = data['activity_type']
-            changes.append(f'Activity type changed from {old_type} to {activity.get_activity_type_display()}')
-        
-        if 'details' in data and data['details'] != activity.details:
-            changes.append('Details updated')
-            activity.details = data['details']
-        
-        activity.save()
-        
-        if changes:
-            log_activity(
-                user=activity.user,
-                activity_type='activity_edited',
-                details=f'Activity log edited: ' + '; '.join(changes),
-                request=request
-            )
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'Activity updated successfully'
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-# ==================== API - TEMPLATE ENDPOINTS ====================
+# ==================== API - TEMPLATE MANAGEMENT ====================
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -2575,16 +776,10 @@ def api_create_template(request):
         if not report_type:
             return JsonResponse({'success': False, 'error': 'Report type is required'}, status=400)
         
-        try:
-            created_by = UserProfile.objects.get(email=request.user.email)
-        except (UserProfile.DoesNotExist, AttributeError):
-            created_by = UserProfile.objects.first()
-        
-        if not created_by:
-            return JsonResponse({'success': False, 'error': 'No user found'}, status=400)
-        
         if ReportTemplate.objects.filter(name=report_type).exists():
             return JsonResponse({'success': False, 'error': 'A template for this report type already exists'}, status=400)
+        
+        created_by = UserProfile.objects.get(email=request.user.email)
         
         template = ReportTemplate.objects.create(
             name=report_type,
@@ -2757,134 +952,87 @@ def api_delete_template(request, template_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_assign_template_to_report(request):
-    """
-    API endpoint to assign a template to a report.
-    """
-    try:
-        data = json.loads(request.body)
-        
-        template_id = data.get('template_id')
-        report_id = data.get('report_id')
-        
-        if not template_id or not report_id:
-            return JsonResponse({'success': False, 'error': 'Template ID and Report ID are required'}, status=400)
-        
-        template = get_object_or_404(ReportTemplate, id=template_id)
-        report = get_object_or_404(Report, id=report_id)
-        
-        if TemplateAssignment.objects.filter(template=template, report=report).exists():
-            return JsonResponse({'success': False, 'error': 'This template is already assigned to this report'}, status=400)
-        
-        try:
-            assigned_by = UserProfile.objects.get(email=request.user.email)
-        except (UserProfile.DoesNotExist, AttributeError):
-            assigned_by = UserProfile.objects.first()
-        
-        if not assigned_by:
-            return JsonResponse({'success': False, 'error': 'No user found'}, status=400)
-        
-        assignment = TemplateAssignment.objects.create(
-            template=template,
-            report=report,
-            assigned_by=assigned_by,
-            is_active=True
-        )
-        
-        log_activity(
-            user=assigned_by,
-            activity_type='report_assigned',
-            details=f'Assigned template "{template.name}" to report "{report.report_type}"',
-            request=request
-        )
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'Template assigned to report successfully',
-            'assignment_id': assignment.id
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+# ==================== CHECKLIST VIEWS ====================
 
-
-@csrf_exempt
-@require_http_methods(["GET"])
-def api_get_template_fields(request):
+@login_required
+def checklist_builder(request):
     """
-    API endpoint to get template fields by report type.
+    Checklist Builder view for creating and managing checklists.
     """
     try:
-        report_type = request.GET.get('report_type')
-        if not report_type:
-            return JsonResponse({'success': False, 'error': 'Report type is required'}, status=400)
-        
-        template = get_object_or_404(ReportTemplate, name=report_type, is_active=True)
-        fields = template.fields.all().order_by('order')
-        
-        return JsonResponse({
-            'success': True,
-            'template': {
-                'id': template.id,
-                'name': template.name,
-                'description': template.description,
-                'fields': [
-                    {
-                        'id': field.id,
-                        'label': field.label,
-                        'field_type': field.field_type,
-                        'data_source': field.data_source,
-                        'is_required': field.is_required,
-                        'options': field.get_options_list() if hasattr(field, 'get_options_list') else [],
-                        'order': field.order
-                    }
-                    for field in fields
-                ]
-            }
-        })
-        
-    except ReportTemplate.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Template not found for this report type'}, status=404)
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        user_profile = UserProfile.objects.get(email=request.user.email)
+        if user_profile.role != 'admin':
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect_dashboard(request.user)
+    except UserProfile.DoesNotExist:
+        return redirect_dashboard(request.user)
+    
+    from .models import Checklist, ChecklistTask
+    
+    checklists = Checklist.objects.all().order_by('-created_at')
+    
+    # Get ALL active users for assignment (members, cc, hc)
+    users = UserProfile.objects.filter(status='active').order_by('full_name')
+    
+    # DEBUG: Print to console
+    print(f"=== CHECKLIST BUILDER DEBUG ===")
+    print(f"Total users found: {users.count()}")
+    for user in users:
+        print(f"  User: {user.id} - {user.full_name} - {user.email} - Position: {user.position}")
+    
+    frequencies = Checklist.FREQUENCY_CHOICES
+    assignments = Checklist.ASSIGNMENT_CHOICES
+    
+    context = {
+        'user_profile': user_profile,
+        'checklists': checklists,
+        'users': users,
+        'frequencies': frequencies,
+        'assignments': assignments,
+    }
+    
+    return render(request, 'control_dashboard/checklist.html', context)
 
 
-# ==================== API - CHECKLIST ENDPOINTS ====================
+# ==================== API - CHECKLIST MANAGEMENT ====================
 
-@csrf_exempt
 @require_http_methods(["POST"])
 def api_create_checklist(request):
     """
-    API endpoint to create a new checklist with tasks.
+    API endpoint to create a new checklist from JSON payload.
     """
     try:
+        # Check if request body contains data
+        if not request.body:
+            return JsonResponse({'success': False, 'error': 'Empty request body'}, status=400)
+            
         data = json.loads(request.body)
         
         name = data.get('name', '').strip()
         description = data.get('description', '').strip()
         frequency = data.get('frequency', 'weekly')
         assignment_target = data.get('assignment_target', 'all')
-        assigned_users = data.get('assigned_users', [])
-        tasks = data.get('tasks', [])
+        assigned_users_ids = data.get('assigned_users', [])
+        tasks_data = data.get('tasks', [])
         
         if not name:
             return JsonResponse({'success': False, 'error': 'Activity name is required'}, status=400)
         
-        if not tasks:
+        if not tasks_data:
             return JsonResponse({'success': False, 'error': 'Please add at least one task'}, status=400)
         
-        try:
-            created_by = UserProfile.objects.get(email=request.user.email)
-        except (UserProfile.DoesNotExist, AttributeError):
-            created_by = UserProfile.objects.first()
+        # Safe fallback user identification strategy
+        created_by = None
+        if request.user and request.user.is_authenticated:
+            created_by = UserProfile.objects.filter(email=request.user.email).first()
         
         if not created_by:
-            return JsonResponse({'success': False, 'error': 'No user found'}, status=400)
+            created_by = UserProfile.objects.first()
+            
+        if not created_by:
+            return JsonResponse({'success': False, 'error': 'No active UserProfile records found to assign ownership'}, status=400)
         
+        # Create checklist record inside database
         checklist = Checklist.objects.create(
             name=name,
             description=description,
@@ -2894,40 +1042,35 @@ def api_create_checklist(request):
             is_active=True
         )
         
-        if assignment_target == 'specific' and assigned_users:
-            for user_id in assigned_users:
-                try:
-                    user = UserProfile.objects.get(id=user_id)
-                    checklist.assigned_users.add(user)
-                except UserProfile.DoesNotExist:
-                    pass
+        # Bulk user assignment mapping strategy
+        if assignment_target == 'specific':
+            active_users = UserProfile.objects.filter(id__in=assigned_users_ids, status='active')
+            checklist.assigned_users.set(active_users)
+        elif assignment_target == 'cc':
+            checklist.assigned_users.set(UserProfile.objects.filter(position='cc', status='active'))
+        elif assignment_target == 'hc':
+            checklist.assigned_users.set(UserProfile.objects.filter(position='hc', status='active'))
+        elif assignment_target == 'all':
+            checklist.assigned_users.set(UserProfile.objects.filter(status='active'))
         
-        task_count = 0
-        for task_data in tasks:
-            task_desc = task_data.get('description', '').strip()
+        # Order-aware item population execution loop
+        for index, task_item in enumerate(tasks_data):
+            task_desc = task_item.get('description', '').strip()
             if task_desc:
                 ChecklistTask.objects.create(
                     checklist=checklist,
                     description=task_desc,
-                    order=task_count
+                    order=index
                 )
-                task_count += 1
-        
-        log_activity(
-            user=created_by,
-            activity_type='checklist_created',
-            details=f'Created checklist: {name} with {task_count} tasks',
-            request=request
-        )
-        
+                
         return JsonResponse({
             'success': True,
             'message': 'Checklist created successfully',
             'checklist_id': checklist.id
-        })
+        }, status=201)
         
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+        return JsonResponse({'success': False, 'error': 'Malformed or invalid JSON payload structure'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
@@ -2939,6 +1082,8 @@ def api_get_checklist(request, checklist_id):
     API endpoint to get checklist details.
     """
     try:
+        from .models import Checklist
+        
         checklist = get_object_or_404(Checklist, id=checklist_id)
         tasks = checklist.tasks.all().order_by('order')
         
@@ -2968,85 +1113,55 @@ def api_get_checklist(request, checklist_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
-@csrf_exempt
-@require_http_methods(["PUT", "POST"])
+@require_http_methods(["PUT"])
 def api_edit_checklist(request, checklist_id):
     """
-    API endpoint to edit a checklist with activity logging.
+    API endpoint to update an existing checklist layout.
     """
     try:
         checklist = get_object_or_404(Checklist, id=checklist_id)
+        if not request.body:
+            return JsonResponse({'success': False, 'error': 'Empty patch payload parameters'}, status=400)
+            
         data = json.loads(request.body)
         
-        changes = []
-        
-        if 'name' in data and data['name'].strip() != checklist.name:
-            changes.append(f'Name changed from {checklist.name} to {data["name"]}')
+        # Update core structural assignments
+        if 'name' in data:
             checklist.name = data['name'].strip()
-        
-        if 'description' in data and data['description'].strip() != checklist.description:
-            changes.append('Description updated')
-            checklist.description = data['description'].strip()
-        
-        if 'frequency' in data and data['frequency'] != checklist.frequency:
-            old_freq = checklist.get_frequency_display()
+        if 'frequency' in data:
             checklist.frequency = data['frequency']
-            changes.append(f'Frequency changed from {old_freq} to {checklist.get_frequency_display()}')
-        
-        if 'assignment_target' in data and data['assignment_target'] != checklist.assignment_target:
-            old_assign = checklist.get_assignment_display()
+        if 'assignment_target' in data:
             checklist.assignment_target = data['assignment_target']
-            changes.append(f'Assignment changed from {old_assign} to {checklist.get_assignment_display()}')
+        checklist.save()
         
-        if 'is_active' in data:
-            new_status = data['is_active']
-            old_status = 'active' if checklist.is_active else 'inactive'
-            new_status_text = 'active' if new_status else 'inactive'
-            if new_status != checklist.is_active:
-                changes.append(f'Status changed from {old_status} to {new_status_text}')
-            checklist.is_active = new_status
-        
-        if 'assigned_users' in data:
-            checklist.assigned_users.clear()
-            for user_id in data['assigned_users']:
-                try:
-                    user = UserProfile.objects.get(id=user_id)
-                    checklist.assigned_users.add(user)
-                except UserProfile.DoesNotExist:
-                    pass
-            changes.append('Assigned users updated')
-        
+        # Dynamic membership lookup calculations
+        assignment_target = data.get('assignment_target', checklist.assignment_target)
+        if assignment_target == 'specific':
+            assigned_users_ids = data.get('assigned_users', [])
+            checklist.assigned_users.set(UserProfile.objects.filter(id__in=assigned_users_ids, status='active'))
+        elif assignment_target == 'cc':
+            checklist.assigned_users.set(UserProfile.objects.filter(position='cc', status='active'))
+        elif assignment_target == 'hc':
+            checklist.assigned_users.set(UserProfile.objects.filter(position='hc', status='active'))
+        elif assignment_target == 'all':
+            checklist.assigned_users.set(UserProfile.objects.filter(status='active'))
+            
+        # Complete subtask clear-and-rewrite sweep execution 
         if 'tasks' in data:
             checklist.tasks.all().delete()
-            task_count = 0
-            for task_data in data['tasks']:
-                task_desc = task_data.get('description', '').strip()
+            for index, task_item in enumerate(data['tasks']):
+                task_desc = task_item.get('description', '').strip()
                 if task_desc:
                     ChecklistTask.objects.create(
                         checklist=checklist,
                         description=task_desc,
-                        order=task_count
+                        order=index
                     )
-                    task_count += 1
-            changes.append(f'Tasks updated ({task_count} tasks)')
-        
-        checklist.save()
-        
-        if changes:
-            log_activity(
-                user=checklist.created_by,
-                activity_type='checklist_updated',
-                details=f'Checklist {checklist.name} updated: ' + '; '.join(changes),
-                request=request
-            )
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'Checklist updated successfully'
-        })
+                    
+        return JsonResponse({'success': True, 'message': 'Checklist records synchronized successfully'})
         
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data payload parameters'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
@@ -3055,9 +1170,11 @@ def api_edit_checklist(request, checklist_id):
 @require_http_methods(["DELETE"])
 def api_delete_checklist(request, checklist_id):
     """
-    API endpoint to delete a checklist with activity logging.
+    API endpoint to delete a checklist.
     """
     try:
+        from .models import Checklist
+        
         checklist = get_object_or_404(Checklist, id=checklist_id)
         checklist_name = checklist.name
         
@@ -3079,423 +1196,1567 @@ def api_delete_checklist(request, checklist_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_update_task_status(request, task_id):
+
+
+
+# ==================== MEMBER DASHBOARD VIEW ====================
+
+@login_required
+def member_dashboard(request):
     """
-    API endpoint to toggle task completion status with logging.
+    Member dashboard view showing assigned checklists, reports, and submissions.
     """
     try:
-        task = get_object_or_404(ChecklistTask, id=task_id)
-        data = json.loads(request.body)
-        is_completed = data.get('is_completed', False)
-        
-        old_status = 'Completed' if task.is_completed else 'Incomplete'
-        new_status = 'Completed' if is_completed else 'Incomplete'
-        
-        task.is_completed = is_completed
-        task.save()
-        
-        log_activity(
-            user=task.checklist.created_by,
-            activity_type='task_status_changed',
-            details=f'Task "{task.description}" in checklist "{task.checklist.name}" status changed from {old_status} to {new_status}',
-            request=request
+        user_profile = UserProfile.objects.get(email=request.user.email)
+    except UserProfile.DoesNotExist:
+        # If no profile exists, create one from the Django user
+        user_profile = UserProfile.objects.create(
+            email=request.user.email,
+            full_name=request.user.get_full_name() or request.user.username,
+            role='member',
+            position='member',
+            status='active'
         )
+    
+    # Get today's date
+    today = timezone.now().date()
+    
+    # ============================================
+    # WEEKLY CALCULATION: Friday to Thursday
+    # ============================================
+    # Get the current day of the week (0=Monday, 6=Sunday)
+    weekday = today.weekday()
+    
+    # Calculate week start (Friday) and week end (Thursday)
+    # If today is Friday (4), start is today, end is next Thursday
+    # If today is Saturday (5), start is yesterday (Friday)
+    # If today is Sunday (6), start is 2 days ago (Friday)
+    # If today is Monday (0), start is 3 days ago (Friday)
+    # If today is Tuesday (1), start is 4 days ago (Friday)
+    # If today is Wednesday (2), start is 5 days ago (Friday)
+    # If today is Thursday (3), start is 6 days ago (Friday)
+    
+    if weekday >= 4:  # Friday (4), Saturday (5), Sunday (6)
+        # Week starts on the most recent Friday
+        days_since_friday = weekday - 4
+        week_start = today - timedelta(days=days_since_friday)
+    else:  # Monday (0), Tuesday (1), Wednesday (2), Thursday (3)
+        # Week starts on the previous Friday
+        days_since_friday = weekday + 3  # Monday=3, Tuesday=4, Wednesday=5, Thursday=6
+        week_start = today - timedelta(days=days_since_friday)
+    
+    # Week end is Thursday (6 days after Friday)
+    week_end = week_start + timedelta(days=6)
+    
+    # Get checklists assigned to this user
+    from .models import Checklist
+    from django.db.models import Q
+    
+    user_checklists = Checklist.objects.filter(
+        is_active=True
+    ).filter(
+        Q(assigned_users=user_profile) |
+        Q(assignment_target='all') |
+        Q(assignment_target=user_profile.position)
+    ).distinct()
+    
+    # Daily checklists
+    daily_checklists = user_checklists.filter(frequency='daily')[:5]
+    
+    # ============================================
+    # ASSIGNED THIS WEEK (Friday to Thursday)
+    # ============================================
+    assigned_this_week = user_checklists.filter(
+        created_at__date__gte=week_start,
+        created_at__date__lte=week_end
+    ).count()
+    
+    # ============================================
+    # EXCEPTIONS CAPTURED (Friday to Thursday)
+    # ============================================
+    # Count reports (exceptions) created by this user during the week
+    exceptions_captured = Report.objects.filter(
+        created_by=user_profile,
+        created_at__date__gte=week_start,
+        created_at__date__lte=week_end
+    ).count()
+    
+    # Count pending submissions (reports with status 'submitted' or 'draft')
+    pending_submissions = Report.objects.filter(
+        Q(assigned_to=user_profile) |
+        Q(created_by=user_profile) |
+        Q(is_assigned_to_all=True)
+    ).filter(
+        Q(status='submitted') | Q(status='draft')
+    ).distinct().count()
+    
+    # Get recent submissions (completed reports)
+    recent_submissions = Report.objects.filter(
+        Q(assigned_to=user_profile) |
+        Q(created_by=user_profile) |
+        Q(is_assigned_to_all=True)
+    ).filter(
+        status='submitted'
+    ).order_by('-updated_at')[:5]
+    
+    # Prepare submission data with additional fields
+    submission_data = []
+    for report in recent_submissions:
+        # Calculate if on time
+        is_on_time = True
+        if report.deadline_date:
+            if report.deadline_date < timezone.now().date():
+                is_on_time = False
+            elif report.deadline_date == timezone.now().date() and report.deadline_time:
+                current_time = timezone.now().time()
+                if current_time > report.deadline_time:
+                    is_on_time = False
         
-        return JsonResponse({
-            'success': True,
-            'message': 'Task status updated successfully'
+        # Calculate final score (example logic - adjust as needed)
+        final_score = None
+        manual_deduction = 0
+        if report.data:
+            if isinstance(report.data, dict):
+                if 'score' in report.data:
+                    final_score = report.data.get('score')
+                if 'manual_deduction' in report.data:
+                    manual_deduction = report.data.get('manual_deduction')
+        
+        submission_data.append({
+            'report_type': report.report_type,
+            'deadline_date': report.deadline_date,
+            'submitted_at': report.updated_at,
+            'is_on_time': is_on_time,
+            'manual_deduction': manual_deduction,
+            'final_score': final_score,
         })
-        
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    context = {
+        'user_profile': user_profile,
+        'today': today,
+        'week_start': week_start,
+        'week_end': week_end,
+        'assigned_this_week': assigned_this_week,
+        'exceptions_captured': exceptions_captured,
+        'pending_submissions': pending_submissions,
+        'daily_checklists': daily_checklists,
+        'recent_submissions': submission_data,
+        'all_checklists': user_checklists,
+    }
+    
+    return render(request, 'control_dashboard/memberboard.html', context)
+
+# ==================== SUBMIT REPORT VIEWS ====================
+
+@login_required
+def drafts_page(request):
+    """Submit Report page for member."""
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+    except UserProfile.DoesNotExist:
+        return redirect('control_dashboard:member_dashboard')
+    
+    # Get all report types from templates
+    from .models import ReportTemplate
+    report_types = ReportTemplate.objects.filter(is_active=True).values_list('name', flat=True).distinct()
+    
+    context = {
+        'user_profile': user_profile,
+        'today': timezone.now(),
+        'report_types': list(report_types),
+    }
+    return render(request, 'control_dashboard/draft.html', context)
 
 
 @csrf_exempt
 @require_http_methods(["GET"])
-def api_user_checklist_detail(request, user_id):
+def api_get_template_fields(request):
     """
-    API endpoint to get detailed checklist completion for a specific user.
-    """
-    try:
-        user = get_object_or_404(UserProfile, id=user_id)
-        
-        all_checklists = Checklist.objects.filter(is_active=True)
-        
-        assigned_checklists = all_checklists.filter(
-            Q(assigned_users=user) | 
-            Q(assignment_target='all')
-        ).distinct()
-        
-        checklist_details = []
-        completed_count = 0
-        
-        for checklist in assigned_checklists:
-            is_completed = ActivityLog.objects.filter(
-                user=user,
-                activity_type='checklist_updated',
-                details__icontains=checklist.name
-            ).exists()
-            
-            if is_completed:
-                completed_count += 1
-            
-            tasks = checklist.tasks.all()
-            completed_tasks = 0
-            task_list = []
-            
-            for task in tasks:
-                task_completed = ActivityLog.objects.filter(
-                    user=user,
-                    activity_type='task_status_changed',
-                    details__icontains=task.description
-                ).filter(
-                    details__icontains='Completed'
-                ).exists()
-                
-                if task_completed:
-                    completed_tasks += 1
-                
-                task_list.append({
-                    'id': task.id,
-                    'description': task.description,
-                    'is_completed': task_completed
-                })
-            
-            checklist_details.append({
-                'id': checklist.id,
-                'name': checklist.name,
-                'frequency': checklist.get_frequency_display(),
-                'is_completed': is_completed,
-                'tasks': task_list,
-                'total_tasks': len(task_list),
-                'completed_tasks': completed_tasks,
-                'task_completion_rate': round((completed_tasks / len(task_list)) * 100) if len(task_list) > 0 else 0
-            })
-        
-        total_checklists = len(assigned_checklists)
-        completion_rate = round((completed_count / total_checklists) * 100) if total_checklists > 0 else 0
-        
-        return JsonResponse({
-            'success': True,
-            'user': {
-                'id': user.id,
-                'full_name': user.full_name or user.email,
-                'email': user.email,
-                'position': user.get_position_display(),
-                'total_checklists': total_checklists,
-                'completed_checklists': completed_count,
-                'completion_rate': completion_rate,
-                'checklist_details': checklist_details,
-            }
-        })
-        
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-# ==================== API - DRAFT ENDPOINTS ====================
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_save_draft(request):
-    """
-    API endpoint to save a report directly to the database without any status.
+    API endpoint to get template fields for a report type.
     """
     try:
-        data = json.loads(request.body)
-        report_type = data.get('report_type', '').strip()
-        form_data = data.get('form_data', {})
-        template_name = data.get('template_name', '')
+        report_type = request.GET.get('report_type', '')
         
         if not report_type:
             return JsonResponse({'success': False, 'error': 'Report type is required'}, status=400)
         
-        try:
-            user = UserProfile.objects.get(email=request.user.email)
-        except (UserProfile.DoesNotExist, AttributeError):
-            user = UserProfile.objects.first()
+        from .models import ReportTemplate
         
-        if not user:
-            return JsonResponse({'success': False, 'error': 'No user found'}, status=400)
+        template = ReportTemplate.objects.filter(name=report_type, is_active=True).first()
         
-        template = ReportTemplate.objects.filter(name=report_type).first()
+        if not template:
+            return JsonResponse({'success': False, 'error': 'Template not found'}, status=404)
         
-        # Prepare the data - store form_data as JSON
-        if isinstance(form_data, list) and len(form_data) > 0:
-            main_data = {
-                '_all_rows': form_data,
-                '_first_row': form_data[0] if form_data else {}
-            }
-            if form_data and isinstance(form_data[0], dict):
-                for key, value in form_data[0].items():
-                    main_data[key] = value
-        else:
-            main_data = form_data
-        
-        # Create a NEW draft each time (don't update existing)
-        draft = Draft.objects.create(
-            report_type=report_type,
-            template=template,
-            created_by=user,
-            data=main_data,
-            status='',  # Empty string for no status
-        )
-        
-        # Log the activity
-        log_activity(
-            user=user,
-            activity_type='report_created',
-            details=f'Saved report: {report_type} (ID: {draft.id})',
-            request=request
-        )
+        fields = template.fields.all().order_by('order')
         
         return JsonResponse({
             'success': True,
-            'message': 'Report saved successfully',
-            'draft_id': draft.id,
-            'created': True
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_submit_draft(request):
-    """
-    API endpoint to submit a draft for review.
-    """
-    try:
-        data = json.loads(request.body)
-        draft_id = data.get('draft_id')
-        
-        if not draft_id:
-            return JsonResponse({'success': False, 'error': 'Draft ID is required'}, status=400)
-        
-        draft = get_object_or_404(Draft, id=draft_id)
-        
-        try:
-            user = UserProfile.objects.get(email=request.user.email)
-        except (UserProfile.DoesNotExist, AttributeError):
-            user = UserProfile.objects.first()
-        
-        if not user:
-            return JsonResponse({'success': False, 'error': 'No user found'}, status=400)
-        
-        if draft.created_by != user:
-            return JsonResponse({'success': False, 'error': 'You do not have permission to submit this draft'}, status=403)
-        
-        draft.status = 'submitted'
-        draft.submitted_at = timezone.now()
-        draft.save()
-        
-        log_activity(
-            user=user,
-            activity_type='report_created',
-            details=f'Submitted report: {draft.report_type} for review',
-            request=request
-        )
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'Draft submitted successfully',
-            'status': draft.status
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-@csrf_exempt
-@require_http_methods(["GET"])
-def api_get_draft(request, draft_id):
-    """
-    API endpoint to get draft details.
-    """
-    try:
-        draft = get_object_or_404(Draft, id=draft_id)
-        
-        return JsonResponse({
-            'success': True,
-            'draft': {
-                'id': draft.id,
-                'report_type': draft.report_type,
-                'data': draft.data,
-                'status': draft.status,
-                'status_display': draft.get_status_display(),
-                'created_at': draft.created_at.isoformat(),
-                'updated_at': draft.updated_at.isoformat(),
-            }
-        })
-        
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-@csrf_exempt
-@require_http_methods(["DELETE"])
-def api_delete_draft(request, draft_id):
-    """
-    API endpoint to delete a draft.
-    """
-    try:
-        draft = get_object_or_404(Draft, id=draft_id)
-        
-        try:
-            user = UserProfile.objects.get(email=request.user.email)
-        except (UserProfile.DoesNotExist, AttributeError):
-            user = UserProfile.objects.first()
-        
-        if draft.created_by != user:
-            return JsonResponse({'success': False, 'error': 'You do not have permission to delete this draft'}, status=403)
-        
-        log_activity(
-            user=user,
-            activity_type='edit',
-            details=f'Deleted draft: {draft.report_type}',
-            request=request
-        )
-        
-        draft.delete()
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'Draft deleted successfully'
-        })
-        
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-# ==================== API - OTHER ENDPOINTS ====================
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_send_email(request):
-    """
-    API endpoint to send email with selected exceptions.
-    """
-    try:
-        data = json.loads(request.body)
-        
-        to = data.get('to')
-        cc = data.get('cc')
-        subject = data.get('subject')
-        body = data.get('body')
-        exceptions = data.get('exceptions', [])
-        from_email = data.get('from')
-        from_name = data.get('from_name', '')
-        
-        if not to:
-            return JsonResponse({'success': False, 'error': 'Recipient is required'}, status=400)
-        
-        if not subject:
-            return JsonResponse({'success': False, 'error': 'Subject is required'}, status=400)
-        
-        if not body:
-            return JsonResponse({'success': False, 'error': 'Email body is required'}, status=400)
-        
-        if not exceptions:
-            return JsonResponse({'success': False, 'error': 'No exceptions selected'}, status=400)
-        
-        try:
-            user = UserProfile.objects.get(email=request.user.email)
-        except (UserProfile.DoesNotExist, AttributeError):
-            user = UserProfile.objects.first()
-        
-        if not user:
-            return JsonResponse({'success': False, 'error': 'No user found'}, status=400)
-        
-        log_activity(
-            user=user,
-            activity_type='report_created',
-            details=f'Sent email to {to} with {len(exceptions)} exceptions. Subject: {subject}',
-            request=request
-        )
-        
-        for exception in exceptions:
-            try:
-                draft = Draft.objects.get(id=exception.get('id'))
-                if draft.status in ['draft', 'rejected']:
-                    draft.status = 'submitted'
-                    draft.submitted_at = timezone.now()
-                    draft.save()
-            except Draft.DoesNotExist:
-                pass
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Email sent successfully to {to} with {len(exceptions)} exceptions',
-            'clear_selection': True,
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-@csrf_exempt
-@require_http_methods(["GET"])
-def api_team_member_detail(request, user_id):
-    """
-    API endpoint to get detailed performance data for a team member.
-    """
-    try:
-        member = get_object_or_404(UserProfile, id=user_id)
-        
-        drafts = Draft.objects.filter(created_by=member)
-        
-        status_breakdown = {
-            'draft': drafts.filter(status='draft').count(),
-            'submitted': drafts.filter(status='submitted').count(),
-            'in_review': drafts.filter(status='in_review').count(),
-            'approved': drafts.filter(status='approved').count(),
-            'rejected': drafts.filter(status='rejected').count(),
-            'revision_requested': drafts.filter(status='revision_requested').count(),
-        }
-        
-        recent_submissions = drafts.order_by('-created_at')[:5]
-        
-        total = drafts.count()
-        completed = drafts.filter(status__in=['approved', 'rejected']).count()
-        percentage = round((completed / total) * 100) if total > 0 else 0
-        
-        return JsonResponse({
-            'success': True,
-            'member': {
-                'id': member.id,
-                'full_name': member.full_name,
-                'email': member.email,
-                'position': member.get_position_display(),
-                'role': member.get_role_display(),
-                'total_tasks': total,
-                'completed': completed,
-                'percentage': percentage,
-                'status_breakdown': status_breakdown,
-                'recent_submissions': [
+            'template': {
+                'id': template.id,
+                'name': template.name,
+                'description': template.description,
+                'fields': [
                     {
-                        'id': draft.id,
-                        'report_type': draft.report_type,
-                        'status': draft.status,
-                        'status_display': draft.get_status_display(),
-                        'created_at': draft.created_at.strftime('%b %d, %Y'),
-                        'data': draft.data,
+                        'id': field.id,
+                        'label': field.label,
+                        'field_type': field.field_type,
+                        'data_source': field.data_source,
+                        'is_required': field.is_required,
+                        'options': field.get_options_list(),
+                        'order': field.order
                     }
-                    for draft in recent_submissions
+                    for field in fields
                 ]
             }
         })
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_save_draft(request):
+    """
+    API endpoint to save a report submission directly to database.
+    """
+    try:
+        print("=== API SAVE DRAFT CALLED ===")
+        print(f"Request body: {request.body}")
+        
+        data = json.loads(request.body)
+        print(f"Parsed data: {data}")
+        
+        report_type = data.get('report_type', '').strip()
+        template_name = data.get('template_name', '').strip()
+        form_data = data.get('form_data', [])
+        excel_data = data.get('excel_data', [])
+        
+        print(f"Report Type: {report_type}")
+        print(f"Template Name: {template_name}")
+        print(f"Form Data: {form_data}")
+        print(f"Excel Data: {excel_data}")
+        
+        if not report_type:
+            return JsonResponse({'success': False, 'error': 'Report type is required'}, status=400)
+        
+        if not form_data:
+            return JsonResponse({'success': False, 'error': 'No form data provided'}, status=400)
+        
+        # Get user profile
+        try:
+            user_profile = UserProfile.objects.get(email=request.user.email)
+            print(f"User Profile: {user_profile}")
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+        
+        # Create ReportSubmission
+        submission = ReportSubmission.objects.create(
+            report_type=report_type,
+            template_name=template_name,
+            submitted_by=user_profile,
+            status='submitted',  # Use 'submitted'
+            data={
+                'form_data': form_data,
+                'excel_data': excel_data,
+            }
+        )
+        print(f"Submission created with ID: {submission.id}")
+        
+        # Create Report record with status 'submitted'
+        report = Report.objects.create(
+            report_type=report_type,
+            frequency='one-off',
+            description=template_name,
+            status='submitted',  # Use 'submitted' instead of 'completed'
+            created_by=user_profile,
+            data={
+                'submission_id': submission.id,
+                'form_data': form_data,
+                'excel_data': excel_data,
+            }
+        )
+        print(f"Report created with ID: {report.id}")
+        print(f"Report data: {report.data}")
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Report submitted successfully',
+            'submission_id': submission.id,
+            'report_id': report.id
+        })
+        
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error: {e}")
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        print(f"Exception: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def reports_page(request):
+    """View all submitted reports for member."""
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+    except UserProfile.DoesNotExist:
+        return redirect('control_dashboard:member_dashboard')
+    
+    # Get ALL reports submitted by this user
+    reports = Report.objects.filter(
+        created_by=user_profile
+    ).filter(
+        Q(status='submitted') | Q(status='completed')
+    ).order_by('-created_at')
+    
+    # DEBUG: Print the actual data structure
+    print(f"=== REPORTS PAGE DEBUG ===")
+    print(f"User: {user_profile.full_name}")
+    print(f"Total reports found: {reports.count()}")
+    for report in reports:
+        print(f"  Report ID: {report.id}")
+        print(f"  Report Type: {report.report_type}")
+        print(f"  Status: {report.status}")
+        print(f"  Data type: {type(report.data)}")
+        print(f"  Data: {report.data}")
+        if isinstance(report.data, dict):
+            print(f"  Data keys: {list(report.data.keys())}")
+            for key, value in report.data.items():
+                print(f"    {key}: {value}")
+        print("-" * 40)
+    
+    # Get unique report types
+    report_types = reports.values_list('report_type', flat=True).distinct()
+    
+    # Get all branches for dropdown
+    from .models import Branch
+    branches = Branch.objects.filter(is_active=True).order_by('name')
+    
+    context = {
+        'user_profile': user_profile,
+        'today': timezone.now(),
+        'reports': reports,
+        'report_types': list(report_types),
+        'branches': branches,
+    }
+    return render(request, 'control_dashboard/reports.html', context)
+
+
+@login_required
+def submit_page(request):
+    """Submit page for member."""
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+    except UserProfile.DoesNotExist:
+        return redirect('control_dashboard:member_dashboard')
+    
+    context = {
+        'user_profile': user_profile,
+        'today': timezone.now(),
+    }
+    return render(request, 'control_dashboard/submit.html', context)
+
+
+@login_required
+def member_checklist(request):
+    """
+    Member checklist view showing all checklists assigned to the user.
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+    except UserProfile.DoesNotExist:
+        return redirect('control_dashboard:member_dashboard')
+    
+    # Get all checklists assigned to this user
+    user_checklists = Checklist.objects.filter(
+        is_active=True
+    ).filter(
+        Q(assigned_users=user_profile) |
+        Q(assignment_target='all') |
+        Q(assignment_target=user_profile.position)
+    ).distinct().order_by('name')
+    
+    # Build checklist data with logs
+    checklist_data = []
+    for checklist in user_checklists:
+        # Get tasks for this checklist
+        tasks = checklist.tasks.all().order_by('order')
+        
+        # Get logs for this checklist and user
+        logs = ChecklistLog.objects.filter(
+            checklist=checklist,
+            user=user_profile
+        ).values_list('log_date', flat=True)
+        
+        # Convert logs to string dates
+        log_dates = [log.strftime('%Y-%m-%d') for log in logs]
+        
+        checklist_data.append({
+            'id': checklist.id,
+            'name': checklist.name,
+            'frequency': checklist.frequency,
+            'frequency_display': checklist.get_frequency_display(),
+            'tasks': [{'description': task.description} for task in tasks],
+            'logs': log_dates,
+        })
+    
+    context = {
+        'user_profile': user_profile,
+        'checklist_data': checklist_data,
+    }
+    
+    return render(request, 'control_dashboard/checklist-mem.html', context)
+
+
+# ==================== API - CHECKLIST LOG ====================
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_log_checklist(request):
+    """
+    API endpoint to log or unlog a checklist completion for a specific date.
+    """
+    try:
+        data = json.loads(request.body)
+        
+        checklist_id = data.get('checklist_id')
+        log_date = data.get('log_date')
+        action = data.get('action', 'log')  # 'log' or 'unlog'
+        
+        if not checklist_id:
+            return JsonResponse({'success': False, 'error': 'Checklist ID is required'}, status=400)
+        
+        if not log_date:
+            return JsonResponse({'success': False, 'error': 'Log date is required'}, status=400)
+        
+        # Get the user profile
+        try:
+            user_profile = UserProfile.objects.get(email=request.user.email)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+        
+        # Get the checklist
+        try:
+            checklist = Checklist.objects.get(id=checklist_id, is_active=True)
+        except Checklist.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Checklist not found'}, status=404)
+        
+        # Parse the date
+        try:
+            date_obj = datetime.strptime(log_date, '%Y-%m-%d').date()
+        except ValueError:
+            return JsonResponse({'success': False, 'error': 'Invalid date format. Use YYYY-MM-DD'}, status=400)
+        
+        if action == 'log':
+            # Create the log entry
+            log_entry, created = ChecklistLog.objects.get_or_create(
+                checklist=checklist,
+                user=user_profile,
+                log_date=date_obj
+            )
+            
+            if created:
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Checklist logged successfully',
+                    'action': 'logged'
+                })
+            else:
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Checklist already logged for this date',
+                    'action': 'already_logged'
+                })
+                
+        elif action == 'unlog':
+            # Delete the log entry
+            deleted_count, _ = ChecklistLog.objects.filter(
+                checklist=checklist,
+                user=user_profile,
+                log_date=date_obj
+            ).delete()
+            
+            if deleted_count > 0:
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Checklist unlogged successfully',
+                    'action': 'unlogged'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'No log found for this date'
+                }, status=404)
+        
+        else:
+            return JsonResponse({'success': False, 'error': 'Invalid action. Use "log" or "unlog"'}, status=400)
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_get_checklist_logs(request):
+    """
+    API endpoint to get all logs for a user.
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+        
+        logs = ChecklistLog.objects.filter(user=user_profile).select_related('checklist')
+        
+        log_data = []
+        for log in logs:
+            log_data.append({
+                'checklist_id': log.checklist.id,
+                'checklist_name': log.checklist.name,
+                'log_date': log.log_date.strftime('%Y-%m-%d'),
+                'logged_at': log.created_at.isoformat(),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'logs': log_data
+        })
+        
+    except UserProfile.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_get_checklist_stats(request):
+    """
+    API endpoint to get checklist completion statistics.
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+        
+        # Get all checklists assigned to user
+        user_checklists = Checklist.objects.filter(
+            is_active=True
+        ).filter(
+            Q(assigned_users=user_profile) |
+            Q(assignment_target='all') |
+            Q(assignment_target=user_profile.position)
+        ).distinct()
+        
+        total_checklists = user_checklists.count()
+        
+        # Get logs for this user
+        logs = ChecklistLog.objects.filter(user=user_profile)
+        total_logs = logs.count()
+        
+        # Get logs for this week
+        today = timezone.now().date()
+        start_of_week = today - timedelta(days=today.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
+        
+        weekly_logs = logs.filter(log_date__gte=start_of_week, log_date__lte=end_of_week).count()
+        
+        # Get last 7 days of logs
+        last_7_days = today - timedelta(days=7)
+        recent_logs = logs.filter(log_date__gte=last_7_days).count()
+        
+        # Get completion rate for daily checklists this week
+        daily_checklists = user_checklists.filter(frequency='daily')
+        daily_total = daily_checklists.count()
+        
+        completion_rate = 0
+        if daily_total > 0:
+            # Count how many daily checklists were completed each day this week
+            completed_days = 0
+            for i in range(7):
+                day = start_of_week + timedelta(days=i)
+                completed_for_day = logs.filter(log_date=day).count()
+                if completed_for_day >= daily_total:
+                    completed_days += 1
+            completion_rate = int((completed_days / 7) * 100)
+        
+        return JsonResponse({
+            'success': True,
+            'stats': {
+                'total_checklists': total_checklists,
+                'total_logs': total_logs,
+                'weekly_logs': weekly_logs,
+                'recent_logs': recent_logs,
+                'completion_rate': completion_rate,
+                'daily_checklists': daily_total,
+            }
+        })
+        
+    except UserProfile.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+# ==================== MEMBER OTHER PAGES ====================
+
+@login_required
+def drafts_page(request):
+    """Submit Report page for member - shows reports assigned to the user."""
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+    except UserProfile.DoesNotExist:
+        return redirect('control_dashboard:member_dashboard')
+    
+    # Get reports assigned to this user
+    from .models import Report
+    
+    # Get reports assigned to this user (either directly or via position)
+    assigned_reports = Report.objects.filter(
+        Q(assigned_to=user_profile) |
+        Q(is_assigned_to_all=True)
+    ).filter(
+        status__in=['assigned', 'in_progress']
+    ).distinct().order_by('-created_at')
+    
+    # Get unique report types from assigned reports
+    report_types = assigned_reports.values_list('report_type', flat=True).distinct()
+    
+    context = {
+        'user_profile': user_profile,
+        'today': timezone.now(),
+        'report_types': list(report_types),
+        'assigned_reports': assigned_reports,
+    }
+    return render(request, 'control_dashboard/draft.html', context)
+
+@require_http_methods(["GET"])
+def api_get_report_data(request):
+    """
+    API endpoint to get existing report data for a user.
+    """
+    try:
+        report_type = request.GET.get('report_type', '')
+        
+        if not report_type:
+            return JsonResponse({'success': False, 'error': 'Report type is required'}, status=400)
+        
+        user_profile = UserProfile.objects.get(email=request.user.email)
+        
+        # Get existing submissions for this report type
+        submissions = ReportSubmission.objects.filter(
+            report_type=report_type,
+            submitted_by=user_profile
+        ).order_by('-submission_date')
+        
+        if submissions.exists():
+            latest = submissions.first()
+            form_data = latest.data.get('form_data', [])
+            return JsonResponse({
+                'success': True,
+                'data': form_data,
+                'submission_id': latest.id
+            })
+        else:
+            return JsonResponse({
+                'success': True,
+                'data': []
+            })
+        
+    except UserProfile.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def reports_page(request):
+    user_profile = get_object_or_404(UserProfile, email=request.user.email)
+    
+    # Order by report_type FIRST so regroup combines them into single blocks
+    reports = Report.objects.filter(
+        created_by=user_profile
+    ).order_by('report_type', '-updated_at')  # <--- Primary sort on report_type
+
+    context = {
+        'reports': reports,
+        'report_types': ReportTemplate.objects.filter(is_active=True).values_list('name', flat=True),
+    }
+    return render(request, 'control_dashboard/reports.html', context)
+
+
+@login_required
+def submit_page(request):
+    """
+    Submit page for member - shows exceptions assigned to the user.
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+    except UserProfile.DoesNotExist:
+        return redirect('control_dashboard:member_dashboard')
+    
+    # Get all exceptions (reports) assigned to this user
+    from django.db.models import Q
+    
+    # Get reports where user is assigned or created by user
+    assigned_exceptions = Report.objects.filter(
+        Q(assigned_to=user_profile) |
+        Q(created_by=user_profile) |
+        Q(is_assigned_to_all=True)
+    ).filter(
+        Q(status='submitted') | Q(status='draft') | Q(status='rejected')
+    ).distinct().order_by('-updated_at')
+    
+    # Get unique report types from assigned exceptions
+    assigned_report_types = assigned_exceptions.values_list('report_type', flat=True).distinct()
+    
+    # Get email recipients (users with email)
+    email_recipients = UserProfile.objects.filter(
+        status='active'
+    ).exclude(
+        email__isnull=True
+    ).exclude(
+        email=''
+    ).values('email', 'full_name', 'position')
+    
+    # Convert to list for JSON serialization
+    email_recipients_list = []
+    for recipient in email_recipients:
+        email_recipients_list.append({
+            'email': recipient['email'],
+            'name': recipient['full_name'],
+            'department': recipient['position'] or 'General'
+        })
+    
+    # Get categories from the data (units/branches)
+    categories = set()
+    for exception in assigned_exceptions:
+        if exception.data:
+            # Try multiple possible field names for unit/branch
+            unit = (
+                exception.data.get('unit') or 
+                exception.data.get('branch') or 
+                exception.data.get('BRANCH') or 
+                exception.data.get('DEPARTMENT') or
+                exception.data.get('BRANCH/UNIT') or
+                exception.data.get('branch_unit')
+            )
+            if unit:
+                categories.add(unit)
+    
+    categories_list = [{'id': cat, 'name': cat} for cat in categories if cat]
+    
+    # Prepare exceptions data for JSON
+    exceptions_data = []
+    for exception in assigned_exceptions:
+        exception_data = exception.data or {}
+        
+        # Get unit from multiple possible field names
+        unit = (
+            exception_data.get('unit') or 
+            exception_data.get('branch') or 
+            exception_data.get('BRANCH') or 
+            exception_data.get('DEPARTMENT') or
+            exception_data.get('BRANCH/UNIT') or
+            exception_data.get('branch_unit') or
+            'N/A'
+        )
+        
+        # Get category from unit
+        category = unit if unit != 'N/A' else 'uncategorized'
+        
+        exceptions_data.append({
+            'id': exception.id,
+            'report_type': exception.report_type,
+            'status': exception.status,
+            'status_display': exception.get_status_display(),
+            'data': exception_data,
+            'created_at': exception.created_at.strftime('%b %d, %Y'),
+            'unit': unit,
+            'category': category,
+            'assigned_to': user_profile.email,
+            'created_by': exception.created_by.email if exception.created_by else ''
+        })
+    
+    context = {
+        'user_profile': user_profile,
+        'today': timezone.now(),
+        'assigned_exceptions': assigned_exceptions,
+        'assigned_report_types': list(assigned_report_types),
+        'categories_list': categories_list,
+        'exceptions_json': json.dumps(exceptions_data, default=str),
+        'exceptions': exceptions_data,
+        'email_recipients': email_recipients_list,
+        'user_data': {
+            'name': user_profile.full_name,
+            'email': user_profile.email,
+            'department': user_profile.position or 'General'
+        },
+        'report_types': list(assigned_report_types),
+    }
+    
+    return render(request, 'control_dashboard/submit.html', context)
+
+@login_required
+def member_activity_logs(request):
+    """Activity logs page for member."""
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+    except UserProfile.DoesNotExist:
+        return redirect('control_dashboard:member_dashboard')
+    
+    # Get all logs for this user
+    logs = ChecklistLog.objects.filter(user=user_profile).select_related('checklist').order_by('-log_date', '-created_at')[:50]
+    
+    context = {
+        'user_profile': user_profile,
+        'today': timezone.now(),
+        'logs': logs,
+    }
+    return render(request, 'control_dashboard/member_activity_logs.html', context)
+
+
+@login_required
+def member_activity_logs(request):
+    """Activity logs page for member."""
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+    except UserProfile.DoesNotExist:
+        return redirect('control_dashboard:member_dashboard')
+    
+    context = {
+        'user_profile': user_profile,
+        'today': timezone.now(),
+    }
+    return render(request, 'control_dashboard/member_activity_logs.html', context)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_get_draft(request, report_id):
+    """
+    API endpoint to fetch data payload details for a single report/draft modal layout.
+    """
+    try:
+        lookup_id = int(report_id) if str(report_id).isdigit() else report_id
+        report = get_object_or_404(Report, id=lookup_id)
+        
+        try:
+            user_profile = UserProfile.objects.get(email=request.user.email)
+            if report.created_by != user_profile and user_profile.role != 'admin':
+                return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'User profile context not found'}, status=404)
+        
+        response_data = {
+            'success': True,
+            'report': {
+                'id': str(report.id),
+                'report_type': report.report_type,
+                'status': report.status,
+                'data': report.data or {},
+            }
+        }
+        return JsonResponse(response_data)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_edit_draft(request, report_id):
+    """
+    API endpoint to save edited modifications back into the Report 
+    and associated ReportSubmission tables.
+    """
+    try:
+        print("=== API EDIT DRAFT CALLED ===")
+        lookup_id = int(report_id) if str(report_id).isdigit() else report_id
+        report = get_object_or_404(Report, id=lookup_id)
+        
+        try:
+            user_profile = UserProfile.objects.get(email=request.user.email)
+            if report.created_by != user_profile and user_profile.role != 'admin':
+                return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'User profile context not found'}, status=404)
+        
+        # Parse payload data sent by Javascript form collection
+        data = json.loads(request.body)
+        form_data = data.get('form_data', {})
+        
+        # Look up linked entry inside report_submissions table via report.data tracking configuration
+        submission_id = report.data.get('submission_id') if isinstance(report.data, dict) else None
+        submission = None
+        
+        if submission_id:
+            try:
+                submission = ReportSubmission.objects.get(id=submission_id)
+                if not isinstance(submission.data, dict):
+                    submission.data = {}
+                
+                # Update inner nested structural content arrays cleanly
+                if 'form_data' in submission.data and isinstance(submission.data['form_data'], list):
+                    if submission.data['form_data']:
+                        submission.data['form_data'][0].update(form_data)
+                    else:
+                        submission.data['form_data'] = [form_data]
+                else:
+                    submission.data['form_data'] = [form_data]
+                
+                submission.updated_at = timezone.now()
+                submission.save()
+            except ReportSubmission.DoesNotExist:
+                submission = None
+
+        # Fallback tracking logic if no record was previously mapped to this draft
+        if not submission:
+            submission = ReportSubmission.objects.create(
+                report_type=report.report_type,
+                template_name=getattr(report, 'description', report.report_type),
+                submitted_by=user_profile,
+                status='submitted',
+                data={'form_data': [form_data]}
+            )
+        
+        # Sync core primary layout data values back on the Report block for dashboard views
+        if not isinstance(report.data, dict):
+            report.data = {}
+            
+        report.data['submission_id'] = submission.id
+        
+        if 'form_data' in report.data and isinstance(report.data['form_data'], list):
+            if report.data['form_data']:
+                report.data['form_data'][0].update(form_data)
+            else:
+                report.data['form_data'] = [form_data]
+        else:
+            report.data['form_data'] = [form_data]
+
+        # Force status tracking updates to transition context correctly
+        if report.status == 'assigned':
+            report.status = 'in_progress'
+
+        report.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Report modifications saved successfully',
+            'data': form_data
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON format received'}, status=400)
+    except Exception as e:
+        print(f"Exception during edit save tracking: {e}")
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def api_delete_draft(request, report_id):
+    """
+    API endpoint to permanently erase draft records across reports 
+    and report_submissions tables.
+    """
+    try:
+        # Detect numeric vs alphanumeric/UUID primary keys safely
+        lookup_id = int(report_id) if str(report_id).isdigit() else report_id
+        report = get_object_or_404(Report, id=lookup_id)
+        
+        # Verify user permission boundaries
+        try:
+            user_profile = UserProfile.objects.get(email=request.user.email)
+            if report.created_by != user_profile and user_profile.role != 'admin':
+                return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'User context profile not found'}, status=404)
+        
+        # Look up and delete the linked data from the report_submissions table
+        if isinstance(report.data, dict) and 'submission_id' in report.data:
+            submission_id = report.data.get('submission_id')
+            if submission_id:
+                ReportSubmission.objects.filter(id=submission_id).delete()
+        
+        # Delete the core report tracking record
+        report.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Draft and associated data payload permanently removed from database storage.'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+# views.py
+
+@login_required
+def member_activity_logs(request):
+    """
+    Activity logs page for member - shows only activities performed by the logged-in user.
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+    except UserProfile.DoesNotExist:
+        return redirect('control_dashboard:member_dashboard')
+    
+    # Get filter parameters
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    activity_filter = request.GET.get('activity', '')
+    
+    # Base queryset - only activities for this user
+    queryset = ActivityLog.objects.filter(user=user_profile)
+    
+    # Apply date filters
+    if start_date:
+        try:
+            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(created_at__date__gte=start_date_obj)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(created_at__date__lte=end_date_obj)
+        except ValueError:
+            pass
+    
+    # Apply activity type filter
+    if activity_filter and activity_filter != 'all':
+        queryset = queryset.filter(activity_type=activity_filter)
+    
+    # Get activity logs
+    activity_logs = queryset.order_by('-created_at')[:100]  # Limit to 100 most recent
+    
+    # Get stats
+    today = timezone.now().date()
+    start_of_week = today - timedelta(days=today.weekday())
+    start_of_month = today.replace(day=1)
+    
+    today_logs = ActivityLog.objects.filter(
+        user=user_profile,
+        created_at__date=today
+    )
+    
+    week_logs = ActivityLog.objects.filter(
+        user=user_profile,
+        created_at__date__gte=start_of_week,
+        created_at__date__lte=today
+    )
+    
+    month_logs = ActivityLog.objects.filter(
+        user=user_profile,
+        created_at__date__gte=start_of_month,
+        created_at__date__lte=today
+    )
+    
+    # Get last activity
+    last_activity = ActivityLog.objects.filter(
+        user=user_profile
+    ).order_by('-created_at').first()
+    
+    last_activity_display = last_activity.created_at.strftime('%b %d, %Y %H:%M') if last_activity else None
+    
+    # Get activity types for filter dropdown
+    activity_types = ActivityLog.ACTIVITY_TYPES
+    
+    context = {
+        'user_profile': user_profile,
+        'activity_logs': activity_logs,
+        'activity_types': activity_types,
+        'activity_filter': activity_filter,
+        'start_date': start_date,
+        'end_date': end_date,
+        'today_logs': today_logs,
+        'week_logs': week_logs,
+        'month_logs': month_logs,
+        'last_activity': last_activity_display,
+        'today': today,
+    }
+    
+    return render(request, 'control_dashboard/activity-mem.html', context)
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_export_logs(request):
+    """
+    API endpoint to export activity logs as CSV.
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+    except UserProfile.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+    
+    # Get filter parameters
+    user_filter = request.GET.get('user', 'all')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    activity_filter = request.GET.get('activity', '')
+    
+    # Base queryset - get ALL activity logs (not just the current user)
+    queryset = ActivityLog.objects.all().select_related('user')
+    
+    # Apply user filter
+    if user_filter != 'all':
+        try:
+            queryset = queryset.filter(user_id=int(user_filter))
+        except ValueError:
+            pass
+    
+    # Apply date filters
+    if start_date:
+        try:
+            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(created_at__date__gte=start_date_obj)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(created_at__date__lte=end_date_obj)
+        except ValueError:
+            pass
+    
+    # Apply activity type filter
+    if activity_filter and activity_filter != 'all':
+        queryset = queryset.filter(activity_type=activity_filter)
+    
+    logs = queryset.order_by('-created_at')
+    
+    # Create CSV response
+    import csv
+    from django.http import HttpResponse
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="activity_logs_{timezone.now().strftime("%Y%m%d")}.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['Date & Time', 'User', 'Activity Type', 'Details', 'IP Address'])
+    
+    for log in logs:
+        writer.writerow([
+            log.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            log.user.full_name or log.user.email,
+            log.get_activity_type_display(),
+            log.details or '',
+            log.ip_address or ''
+        ])
+    
+    return response
+
+@login_required
+def supervisor_dashboard(request):
+    """
+    Supervisor dashboard view showing team performance and metrics.
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+        if user_profile.role != 'supervisor' and user_profile.role != 'admin':
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect_dashboard(request.user)
+    except UserProfile.DoesNotExist:
+        return redirect_dashboard(request.user)
+    
+    # Get today's date
+    today = timezone.now().date()
+    
+    # ============================================
+    # WEEKLY CALCULATION: Friday to Thursday
+    # ============================================
+    weekday = today.weekday()
+    
+    if weekday >= 4:
+        days_since_friday = weekday - 4
+        week_start = today - timedelta(days=days_since_friday)
+    else:
+        days_since_friday = weekday + 3
+        week_start = today - timedelta(days=days_since_friday)
+    
+    week_end = week_start + timedelta(days=6)
+    
+    # ============================================
+    # TEAM MEMBERS (Supervisor's team)
+    # ============================================
+    # Get all members under this supervisor
+    # This assumes you have a supervisor field in UserProfile or you can get by department
+    # For now, get all members
+    from django.db.models import Q
+    
+    team_members = UserProfile.objects.filter(
+        role='member',
+        status='active'
+    ).order_by('full_name')
+    
+    # ============================================
+    # TEAM PERFORMANCE DATA
+    # ============================================
+    team_performance = []
+    total_submitted = 0
+    
+    for member in team_members:
+        # Count submitted reports for this member in the current week
+        submitted_count = Report.objects.filter(
+            created_by=member,
+            created_at__date__gte=week_start,
+            created_at__date__lte=week_end,
+            status='submitted'
+        ).count()
+        
+        total_submitted += submitted_count
+        
+        # Calculate percentage based on expected submissions
+        # You can adjust this logic based on your business rules
+        expected_submissions = 5  # Example: 5 reports per week
+        percentage = min(100, int((submitted_count / expected_submissions) * 100)) if expected_submissions > 0 else 0
+        
+        # Determine status based on percentage
+        if percentage >= 80:
+            status = 'success'
+        elif percentage >= 50:
+            status = 'warning'
+        else:
+            status = 'danger'
+        
+        team_performance.append({
+            'user': member,
+            'submitted': submitted_count,
+            'percentage': percentage,
+            'status': status,
+        })
+    
+    # Sort by percentage (highest first)
+    team_performance.sort(key=lambda x: x['percentage'], reverse=True)
+    
+    # ============================================
+    # METRICS
+    # ============================================
+    # Total exceptions (all reports with status 'submitted' or 'draft')
+    total_exceptions = Report.objects.filter(
+        Q(status='submitted') | Q(status='draft')
+    ).count()
+    
+    # Today's exceptions
+    today_exceptions = Report.objects.filter(
+        Q(status='submitted') | Q(status='draft'),
+        created_at__date=today
+    ).count()
+    
+    # Submitted reports this week
+    submitted_reports_count = Report.objects.filter(
+        status='submitted',
+        created_at__date__gte=week_start,
+        created_at__date__lte=week_end
+    ).count()
+    
+    # Team completion rate (average of all team members)
+    if team_performance:
+        completion_rate = sum(m['percentage'] for m in team_performance) // len(team_performance)
+    else:
+        completion_rate = 0
+    
+    context = {
+        'user_profile': user_profile,
+        'today': today,
+        'week_start': week_start,
+        'week_end': week_end,
+        'team_performance': team_performance,
+        'total_exceptions': total_exceptions,
+        'today_exceptions': today_exceptions,
+        'submitted_reports_count': submitted_reports_count,
+        'completion_rate': completion_rate,
+    }
+    
+    return render(request, 'control_dashboard/supervisorboard.html', context)
+
+@login_required
+def team_performance(request):
+    """
+    Team Performance page for supervisor.
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+        if user_profile.role != 'supervisor' and user_profile.role != 'admin':
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect_dashboard(request.user)
+    except UserProfile.DoesNotExist:
+        return redirect_dashboard(request.user)
+    
+    # Get all team members (members under this supervisor)
+    # You can filter by department or supervisor relationship
+    team_members = UserProfile.objects.filter(
+        role='member',
+        status='active'
+    ).order_by('full_name')
+    
+    # Calculate team performance data
+    team_data = []
+    total_tasks = 0
+    total_completed = 0
+    
+    for member in team_members:
+        # Count tasks (checklists) assigned to this member
+        assigned_checklists = Checklist.objects.filter(
+            assigned_users=member
+        ).count()
+        
+        # Count completed tasks (checklist logs)
+        completed_checklists = ChecklistLog.objects.filter(
+            user=member
+        ).count()
+        
+        total_tasks += assigned_checklists
+        total_completed += completed_checklists
+        
+        # Calculate percentage
+        percentage = 0
+        if assigned_checklists > 0:
+            percentage = int((completed_checklists / assigned_checklists) * 100)
+        
+        # Determine status
+        if percentage >= 80:
+            status = 'success'
+            status_text = 'Excellent'
+        elif percentage >= 50:
+            status = 'warning'
+            status_text = 'In Progress'
+        else:
+            status = 'danger'
+            status_text = 'Needs Attention'
+        
+        team_data.append({
+            'user': member,
+            'total_tasks': assigned_checklists,
+            'completed': completed_checklists,
+            'percentage': percentage,
+            'status': status,
+            'status_text': status_text,
+        })
+    
+    # Calculate overall completion
+    overall_completion = 0
+    if total_tasks > 0:
+        overall_completion = int((total_completed / total_tasks) * 100)
+    
+    context = {
+        'user_profile': user_profile,
+        'team_data': team_data,
+        'total_members': len(team_members),
+        'total_tasks': total_tasks,
+        'total_completed': total_completed,
+        'overall_completion': overall_completion,
+    }
+    
+    return render(request, 'control_dashboard/team.html', context)
+
+
+@login_required
+def submitted_reports(request):
+    """
+    Submitted Reports page for supervisor.
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+        if user_profile.role != 'supervisor' and user_profile.role != 'admin':
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect_dashboard(request.user)
+    except UserProfile.DoesNotExist:
+        return redirect_dashboard(request.user)
+    
+    # Get filter parameters
+    user_filter = request.GET.get('user', 'all')
+    category_filter = request.GET.get('category', 'all')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    
+    # Base queryset - get all submitted reports
+    reports = Report.objects.filter(status='submitted')
+    
+    # Apply user filter
+    if user_filter != 'all':
+        try:
+            reports = reports.filter(created_by_id=int(user_filter))
+        except ValueError:
+            pass
+    
+    # Apply category filter
+    if category_filter != 'all':
+        reports = reports.filter(report_type=category_filter)
+    
+    # Apply date filters
+    if start_date:
+        try:
+            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+            reports = reports.filter(created_at__date__gte=start_date_obj)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+            reports = reports.filter(created_at__date__lte=end_date_obj)
+        except ValueError:
+            pass
+    
+    # Get all users for filter dropdown
+    users = UserProfile.objects.filter(
+        role='member',
+        status='active'
+    ).order_by('full_name')
+    
+    # Get all categories
+    categories = Report.objects.values_list('report_type', flat=True).distinct()
+    
+    # Prepare report data
+    report_data = []
+    total_reports = 0
+    approved_count = 0
+    pending_count = 0
+    rejected_count = 0
+    
+    for report in reports:
+        total_reports += 1
+        
+        # Determine status display
+        status_display = report.get_status_display()
+        
+        # Count by status
+        if report.status == 'approved':
+            approved_count += 1
+        elif report.status == 'submitted':
+            pending_count += 1
+        elif report.status == 'rejected':
+            rejected_count += 1
+        
+        # Calculate score
+        manual_deduction = 0
+        if report.data and isinstance(report.data, dict):
+            manual_deduction = report.data.get('manual_deduction', 0)
+        
+        # Base score (100% minus deduction)
+        final_score = max(0, 100 - manual_deduction)
+        
+        # Determine badge class
+        if final_score >= 80:
+            badge_class = 'success'
+        elif final_score >= 50:
+            badge_class = 'warning'
+        else:
+            badge_class = 'danger'
+        
+        report_data.append({
+            'report': report,
+            'created_by': report.created_by,
+            'report_type': report.report_type,
+            'status': report.status,
+            'status_display': status_display,
+            'submitted_at': report.created_at,
+            'manual_deduction': manual_deduction,
+            'final_score': final_score,
+            'badge_class': badge_class,
+        })
+    
+    context = {
+        'user_profile': user_profile,
+        'report_data': report_data,
+        'users': users,
+        'categories': categories,
+        'user_filter': user_filter,
+        'category_filter': category_filter,
+        'start_date': start_date,
+        'end_date': end_date,
+        'total_reports': total_reports,
+        'approved_count': approved_count,
+        'pending_count': pending_count,
+        'rejected_count': rejected_count,
+    }
+    
+    return render(request, 'control_dashboard/submitted.html', context)
+
+
+@login_required
+def ad_hoc_scorecard(request):
+    """
+    Ad-Hoc Scorecard page for supervisor.
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+        if user_profile.role != 'supervisor' and user_profile.role != 'admin':
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect_dashboard(request.user)
+    except UserProfile.DoesNotExist:
+        return redirect_dashboard(request.user)
+    
+    # Get filter parameter
+    user_filter = request.GET.get('user', 'all')
+    
+    # Get all users for filter dropdown
+    users = UserProfile.objects.filter(
+        role='member',
+        status='active'
+    ).order_by('full_name')
+    
+    # Get deductions - handle case where table doesn't exist yet
+    try:
+        deductions = AdHocDeduction.objects.select_related('user', 'created_by').all().order_by('-created_at')
+        
+        # Apply user filter
+        if user_filter != 'all':
+            try:
+                deductions = deductions.filter(user_id=int(user_filter))
+            except ValueError:
+                pass
+        
+        # Prepare deduction data for template
+        deduction_data = []
+        total_points = 0
+        
+        for deduction in deductions:
+            total_points += deduction.points
+            deduction_data.append({
+                'id': deduction.id,
+                'user_name': deduction.user.full_name,
+                'user_email': deduction.user.email,
+                'task_description': deduction.task_description,
+                'points': deduction.points,
+                'reason': deduction.reason,
+                'created_at': deduction.created_at,
+                'badge_class': deduction.get_badge_class(),
+            })
+    except Exception as e:
+        # If table doesn't exist, return empty data
+        print(f"Error loading deductions: {e}")
+        deduction_data = []
+        total_points = 0
+    
+    context = {
+        'user_profile': user_profile,
+        'users': users,
+        'user_filter': user_filter,
+        'deductions': deduction_data,
+        'total_deductions': len(deduction_data),
+        'total_points': total_points,
+    }
+    
+    return render(request, 'control_dashboard/ad-hoc.html', context)
 
 
 @csrf_exempt
@@ -3508,40 +2769,54 @@ def api_create_ad_hoc_deduction(request):
         data = json.loads(request.body)
         
         user_id = data.get('user_id')
+        task_description = data.get('task_description', '').strip()
         points = data.get('points', 0)
-        reason = data.get('reason', '')
-        task_description = data.get('task_description', '')
+        reason = data.get('reason', '').strip()
         
         if not user_id:
             return JsonResponse({'success': False, 'error': 'User is required'}, status=400)
         
-        if not points:
-            return JsonResponse({'success': False, 'error': 'Deduction points are required'}, status=400)
+        if not task_description:
+            return JsonResponse({'success': False, 'error': 'Task description is required'}, status=400)
         
         try:
             points = int(points)
-            if points < 0:
-                points = 0
-            if points > 100:
-                points = 100
+            if points < 0 or points > 100:
+                return JsonResponse({'success': False, 'error': 'Points must be between 0 and 100'}, status=400)
         except ValueError:
             return JsonResponse({'success': False, 'error': 'Invalid points value'}, status=400)
         
-        user = get_object_or_404(UserProfile, id=user_id)
+        try:
+            user = UserProfile.objects.get(id=user_id)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
         
-        details = f"Deduction: {points} - {reason} - {task_description}"
-        log_activity(
+        try:
+            created_by = UserProfile.objects.get(email=request.user.email)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Creator not found'}, status=404)
+        
+        # Create deduction
+        deduction = AdHocDeduction.objects.create(
             user=user,
-            activity_type='ad_hoc_deduction',
-            details=details,
+            task_description=task_description,
+            points=points,
+            reason=reason,
+            created_by=created_by
+        )
+        
+        # Log activity
+        log_activity(
+            user=created_by,
+            activity_type='deduction_created',
+            details=f'Created deduction of {points}% for {user.full_name} - {task_description}',
             request=request
         )
         
         return JsonResponse({
             'success': True,
-            'message': 'Deduction added successfully',
-            'deduction_id': user.id,
-            'points': points,
+            'message': 'Deduction created successfully',
+            'deduction_id': deduction.id
         })
         
     except json.JSONDecodeError:
@@ -3557,34 +2832,45 @@ def api_update_ad_hoc_deduction(request, deduction_id):
     API endpoint to update an existing ad-hoc deduction.
     """
     try:
+        deduction = get_object_or_404(AdHocDeduction, id=deduction_id)
+        
+        # Check permission
+        try:
+            user_profile = UserProfile.objects.get(email=request.user.email)
+            if deduction.created_by != user_profile and user_profile.role != 'admin':
+                return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+        
         data = json.loads(request.body)
         
-        deduction = get_object_or_404(ActivityLog, id=deduction_id)
+        if 'task_description' in data:
+            deduction.task_description = data['task_description'].strip()
         
-        if deduction.activity_type != 'ad_hoc_deduction':
-            return JsonResponse({'success': False, 'error': 'Invalid deduction record'}, status=400)
-        
-        points = data.get('points')
-        reason = data.get('reason', '')
-        task_description = data.get('task_description', '')
-        
-        if points is not None:
+        if 'points' in data:
             try:
-                points = int(points)
-                if points < 0:
-                    points = 0
-                if points > 100:
-                    points = 100
+                points = int(data['points'])
+                if points < 0 or points > 100:
+                    return JsonResponse({'success': False, 'error': 'Points must be between 0 and 100'}, status=400)
+                deduction.points = points
             except ValueError:
                 return JsonResponse({'success': False, 'error': 'Invalid points value'}, status=400)
         
-        details = f"Deduction: {points} - {reason} - {task_description}"
-        deduction.details = details
+        if 'reason' in data:
+            deduction.reason = data['reason'].strip()
+        
         deduction.save()
+        
+        log_activity(
+            user=user_profile,
+            activity_type='deduction_updated',
+            details=f'Updated deduction for {deduction.user.full_name} - {deduction.task_description}',
+            request=request
+        )
         
         return JsonResponse({
             'success': True,
-            'message': 'Deduction updated successfully',
+            'message': 'Deduction updated successfully'
         })
         
     except json.JSONDecodeError:
@@ -3600,189 +2886,477 @@ def api_delete_ad_hoc_deduction(request, deduction_id):
     API endpoint to delete an ad-hoc deduction.
     """
     try:
-        deduction = get_object_or_404(ActivityLog, id=deduction_id)
+        deduction = get_object_or_404(AdHocDeduction, id=deduction_id)
         
-        if deduction.activity_type != 'ad_hoc_deduction':
-            return JsonResponse({'success': False, 'error': 'Invalid deduction record'}, status=400)
+        # Check permission
+        try:
+            user_profile = UserProfile.objects.get(email=request.user.email)
+            if deduction.created_by != user_profile and user_profile.role != 'admin':
+                return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+        
+        log_activity(
+            user=user_profile,
+            activity_type='deduction_deleted',
+            details=f'Deleted deduction for {deduction.user.full_name} - {deduction.task_description}',
+            request=request
+        )
         
         deduction.delete()
         
         return JsonResponse({
             'success': True,
-            'message': 'Deduction deleted successfully',
+            'message': 'Deduction deleted successfully'
         })
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-
-@csrf_exempt
-@require_http_methods(["GET"])
-def api_get_exception_detail(request, exception_id):
+@login_required
+def logged_exceptions(request):
     """
-    API endpoint to get full exception details for viewing/editing.
+    Logged Exceptions page for supervisor - shows all submitted reports from all users.
     """
     try:
-        exception = get_object_or_404(Draft, id=exception_id)
-        
-        reviews = DraftReview.objects.filter(draft=exception).order_by('-created_at')
-        
-        return JsonResponse({
-            'success': True,
-            'exception': {
-                'id': exception.id,
-                'report_type': exception.report_type,
-                'status': exception.status,
-                'status_display': exception.get_status_display(),
-                'data': exception.data,
-                'created_by': {
-                    'id': exception.created_by.id,
-                    'name': exception.created_by.full_name or exception.created_by.email,
-                    'email': exception.created_by.email,
-                },
-                'created_at': exception.created_at.strftime('%b %d, %Y %H:%M'),
-                'updated_at': exception.updated_at.strftime('%b %d, %Y %H:%M'),
-                'submitted_at': exception.submitted_at.strftime('%b %d, %Y %H:%M') if exception.submitted_at else None,
-                'reviewed_at': exception.reviewed_at.strftime('%b %d, %Y %H:%M') if exception.reviewed_at else None,
-                'review_comments': exception.review_comments,
-                'reviewed_by': {
-                    'id': exception.reviewed_by.id if exception.reviewed_by else None,
-                    'name': exception.reviewed_by.full_name if exception.reviewed_by else None,
-                } if exception.reviewed_by else None,
-                'reviews': [
-                    {
-                        'action': review.get_action_display(),
-                        'comments': review.comments,
-                        'performed_by': review.performed_by.full_name or review.performed_by.email,
-                        'created_at': review.created_at.strftime('%b %d, %Y %H:%M'),
-                    }
-                    for review in reviews
-                ]
-            }
-        })
-        
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_update_exception(request, exception_id):
-    """
-    API endpoint to update exception details.
-    """
-    try:
-        data = json.loads(request.body)
-        exception = get_object_or_404(Draft, id=exception_id)
-        
-        if 'report_type' in data:
-            exception.report_type = data['report_type']
-        
-        if 'data' in data:
-            if not exception.data:
-                exception.data = {}
-            exception.data.update(data['data'])
-        
-        if 'status' in data:
-            exception.status = data['status']
-        
-        if 'review_comments' in data:
-            exception.review_comments = data['review_comments']
-        
-        exception.save()
-        
-        log_activity(
-            user=exception.created_by,
-            activity_type='report_updated',
-            details=f'Updated exception: {exception.report_type}',
-            request=request
+        user_profile = UserProfile.objects.get(email=request.user.email)
+        if user_profile.role != 'supervisor' and user_profile.role != 'admin':
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect_dashboard(request.user)
+    except UserProfile.DoesNotExist:
+        return redirect_dashboard(request.user)
+    
+    # Get filter parameters
+    type_filter = request.GET.get('type', 'all')
+    status_filter = request.GET.get('status', 'all')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    search_query = request.GET.get('search', '')
+    
+    # Base queryset - get ALL reports that have been submitted (not just members)
+    # This includes reports from members, supervisors, and admins
+    exceptions = Report.objects.exclude(
+        status__in=['assigned', 'in_progress']
+    ).order_by('-created_at')
+    
+    # Apply type filter
+    if type_filter != 'all':
+        exceptions = exceptions.filter(report_type=type_filter)
+    
+    # Apply status filter
+    if status_filter != 'all':
+        exceptions = exceptions.filter(status=status_filter)
+    
+    # Apply date filters
+    if start_date:
+        try:
+            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+            exceptions = exceptions.filter(created_at__date__gte=start_date_obj)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+            exceptions = exceptions.filter(created_at__date__lte=end_date_obj)
+        except ValueError:
+            pass
+    
+    # Apply search filter
+    if search_query:
+        exceptions = exceptions.filter(
+            Q(report_type__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(created_by__full_name__icontains=search_query) |
+            Q(created_by__email__icontains=search_query)
         )
+    
+    # Get unique report types for filter dropdown - from ALL reports
+    report_types = Report.objects.exclude(
+        status__in=['assigned', 'in_progress']
+    ).values_list('report_type', flat=True).distinct()
+    
+    context = {
+        'user_profile': user_profile,
+        'exceptions': exceptions,
+        'report_types': report_types,
+        'type_filter': type_filter,
+        'status_filter': status_filter,
+        'start_date': start_date,
+        'end_date': end_date,
+        'search_query': search_query,
+    }
+    
+    return render(request, 'control_dashboard/logged.html', context)
+
+
+@login_required
+def supervisor_checklist(request):
+    """
+    Supervisor Checklist view - shows team members' checklist completion status.
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+        if user_profile.role != 'supervisor' and user_profile.role != 'admin':
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect_dashboard(request.user)
+    except UserProfile.DoesNotExist:
+        return redirect_dashboard(request.user)
+    
+    # Get all team members (members under this supervisor)
+    # For now, get all active members
+    team_members = UserProfile.objects.filter(
+        role='member',
+        status='active'
+    ).order_by('full_name')
+    
+    # Get all active checklists
+    all_checklists = Checklist.objects.filter(is_active=True)
+    
+    # Calculate completion data for each user
+    user_completion_data = []
+    total_users = team_members.count()
+    total_completed = 0
+    total_completion_rate = 0
+    
+    for member in team_members:
+        # Get checklists assigned to this member
+        assigned_checklists = all_checklists.filter(
+            models.Q(assigned_users=member) |
+            models.Q(assignment_target='all') |
+            models.Q(assignment_target=member.position)
+        ).distinct()
         
-        return JsonResponse({
-            'success': True,
-            'message': 'Exception updated successfully',
+        total_assigned = assigned_checklists.count()
+        
+        # Get completed checklists (logs) for this user
+        completed_checklists = ChecklistLog.objects.filter(
+            user=member,
+            checklist__in=assigned_checklists
+        ).values_list('checklist_id', flat=True).distinct().count()
+        
+        # Calculate completion rate
+        if total_assigned > 0:
+            completion_rate = int((completed_checklists / total_assigned) * 100)
+        else:
+            completion_rate = 0
+        
+        # Determine status
+        if completion_rate >= 90:
+            status = 'success'
+            status_text = 'Excellent'
+        elif completion_rate >= 70:
+            status = 'warning'
+            status_text = 'Good'
+        elif completion_rate >= 40:
+            status = 'warning'
+            status_text = 'In Progress'
+        else:
+            status = 'danger'
+            status_text = 'Needs Improvement'
+        
+        total_completed += completed_checklists
+        if total_assigned > 0:
+            total_completion_rate += completion_rate
+        
+        user_completion_data.append({
+            'user': member,
+            'total_checklists': total_assigned,
+            'completed_checklists': completed_checklists,
+            'completion_rate': completion_rate,
+            'status': status,
+            'status_text': status_text,
         })
+    
+    # Calculate average completion
+    if total_users > 0 and sum(d['total_checklists'] for d in user_completion_data) > 0:
+        avg_completion = int(total_completion_rate / total_users)
+    else:
+        avg_completion = 0
+    
+    # Sort by completion rate (highest first)
+    user_completion_data.sort(key=lambda x: x['completion_rate'], reverse=True)
+    
+    context = {
+        'user_profile': user_profile,
+        'user_completion_data': user_completion_data,
+        'total_users': total_users,
+        'avg_completion': avg_completion,
+        'total_checklists': all_checklists.count(),
+        'total_completed': total_completed,
+        'all_checklists': all_checklists,
+    }
+    
+    return render(request, 'control_dashboard/checklist-sup.html', context)
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def api_checklist_detail(request, user_id):
+    """
+    API endpoint to get detailed checklist progress for a specific user.
+    """
+    try:
+        print(f"=== API CHECKLIST DETAIL CALLED ===")
+        print(f"User ID: {user_id}")
+        print(f"User: {request.user.email if request.user.is_authenticated else 'Not authenticated'}")
         
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+        # Get the user
+        try:
+            user = UserProfile.objects.get(id=user_id)
+            print(f"User found: {user.full_name}")
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+        
+        # Get all active checklists assigned to this user
+        from django.db.models import Q
+        
+        assigned_checklists = Checklist.objects.filter(
+            is_active=True
+        ).filter(
+            Q(assigned_users=user) |
+            Q(assignment_target='all') |
+            Q(assignment_target=user.position)
+        ).distinct()
+        
+        print(f"Assigned checklists count: {assigned_checklists.count()}")
+        
+        # Get checklist logs for this user
+        logs = ChecklistLog.objects.filter(
+            user=user,
+            checklist__in=assigned_checklists
+        )
+        print(f"Logs count: {logs.count()}")
+        
+        # Build checklist details
+        checklist_details = []
+        total_completed = 0
+        today = timezone.now().date()
+        print(f"Today's date: {today}")
+        
+        for checklist in assigned_checklists:
+            tasks = checklist.tasks.all().order_by('order')
+            total_tasks = tasks.count()
+            print(f"Checklist: {checklist.name}, Tasks: {total_tasks}")
+            
+            # Check if this checklist is completed for today
+            is_completed_today = logs.filter(
+                checklist=checklist,
+                log_date=today
+            ).exists()
+            print(f"  Completed today: {is_completed_today}")
+            
+            # Get completed tasks count
+            completed_tasks = 0
+            task_list = []
+            for task in tasks:
+                # For simplicity, we consider the checklist completed if logged today
+                task_completed = is_completed_today
+                task_list.append({
+                    'description': task.description,
+                    'is_completed': task_completed,
+                })
+                if task_completed:
+                    completed_tasks += 1
+            
+            # Calculate task completion rate
+            if total_tasks > 0:
+                task_completion_rate = int((completed_tasks / total_tasks) * 100)
+            else:
+                task_completion_rate = 0
+            
+            checklist_details.append({
+                'id': checklist.id,
+                'name': checklist.name,
+                'frequency': checklist.get_frequency_display(),
+                'total_tasks': total_tasks,
+                'completed_tasks': completed_tasks,
+                'task_completion_rate': task_completion_rate,
+                'is_completed': is_completed_today,
+                'tasks': task_list,
+            })
+            
+            if is_completed_today:
+                total_completed += 1
+        
+        # Calculate overall completion rate
+        total_checklists = len(checklist_details)
+        if total_checklists > 0:
+            completion_rate = int((total_completed / total_checklists) * 100)
+        else:
+            completion_rate = 0
+        
+        response_data = {
+            'success': True,
+            'user': {
+                'id': user.id,
+                'full_name': user.full_name,
+                'email': user.email,
+                'position': user.get_position_display() or 'Member',
+                'total_checklists': total_checklists,
+                'completed_checklists': total_completed,
+                'completion_rate': completion_rate,
+                'checklist_details': checklist_details,
+            }
+        }
+        print(f"Response data: {response_data}")
+        return JsonResponse(response_data)
+        
     except Exception as e:
+        print(f"Error in api_checklist_detail: {e}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
-# ==================== API - EXCEL UPLOAD ====================
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_upload_exceptions(request):
+@login_required
+def supervisor_activity_logs(request):
     """
-    API endpoint to upload exceptions from Excel.
+    Supervisor Activity Logs page - shows all user activities for monitoring.
     """
     try:
-        data = json.loads(request.body)
-        exceptions = data.get('exceptions', [])
-        
-        user = UserProfile.objects.get(email=request.user.email)
-        
-        for ex in exceptions:
-            Draft.objects.create(
-                report_type=ex.get('report_type', 'Excel Import'),
-                created_by=user,
-                data={
-                    'header': ex.get('data', {}).get('header', ''),
-                    'details': ex.get('data', {}).get('details', ''),
-                    'unit': ex.get('unit', ''),
-                    'branch': ex.get('unit', ''),
-                },
-                status='draft'
-            )
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'{len(exceptions)} exceptions uploaded successfully'
-        })
-        
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
+        user_profile = UserProfile.objects.get(email=request.user.email)
+        if user_profile.role != 'supervisor' and user_profile.role != 'admin':
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect_dashboard(request.user)
+    except UserProfile.DoesNotExist:
+        return redirect_dashboard(request.user)
+    
+    # Get filter parameters
+    user_filter = request.GET.get('user', 'all')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    activity_filter = request.GET.get('activity', '')
+    
+    # Base queryset - get ALL activity logs (not just the current user)
+    queryset = ActivityLog.objects.all().select_related('user')
+    
+    # Apply user filter
+    if user_filter != 'all':
+        try:
+            queryset = queryset.filter(user_id=int(user_filter))
+        except ValueError:
+            pass
+    
+    # Apply date filters
+    if start_date:
+        try:
+            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(created_at__date__gte=start_date_obj)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(created_at__date__lte=end_date_obj)
+        except ValueError:
+            pass
+    
+    # Apply activity type filter
+    if activity_filter and activity_filter != 'all':
+        queryset = queryset.filter(activity_type=activity_filter)
+    
+    # Get activity logs (limited to 200 most recent)
+    activity_logs = queryset.order_by('-created_at')[:200]
+    
+    # Get all users for filter dropdown
+    users = UserProfile.objects.filter(status='active').order_by('full_name')
+    
+    # Get activity types for filter dropdown
+    activity_types = ActivityLog.ACTIVITY_TYPES
+    
+    context = {
+        'user_profile': user_profile,
+        'activity_logs': activity_logs,
+        'users': users,
+        'activity_types': activity_types,
+        'user_filter': user_filter,
+        'activity_filter': activity_filter,
+        'start_date': start_date,
+        'end_date': end_date,
+    }
+    
+    return render(request, 'control_dashboard/activity-sup.html', context)
 
-
-# ==================== API - BRANCHES AND CATEGORIES ====================
-
-@csrf_exempt
-@require_http_methods(["GET"])
-def api_get_branches(request):
+@login_required
+def activity_logs(request):
     """
-    API endpoint to get all active branches.
+    Admin Activity Logs page - shows all user activities for monitoring.
     """
     try:
-        branches = Branch.objects.filter(is_active=True).values('id', 'name')
-        return JsonResponse({
-            'success': True,
-            'branches': list(branches)
-        })
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
-
-
-@csrf_exempt
-@require_http_methods(["GET"])
-def api_get_categories(request):
-    """
-    API endpoint to get all exception categories.
-    """
-    try:
-        categories = ExceptionCategory.objects.filter(is_active=True).values('id', 'name')
-        return JsonResponse({
-            'success': True,
-            'categories': list(categories)
-        })
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
+        user_profile = UserProfile.objects.get(email=request.user.email)
+        if user_profile.role != 'admin':
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect_dashboard(request.user)
+    except UserProfile.DoesNotExist:
+        return redirect_dashboard(request.user)
+    
+    # Get filter parameters
+    user_filter = request.GET.get('user', 'all')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    activity_filter = request.GET.get('activity', '')
+    
+    # Base queryset - get ALL activity logs
+    queryset = ActivityLog.objects.all().select_related('user')
+    
+    # Apply user filter
+    if user_filter != 'all':
+        try:
+            queryset = queryset.filter(user_id=int(user_filter))
+        except ValueError:
+            pass
+    
+    # Apply date filters
+    if start_date:
+        try:
+            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(created_at__date__gte=start_date_obj)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(created_at__date__lte=end_date_obj)
+        except ValueError:
+            pass
+    
+    # Apply activity type filter
+    if activity_filter and activity_filter != 'all':
+        queryset = queryset.filter(activity_type=activity_filter)
+    
+    # Calculate stats BEFORE slicing
+    unique_users = queryset.values('user_id').distinct().count()
+    today = timezone.now().date()
+    today_logs = queryset.filter(created_at__date=today).count()
+    
+    # Get last activity BEFORE slicing
+    last_activity_log = queryset.order_by('-created_at').first()
+    last_activity = last_activity_log.created_at.strftime('%b %d, %Y %H:%M') if last_activity_log else None
+    
+    # Get activity logs (slice after stats)
+    activity_logs = queryset.order_by('-created_at')[:200]
+    
+    # Get all users for filter dropdown
+    users = UserProfile.objects.filter(status='active').order_by('full_name')
+    
+    # Get activity types for filter dropdown
+    activity_types = ActivityLog.ACTIVITY_TYPES
+    
+    context = {
+        'user_profile': user_profile,
+        'activity_logs': activity_logs,
+        'users': users,
+        'activity_types': activity_types,
+        'user_filter': user_filter,
+        'activity_filter': activity_filter,
+        'start_date': start_date,
+        'end_date': end_date,
+        'unique_users': unique_users,
+        'today_logs': today_logs,
+        'last_activity': last_activity,
+    }
+    
+    return render(request, 'control_dashboard/activity.html', context)

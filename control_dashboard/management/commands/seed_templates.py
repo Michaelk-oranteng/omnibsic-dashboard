@@ -83,6 +83,321 @@ class Command(BaseCommand):
                     {'label': 'REMARKS', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
                 ]
             },
+            {
+                'name': 'Branch Consolidated Exceptions Report',
+                'description': 'Consolidated exceptions report for branches',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'REPORTING PERIOD', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'TOTAL EXCEPTIONS IDENTIFIED', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'EXCEPTIONS RESOLVED', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'EXCEPTIONS PENDING', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'KEY FINDINGS', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'RECOMMENDATIONS', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Open, In Progress, Closed'},
+                ]
+            },
+            {
+                'name': 'Head Office Consolidated Exceptions Report',
+                'description': 'Consolidated exceptions report for head office',
+                'fields': [
+                    {'label': 'DEPARTMENT/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'REPORTING PERIOD', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'TOTAL EXCEPTIONS IDENTIFIED', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'EXCEPTIONS RESOLVED', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'EXCEPTIONS PENDING', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'KEY FINDINGS', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'RECOMMENDATIONS', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Open, In Progress, Closed'},
+                ]
+            },
+            {
+                'name': 'GL Proof Review Report',
+                'description': 'General Ledger proof review report',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'GL ACCOUNT', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'ACCOUNT NAME', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER GL', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER SUBSIDIARY', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'DIFFERENCE', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'REASON FOR DIFFERENCE', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                    {'label': 'ACTION TAKEN', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Open, In Progress, Closed'},
+                ]
+            },
+            {
+                'name': 'Investigation Schedule',
+                'description': 'Schedule of investigations',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'INVESTIGATION TITLE', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'START DATE', 'field_type': 'date', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'END DATE', 'field_type': 'date', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'INVESTIGATOR', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Not Started, In Progress, Completed'},
+                    {'label': 'REMARKS', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                ]
+            },
+            {
+                'name': 'Branch GL Proof Report Review Consolidation',
+                'description': 'Consolidated GL proof review for branches',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'REPORTING PERIOD', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'TOTAL GL ACCOUNTS REVIEWED', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'ACCOUNTS WITH DIFFERENCES', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'ACCOUNTS RESOLVED', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'PENDING RESOLUTION', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'KEY OBSERVATIONS', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'RECOMMENDATIONS', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Open, In Progress, Closed'},
+                ]
+            },
+            {
+                'name': 'E-Business GL Proof Review',
+                'description': 'E-Business GL proof review report',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'E-BUSINESS PLATFORM', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'GL ACCOUNT', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER GL', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER E-BUSINESS', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'DIFFERENCE', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'REASON FOR DIFFERENCE', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                    {'label': 'ACTION TAKEN', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Open, In Progress, Closed'},
+                ]
+            },
+            {
+                'name': 'FINOPs GL Proof Review',
+                'description': 'FINOPs GL proof review report',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'GL ACCOUNT', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'ACCOUNT NAME', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER GL', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER SUBSIDIARY', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'DIFFERENCE', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'REASON FOR DIFFERENCE', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                    {'label': 'ACTION TAKEN', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Open, In Progress, Closed'},
+                ]
+            },
+            {
+                'name': 'Finance GL Proof Review',
+                'description': 'Finance GL proof review report',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'GL ACCOUNT', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'ACCOUNT NAME', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER GL', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER SUBSIDIARY', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'DIFFERENCE', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'REASON FOR DIFFERENCE', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                    {'label': 'ACTION TAKEN', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Open, In Progress, Closed'},
+                ]
+            },
+            {
+                'name': 'Recovery/Credit GL Proof Review',
+                'description': 'Recovery and Credit GL proof review report',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'GL ACCOUNT', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'ACCOUNT NAME', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER GL', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER RECOVERY/CREDIT', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'DIFFERENCE', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'REASON FOR DIFFERENCE', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                    {'label': 'ACTION TAKEN', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Open, In Progress, Closed'},
+                ]
+            },
+            {
+                'name': 'TROPs GL Proof Review',
+                'description': 'TROPs GL proof review report',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'GL ACCOUNT', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'ACCOUNT NAME', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER GL', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER TROPS', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'DIFFERENCE', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'REASON FOR DIFFERENCE', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                    {'label': 'ACTION TAKEN', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Open, In Progress, Closed'},
+                ]
+            },
+            {
+                'name': 'CMU - Accra GL Proof Review',
+                'description': 'CMU Accra GL proof review report',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'GL ACCOUNT', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'ACCOUNT NAME', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER GL', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER CMU', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'DIFFERENCE', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'REASON FOR DIFFERENCE', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                    {'label': 'ACTION TAKEN', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Open, In Progress, Closed'},
+                ]
+            },
+            {
+                'name': 'CMU - Kumasi GL Proof Review',
+                'description': 'CMU Kumasi GL proof review report',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'GL ACCOUNT', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'ACCOUNT NAME', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER GL', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER CMU', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'DIFFERENCE', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'REASON FOR DIFFERENCE', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                    {'label': 'ACTION TAKEN', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Open, In Progress, Closed'},
+                ]
+            },
+            {
+                'name': 'CMU - Takoradi GL Proof Review',
+                'description': 'CMU Takoradi GL proof review report',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'GL ACCOUNT', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'ACCOUNT NAME', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER GL', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER CMU', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'DIFFERENCE', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'REASON FOR DIFFERENCE', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                    {'label': 'ACTION TAKEN', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Open, In Progress, Closed'},
+                ]
+            },
+            {
+                'name': 'Trade GL Proof Review',
+                'description': 'Trade GL proof review report',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'GL ACCOUNT', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'ACCOUNT NAME', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER GL', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER TRADE', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'DIFFERENCE', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'REASON FOR DIFFERENCE', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                    {'label': 'ACTION TAKEN', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Open, In Progress, Closed'},
+                ]
+            },
+            {
+                'name': 'Clearing GL Proof Review',
+                'description': 'Clearing GL proof review report',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'GL ACCOUNT', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'ACCOUNT NAME', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER GL', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE PER CLEARING', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'DIFFERENCE', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'REASON FOR DIFFERENCE', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                    {'label': 'ACTION TAKEN', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Open, In Progress, Closed'},
+                ]
+            },
+            {
+                'name': 'Branch Workplan',
+                'description': 'Branch workplan report',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'WORKPLAN PERIOD', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'KEY ACTIVITIES', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'RESPONSIBLE STAFF', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'TARGET DATE', 'field_type': 'date', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Not Started, In Progress, Completed'},
+                    {'label': 'REMARKS', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                ]
+            },
+            {
+                'name': 'Head Office Workplan',
+                'description': 'Head office workplan report',
+                'fields': [
+                    {'label': 'DEPARTMENT/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'WORKPLAN PERIOD', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'KEY ACTIVITIES', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'RESPONSIBLE STAFF', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'TARGET DATE', 'field_type': 'date', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Not Started, In Progress, Completed'},
+                    {'label': 'REMARKS', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                ]
+            },
+            {
+                'name': 'Cost Saved Report',
+                'description': 'Cost saved report',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'DATE', 'field_type': 'date', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'COST SAVED AMOUNT', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'CATEGORY', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'DESCRIPTION', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'RESPONSIBLE STAFF', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'REMARKS', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                ]
+            },
+            {
+                'name': 'Debit Reversal Report',
+                'description': 'Debit reversal report',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'DATE', 'field_type': 'date', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'ACCOUNT NUMBER', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'AMOUNT', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'REASON FOR REVERSAL', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'AUTHORIZED BY', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'REMARKS', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                ]
+            },
+            {
+                'name': 'Balance Confirmation Report',
+                'description': 'Balance confirmation report',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'DATE', 'field_type': 'date', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'CUSTOMER NAME', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'ACCOUNT NUMBER', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'BALANCE CONFIRMED', 'field_type': 'number', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'METHOD OF CONFIRMATION', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Email, Phone, Letter, In Person'},
+                    {'label': 'CONFIRMED BY', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'REMARKS', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                ]
+            },
+            {
+                'name': 'Statement Verification Report',
+                'description': 'Statement verification report',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'DATE', 'field_type': 'date', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'CUSTOMER NAME', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'ACCOUNT NUMBER', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'STATEMENT PERIOD', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'VERIFICATION STATUS', 'field_type': 'dropdown', 'data_source': 'options', 'is_required': True, 'options': 'Verified, Pending, Not Verified'},
+                    {'label': 'VERIFIED BY', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'REMARKS', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                ]
+            },
+            {
+                'name': 'EOM Presentation on Work Done and Key Findings',
+                'description': 'End of month presentation on work done and key findings',
+                'fields': [
+                    {'label': 'BRANCH/UNIT', 'field_type': 'dropdown', 'data_source': 'database', 'is_required': True},
+                    {'label': 'REPORTING PERIOD', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'KEY FINDINGS', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'WORK DONE SUMMARY', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'CHALLENGES ENCOUNTERED', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                    {'label': 'RECOMMENDATIONS', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'PRESENTED BY', 'field_type': 'text', 'data_source': 'manual', 'is_required': True},
+                    {'label': 'REMARKS', 'field_type': 'textarea', 'data_source': 'manual', 'is_required': False},
+                ]
+            },
         ]
 
         template_count = 0
@@ -111,7 +426,7 @@ class Command(BaseCommand):
                     # For database source fields, add options from the database
                     options = field_data.get('options', '')
                     
-                    if field_data['data_source'] == 'database' and field_data['label'] in ['BRANCH/UNIT', 'BRANCH']:
+                    if field_data['data_source'] == 'database' and field_data['label'] in ['BRANCH/UNIT', 'BRANCH', 'DEPARTMENT/UNIT']:
                         # For branch fields, we'll use the Branch model
                         branches = Branch.objects.filter(is_active=True).values_list('name', flat=True)
                         options = ', '.join(branches) if branches.exists() else ''

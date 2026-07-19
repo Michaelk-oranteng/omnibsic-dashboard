@@ -21,43 +21,43 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Data seeding completed successfully!'))
 
     def seed_branches(self):
-        """Seed branch data including all branches and departments"""
+        """Seed branch data including all branches and departments in alphabetical order"""
         
-        # All departments and branches from the list
-        branches = [
-            # DEPARTMENTS (First 30)
-            'GENERAL SERVICES & PROCUREMENT',
+        # All departments and branches from the list - SORTED ALPHABETICALLY
+        branches = sorted([
+            # DEPARTMENTS
+            'ASSET MONITORING AND ARCHIVES',
             'BRANCH SUPPORT',
+            'CENTRALIZED ACCOUNT OPENING',
+            'CLASSIC BANKING',
             'CLEARING',
-            'FINOPS',
+            'CMU',
             'CORPORATE COMMS',
+            'CORPORATE GROUP',
+            'CPU',
+            'CRB',
             'CREDIT',
-            'RISK',
+            'CYBER SECURITY',
             'E-BUSINESS',
             'FACILITIES MANAGEMENT',
             'FINANCE',
-            'CPU',
+            'FINOPS',
+            'GENERAL SERVICES & PROCUREMENT',
             'HCM',
+            'INFORMATION TECHNOLOGY',
+            'IT',
             'LEGAL',
             'RECONCILIATION',
+            'RECOVERY',
+            'REMITTANCE',
+            'RISK',
             'SERVICE QUALITY',
             'TRADE SERVICES',
-            'CMU',
-            'TREASURY',
-            'REMITTANCE',
-            'IT',
             'TRANSPORT & LOGISTICS',
-            'RECOVERY',
-            'CORPORATE GROUP',
-            'CRB',
-            'CENTRALIZED ACCOUNT OPENING',
-            'CLASSIC BANKING',
-            'ASSET MONITORING AND ARCHIVES',
+            'TREASURY',
             'TROPS',
-            'CYBER SECURITY',
-            'INFORMATION TECHNOLOGY',
             
-            # BRANCHES (Remaining 41 branches)
+            # BRANCHES
             'ABELEMKPE',
             'ABOSSEY OKAI',
             'ACCRA CENTRAL',
@@ -99,7 +99,7 @@ class Command(BaseCommand):
             'TEMA EAST',
             'TEMA HARBOUR',
             'WEIJA'
-        ]
+        ])
 
         # Add branches
         branch_count = 0
@@ -114,35 +114,35 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'Created/Updated {branch_count} branches/departments'))
 
     def seed_exception_categories(self):
-        """Seed exception categories - all unique categories from the list"""
+        """Seed exception categories - all unique categories sorted alphabetically"""
         
-        # All unique exception categories from the provided list
-        exception_categories = [
+        # All unique exception categories from the provided list - SORTED ALPHABETICALLY
+        exception_categories = sorted([
+            'ACCESS & PRIVILEDGE MANAGEMENT',
+            'APPLICATION & E-BANKING CONTROLS',
             'BRANCH AMBIENCE & BRANDING',
             'BRANCH SECURITY',
             'CALLOVER, VAULT & CASH',
+            'COST SAVED/EXPENSE',
+            'CYBERSECURITY & RISK CONTROL',
             'DELAY OR FAILURE TO PROCESS CUSTOMER REQUEST',
             'GL EXCEPTIONS',
             'INCOME LEAKAGE',
-            'KYC/ACCOUNT OPENING',
-            'OTHERS',
-            'REGISTERS, FORMS & FILES',
-            'SECURITY SWEEP & CLEAN DESK',
-            'VISA CARD & CHEQUE BOOKS PHYSICAL SECURITY',
-            'VAULT & CASH/CALLOVER',
-            'POLICY/REGULATORY BREACH',
-            'COST SAVED/EXPENSE',
-            'KYC',
-            'TOTAL ISSUES',
-            'OUTSTANDING ISSUES DATA & DATABASE MANAGEMENT CONTROL',
+            'INFRASTRUCTURE, SERVERS & DATA CENTRE CONTROL',
             'INFORMATION SECURITY GOVERNANCE & COMPLIANCE',
             'IT OPERATIONS & SERVICE MANAGEMENT',
-            'ACCESS & PRIVILEDGE MANAGEMENT',
+            'KYC',
+            'KYC/ACCOUNT OPENING',
+            'OTHERS',
+            'OUTSTANDING ISSUES DATA & DATABASE MANAGEMENT CONTROL',
+            'POLICY/REGULATORY BREACH',
+            'REGISTERS, FORMS & FILES',
+            'SECURITY SWEEP & CLEAN DESK',
             'SOC, THREAT INTELLIGENCE, INCIDENT & FORENSICS',
-            'APPLICATION & E-BANKING CONTROLS',
-            'INFRASTRUCTURE, SERVERS & DATA CENTRE CONTROL',
-            'CYBERSECURITY & RISK CONTROL'
-        ]
+            'TOTAL ISSUES',
+            'VAULT & CASH/CALLOVER',
+            'VISA CARD & CHEQUE BOOKS PHYSICAL SECURITY'
+        ])
 
         category_count = 0
         for category_name in exception_categories:

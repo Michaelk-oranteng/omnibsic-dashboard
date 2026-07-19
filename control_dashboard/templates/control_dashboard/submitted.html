@@ -1,560 +1,391 @@
+{% extends 'control_dashboard/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Submitted Reports</title>
-        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
-        <link rel="stylesheet" href="{% static 'stylesheets/supervisor.css' %}" type="text/css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-        <meta name="csrf-token" content="{{ csrf_token }}">
-    </head>
-    <body>
-        <div class="page-wrapper">
-            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
-            <div class="nav-bar">
-                <div class="logo">
-                    <a href="{% url 'control_dashboard:supervisor_dashboard' %}">
-                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
-                    </a>
-                </div>
 
-                <ul class="nav-links">
-                    <li><a href="{% url 'control_dashboard:supervisor_dashboard' %}">
-                        <span class="nav-icon"><i class="fas fa-chart-line"></i></span>
-                        <span class="nav-text">Dashboard</span>
-                    </a></li>  
-                    <li><a href="{% url 'control_dashboard:team_performance' %}">
-                        <span class="nav-icon"><i class="fas fa-users"></i></span>
-                        <span class="nav-text">Team Performance</span>
-                    </a></li> 
-                    <li class="active"><a href="{% url 'control_dashboard:submitted_reports' %}">
-                        <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
-                        <span class="nav-text">Submitted Reports</span>
-                    </a></li>
-                    <li><a href="{% url 'control_dashboard:ad_hoc_scorecard' %}">
-                        <span class="nav-icon"><i class="fas fa-star"></i></span>
-                        <span class="nav-text">Ad-Hoc Scorecard</span>
-                    </a></li>
-                    <li><a href="{% url 'control_dashboard:logged_exceptions' %}">
-                        <span class="nav-icon"><i class="fas fa-exclamation-triangle"></i></span>
-                        <span class="nav-text">Logged Exceptions</span>
-                    </a></li>       
-                    <li><a href="{% url 'control_dashboard:supervisor_checklist' %}">
-                        <span class="nav-icon"><i class="fas fa-tasks"></i></span>
-                        <span class="nav-text">Activity Checklist</span>
-                    </a></li>
-                    <li><a href="{% url 'control_dashboard:supervisor_activity_logs' %}">
-                        <span class="nav-icon"><i class="fas fa-search"></i></span>
-                        <span class="nav-text">Activity Logs</span>
-                    </a></li> 
-                </ul>
+{% block title %}Submitted Reports{% endblock %}
 
-                <!-- ==================== PROFILE CARD - LOGOUT BUTTON ==================== -->
-                <div class="nav-footer">
-                    <div class="nav-profile-card" onclick="logoutUser()" style="cursor: pointer;" title="Click to logout">
-                        <div class="nav-profile-img-wrapper">
-                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
-                        </div>
-                        <div class="nav-profile-info">
-                            <h4 class="nav-user-name">{{ user_profile.full_name|default:"Supervisor" }}</h4>
-                            <p class="nav-user-role">
-                                <i class="fas fa-sign-out-alt" style="font-size: 11px; margin-right: 4px;"></i>
-                                Click to logout
-                            </p>
-                        </div>
-                        <div class="nav-profile-logout-icon">
-                            <i class="fas fa-sign-out-alt"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'stylesheets/submitted-reports.css' %}" type="text/css">
+{% endblock %}
 
-            <!-- ==================== TOP HEADER ==================== -->
-            <div class="top-header">
-                <div class="top-header-left">
-                    <span class="page-title">Submitted Reports</span>
-                </div>
+{% block dashboard_url %}{% url 'control_dashboard:supervisor_dashboard' %}{% endblock %}
 
-                <div class="top-header-center">
-                    <div class="header-filter-group">
-                        <label for="user-filter">User</label>
-                        <select id="user-filter" class="header-select" onchange="applyFilters()">
-                            <option value="all">All Users</option>
-                            {% for user in users %}
-                            <option value="{{ user.id }}" {% if user_filter|add:"0" == user.id %}selected{% endif %}>
-                                {{ user.full_name|default:user.email }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
+{% block nav_links %}
+<li><a href="{% url 'control_dashboard:supervisor_dashboard' %}">
+    <span class="nav-icon"><i class="fas fa-chart-line"></i></span>
+    <span class="nav-text">Dashboard</span>
+</a></li>  
+<li><a href="{% url 'control_dashboard:team_performance' %}">
+    <span class="nav-icon"><i class="fas fa-users"></i></span>
+    <span class="nav-text">Team Performance</span>
+</a></li> 
+<li class="active"><a href="{% url 'control_dashboard:submitted_reports' %}">
+    <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
+    <span class="nav-text">Submitted Reports</span>
+</a></li>
+<li><a href="{% url 'control_dashboard:ad_hoc_scorecard' %}">
+    <span class="nav-icon"><i class="fas fa-star"></i></span>
+    <span class="nav-text">Ad-Hoc Scorecard</span>
+</a></li>
+<li><a href="{% url 'control_dashboard:logged_exceptions' %}">
+    <span class="nav-icon"><i class="fas fa-exclamation-triangle"></i></span>
+    <span class="nav-text">Logged Exceptions</span>
+</a></li>       
+<li><a href="{% url 'control_dashboard:supervisor_checklist' %}">
+    <span class="nav-icon"><i class="fas fa-tasks"></i></span>
+    <span class="nav-text">Activity Checklist</span>
+</a></li>
+<li><a href="{% url 'control_dashboard:supervisor_activity_logs' %}">
+    <span class="nav-icon"><i class="fas fa-search"></i></span>
+    <span class="nav-text">Activity Logs</span>
+</a></li> 
+{% endblock %}
 
-                    <div class="header-divider"></div>
+{% block page_title %}Submitted Reports{% endblock %}
 
-                    <div class="header-filter-group">
-                        <label for="category-filter">Category</label>
-                        <select id="category-filter" class="header-select" onchange="applyFilters()">
-                            <option value="all">All Categories</option>
-                            {% for category in categories %}
-                            <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>
-                                {{ category }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
+{% block top_header_center %}
+<div class="header-filter-group">
+    <label for="user-filter">User</label>
+    <select id="user-filter" class="header-select" onchange="applyFilters()">
+        <option value="all">All Users</option>
+        {% for user in users %}
+        <option value="{{ user.id }}" {% if user_filter|add:"0" == user.id %}selected{% endif %}>
+            {{ user.full_name|default:user.email }}
+        </option>
+        {% endfor %}
+    </select>
+</div>
 
-                    <div class="header-divider"></div>
+<div class="header-divider"></div>
 
-                    <div class="header-date-group">
-                        <label for="start-date">Date Range</label>
-                        <div class="header-date-wrapper">
-                            <input type="date" id="start-date" class="header-date-input" value="{{ start_date }}" onchange="applyFilters()">
-                            <span>to</span>
-                            <input type="date" id="end-date" class="header-date-input" value="{{ end_date }}" onchange="applyFilters()">
-                        </div>
-                    </div>
-                </div>
+<div class="header-filter-group">
+    <label for="category-filter">Category</label>
+    <select id="category-filter" class="header-select" onchange="applyFilters()">
+        <option value="all">All Categories</option>
+        {% for category in categories %}
+        <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>
+            {{ category }}
+        </option>
+        {% endfor %}
+    </select>
+</div>
 
-                <div class="top-header-right">
-                    <button class="btn-reset-header" onclick="resetFilters()">
-                        <i class="fas fa-undo"></i> Reset Filters
-                    </button>
-                </div>
-            </div>
+<div class="header-divider"></div>
 
-            <!-- ==================== MAIN CONTENT ==================== -->
-            <div class="main-content">
-                <div class="stat-summary">
-                    <div class="stat-card">
-                        <div class="stat-value text-primary">{{ total_reports }}</div>
-                        <div class="stat-label">Total Reports</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value text-success">
-                            {% with approved=0 %}
-                                {% for r in report_data %}{% if r.status == 'approved' %}{% with approved=approved|add:1 %}{% endwith %}{% endif %}{% endfor %}
-                                {{ approved }}
-                            {% endwith %}
-                        </div>
-                        <div class="stat-label">Approved</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value text-warning">
-                            {% with submitted=0 %}
-                                {% for r in report_data %}{% if r.status == 'submitted' %}{% with submitted=submitted|add:1 %}{% endwith %}{% endif %}{% endfor %}
-                                {{ submitted }}
-                            {% endwith %}
-                        </div>
-                        <div class="stat-label">Pending Review</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value text-danger">
-                            {% with rejected=0 %}
-                                {% for r in report_data %}{% if r.status == 'rejected' %}{% with rejected=rejected|add:1 %}{% endwith %}{% endif %}{% endfor %}
-                                {{ rejected }}
-                            {% endwith %}
-                        </div>
-                        <div class="stat-label">Rejected</div>
-                    </div>
-                </div>
-                
-                <div class="table-container">
-                    <table class="users-table">
-                        <thead>
-                            <tr>
-                                <th>Team Member</th>
-                                <th>Report Type</th>
-                                <th>Status</th>
-                                <th>Submitted</th>
-                                <th>Deadline</th>
-                                <th>Deduction</th>
-                                <th>Score</th>
-                                <th class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in report_data %}
-                            <tr>
-                                <td class="font-bold">
-                                    {{ item.created_by.full_name|default:item.created_by.email }}
-                                </td>
-                                <td>{{ item.report_type }}</td>
-                                <td>
-                                    <span class="status-badge {{ item.status }}">
-                                        {{ item.status_display }}
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="time-stamp">
-                                        {{ item.submitted_at|date:"M d, Y" }}
-                                    </span>
-                                    <div style="font-size: 11px; color: rgba(26,35,50,0.4);">
-                                        {{ item.submitted_at|date:"H:i" }}
-                                    </div>
-                                </td>
-                                <td>
-                                    {% if item.report.deadline_date %}
-                                    <span class="time-stamp">
-                                        {{ item.report.deadline_date|date:"M d, Y" }}
-                                    </span>
-                                    <div style="font-size: 11px; color: rgba(26,35,50,0.4);">
-                                        {{ item.report.deadline_time|date:"H:i"|default:"N/A" }}
-                                    </div>
-                                    {% else %}
-                                    <span style="color: rgba(26,35,50,0.3);">N/A</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <input type="number" 
-                                           class="text-center-input" 
-                                           id="deduction_{{ item.report.id }}"
-                                           placeholder="0" 
-                                           min="0" 
-                                           max="100"
-                                           value="{{ item.manual_deduction|default:0 }}"
-                                           onchange="updateDeduction({{ item.report.id }})">
-                                </td>
-                                <td class="text-center">
-                                    <span class="score-badge {{ item.badge_class }}">
-                                        {{ item.final_score }}%
-                                    </span>
-                                </td>
-                                <td class="text-center">
-                                    <div class="table-actions-cluster">
-                                        <button class="btn-save" id="saveBtn_{{ item.report.id }}" onclick="saveScore({{ item.report.id }})">
-                                            <i class="fas fa-check"></i> Save
-                                        </button>
-                                        <span class="saving-indicator" id="savingIndicator_{{ item.report.id }}">
-                                            <i class="fas fa-spinner fa-spin"></i> Saving...
-                                        </span>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="8" class="text-center">
-                                    <i class="fas fa-file-alt"></i>
-                                    No submitted reports found.
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+<div class="header-date-group">
+    <label for="start-date">Date Range</label>
+    <div class="header-date-wrapper">
+        <input type="date" id="start-date" class="header-date-input" value="{{ start_date }}" onchange="applyFilters()">
+        <span>to</span>
+        <input type="date" id="end-date" class="header-date-input" value="{{ end_date }}" onchange="applyFilters()">
+    </div>
+</div>
+{% endblock %}
+
+{% block top_header_right %}
+<button class="btn-reset-header" onclick="resetFilters()">
+    <i class="fas fa-undo"></i> Reset Filters
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Stats Summary -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon primary"><i class="fas fa-file-alt"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ total_reports }}</span>
+            <span class="stat-label">Total Reports</span>
         </div>
-
-        <!-- Logout Confirmation Modal -->
-        <div id="logoutModal" class="modal" style="display: none;">
-            <div class="modal-content" style="max-width: 400px; text-align: center;">
-                <div style="font-size: 48px; color: #ef4444; margin-bottom: 16px;">
-                    <i class="fas fa-sign-out-alt"></i>
-                </div>
-                <h2 style="margin-bottom: 8px;">Confirm Logout</h2>
-                <p style="color: rgba(26,35,50,0.6); margin-bottom: 24px;">
-                    Are you sure you want to logout?
-                </p>
-                <div style="display: flex; gap: 12px; justify-content: center;">
-                    <button onclick="closeLogoutModal()" class="btn-edit" style="padding: 10px 24px; background: #e5e7eb; color: #1a2332; border: none; border-radius: 6px; cursor: pointer;">
-                        Cancel
-                    </button>
-                    <button onclick="confirmLogout()" class="btn-create" style="padding: 10px 24px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
-                </div>
-            </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon success"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ approved_count|default:0 }}</span>
+            <span class="stat-label">Approved</span>
         </div>
-
-        <div id="toastNotification" class="toast-notification">
-            <div class="toast-icon"><i class="fas fa-check"></i></div>
-            <div class="toast-content">
-                <p class="toast-title">Success!</p>
-                <p class="toast-message" id="toastMessage">Action completed successfully.</p>
-            </div>
-            <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon warning"><i class="fas fa-clock"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ pending_count|default:0 }}</span>
+            <span class="stat-label">Pending Review</span>
         </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon danger"><i class="fas fa-times-circle"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ rejected_count|default:0 }}</span>
+            <span class="stat-label">Rejected</span>
+        </div>
+    </div>
+</div>
 
-        <style>
-            /* Profile card logout styling */
-            .nav-profile-card {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 12px 16px;
-                border-radius: 8px;
-                background: rgba(255,255,255,0.05);
-                transition: all 0.2s ease;
-                position: relative;
-            }
+<!-- Reports Table -->
+<div class="table-container">
+    <div class="table-header">
+        <h4>Submitted Reports ({{ report_data|length }})</h4>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="reports-table">
+            <thead>
+                <tr>
+                    <th>Team Member</th>
+                    <th>Report Type</th>
+                    <th>Status</th>
+                    <th>Submitted</th>
+                    <th>Deadline</th>
+                    <th>Deduction</th>
+                    <th>Score</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in report_data %}
+                <tr>
+                    <td class="font-bold">
+                        {{ item.created_by.full_name|default:item.created_by.email }}
+                    </td>
+                    <td>{{ item.report_type }}</td>
+                    <td>
+                        <span class="status-badge {{ item.status }}">
+                            {{ item.status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="time-stamp">
+                            {{ item.submitted_at|date:"M d, Y" }}
+                            <small>{{ item.submitted_at|date:"H:i" }}</small>
+                        </span>
+                    </td>
+                    <td>
+                        {% if item.report.deadline_date %}
+                        <span class="time-stamp">
+                            {{ item.report.deadline_date|date:"M d, Y" }}
+                            <small>{{ item.report.deadline_time|date:"H:i"|default:"N/A" }}</small>
+                        </span>
+                        {% else %}
+                        <span class="na-text">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <input type="number" 
+                               class="deduction-input" 
+                               id="deduction_{{ item.report.id }}"
+                               placeholder="0" 
+                               min="0" 
+                               max="100"
+                               value="{{ item.manual_deduction|default:0 }}"
+                               onchange="updateDeduction({{ item.report.id }})">
+                    </td>
+                    <td class="text-center">
+                        <span class="score-badge {{ item.badge_class }}">
+                            {{ item.final_score }}%
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <div class="table-actions">
+                            <button class="btn-save" id="saveBtn_{{ item.report.id }}" onclick="saveScore({{ item.report.id }})">
+                                <i class="fas fa-check"></i> Save
+                            </button>
+                            <span class="saving-indicator" id="savingIndicator_{{ item.report.id }}">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center empty-row">
+                        <i class="fas fa-file-alt"></i>
+                        <p>No submitted reports found.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
 
-            .nav-profile-card:hover {
-                background: rgba(255,255,255,0.1);
-                transform: translateX(4px);
-            }
+{% block extra_js %}
+<script>
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    }
 
-            .nav-profile-card:hover .nav-profile-logout-icon {
-                opacity: 1;
-                transform: translateX(0);
-            }
+    // ============================================
+    // TOAST NOTIFICATION
+    // ============================================
 
-            .nav-profile-logout-icon {
-                margin-left: auto;
-                color: rgba(255,255,255,0.4);
-                font-size: 14px;
-                transition: all 0.2s ease;
-                opacity: 0;
-                transform: translateX(-8px);
-            }
+    function showToast(message, title = 'Success!') {
+        const toast = document.getElementById('toastNotification');
+        const msgEl = document.getElementById('toastMessage');
+        const titleEl = toast.querySelector('.toast-title');
+        
+        msgEl.textContent = message || 'Action completed successfully.';
+        titleEl.textContent = title;
+        
+        const icon = toast.querySelector('.toast-icon i');
+        if (title.toLowerCase().includes('error') || title.toLowerCase().includes('warning')) {
+            icon.className = 'fas fa-exclamation-circle';
+            toast.style.borderLeftColor = '#ef4444';
+            toast.querySelector('.toast-icon').style.color = '#ef4444';
+            toast.querySelector('.toast-icon').style.background = 'rgba(239, 68, 68, 0.1)';
+        } else {
+            icon.className = 'fas fa-check';
+            toast.style.borderLeftColor = '#10b981';
+            toast.querySelector('.toast-icon').style.color = '#10b981';
+            toast.querySelector('.toast-icon').style.background = 'rgba(16, 185, 129, 0.1)';
+        }
+        
+        toast.classList.add('show');
+        
+        if (window.toastTimeout) {
+            clearTimeout(window.toastTimeout);
+        }
+        
+        window.toastTimeout = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
 
-            .nav-user-role {
-                font-size: 11px;
-                color: rgba(255,255,255,0.5);
-                margin: 0;
-            }
+    window.closeToast = function() {
+        const toast = document.getElementById('toastNotification');
+        toast.classList.remove('show');
+        if (window.toastTimeout) {
+            clearTimeout(window.toastTimeout);
+            window.toastTimeout = null;
+        }
+    };
 
-            .nav-user-role i {
-                color: #ef4444;
-            }
+    // ============================================
+    // FILTER FUNCTIONS
+    // ============================================
 
-            /* Modal styles */
-            .modal {
-                position: fixed;
-                z-index: 9999;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                background-color: rgba(0, 0, 0, 0.5);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                animation: fadeIn 0.3s ease;
-            }
+    function applyFilters() {
+        const user = document.getElementById('user-filter').value;
+        const category = document.getElementById('category-filter').value;
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        
+        let url = window.location.pathname + '?';
+        if (user && user !== 'all') url += `user=${user}&`;
+        if (category && category !== 'all') url += `category=${encodeURIComponent(category)}&`;
+        if (startDate) url += `start_date=${startDate}&`;
+        if (endDate) url += `end_date=${endDate}`;
+        
+        window.location.href = url;
+    }
 
-            .modal-content {
-                background: white;
-                border-radius: 12px;
-                padding: 32px;
-                animation: slideUp 0.3s ease;
-            }
+    function resetFilters() {
+        window.location.href = window.location.pathname;
+    }
 
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
+    // ============================================
+    // SCORE MANAGEMENT
+    // ============================================
 
-            @keyframes slideUp {
-                from { transform: translateY(30px); opacity: 0; }
-                to { transform: translateY(0); opacity: 1; }
-            }
+    let deductionTimeout = null;
 
-            /* Responsive modal */
-            @media (max-width: 480px) {
-                .modal-content {
-                    margin: 20px;
-                    padding: 24px;
-                }
-                .modal-content h2 {
-                    font-size: 20px;
-                }
-            }
-        </style>
+    function updateDeduction(reportId) {
+        const input = document.getElementById(`deduction_${reportId}`);
+        const saveBtn = document.getElementById(`saveBtn_${reportId}`);
+        
+        saveBtn.style.background = 'rgba(245, 158, 11, 0.1)';
+        saveBtn.style.borderColor = '#f59e0b';
+        saveBtn.style.color = '#f59e0b';
+        
+        if (deductionTimeout) {
+            clearTimeout(deductionTimeout);
+        }
+        
+        deductionTimeout = setTimeout(() => {
+            saveScore(reportId);
+        }, 1500);
+    }
 
-        <script>
-            function getCsrfToken() {
-                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            }
-
-            // ============================================
-            // LOGOUT FUNCTION
-            // ============================================
-
-            function logoutUser() {
-                document.getElementById('logoutModal').style.display = 'flex';
-            }
-
-            function closeLogoutModal() {
-                document.getElementById('logoutModal').style.display = 'none';
-            }
-
-            function confirmLogout() {
-                // Show loading state
-                const btn = document.querySelector('#logoutModal .btn-create');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
-                btn.disabled = true;
-
-                // Redirect to logout URL
-                window.location.href = "{% url 'control_dashboard:logout' %}";
-            }
-
-            // Close modal on background click
-            document.addEventListener('click', function(event) {
-                const modal = document.getElementById('logoutModal');
-                if (event.target === modal) {
-                    closeLogoutModal();
-                }
-            });
-
-            // Close modal on Escape key
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape') {
-                    closeLogoutModal();
-                }
-            });
-
-            // ============================================
-            // EXISTING FUNCTIONS
-            // ============================================
-
-            function showToast(message, title = 'Success!') {
-                const toast = document.getElementById('toastNotification');
-                const msgEl = document.getElementById('toastMessage');
-                const titleEl = toast.querySelector('.toast-title');
+    function saveScore(reportId) {
+        const input = document.getElementById(`deduction_${reportId}`);
+        const saveBtn = document.getElementById(`saveBtn_${reportId}`);
+        const indicator = document.getElementById(`savingIndicator_${reportId}`);
+        
+        const deduction = parseInt(input.value) || 0;
+        
+        if (deduction < 0 || deduction > 100) {
+            showToast('Deduction must be between 0 and 100', 'Warning');
+            return;
+        }
+        
+        saveBtn.disabled = true;
+        indicator.style.display = 'inline-block';
+        
+        fetch("/adminboard/api/update-report-score/", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                report_id: reportId,
+                manual_deduction: deduction
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            indicator.style.display = 'none';
+            saveBtn.disabled = false;
+            
+            if (data.success) {
+                showToast('Score updated successfully!', 'Success');
+                saveBtn.style.background = 'rgba(16, 185, 129, 0.1)';
+                saveBtn.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                saveBtn.style.color = '#10b981';
                 
-                msgEl.textContent = message || 'Action completed successfully.';
-                titleEl.textContent = title;
-                
-                const icon = toast.querySelector('.toast-icon i');
-                if (title.toLowerCase().includes('error') || title.toLowerCase().includes('warning')) {
-                    icon.className = 'fas fa-exclamation-circle';
-                    toast.style.borderLeftColor = '#ef4444';
-                    toast.querySelector('.toast-icon').style.color = '#ef4444';
-                    toast.querySelector('.toast-icon').style.background = 'rgba(239, 68, 68, 0.1)';
-                } else {
-                    icon.className = 'fas fa-check';
-                    toast.style.borderLeftColor = '#10b981';
-                    toast.querySelector('.toast-icon').style.color = '#10b981';
-                    toast.querySelector('.toast-icon').style.background = 'rgba(16, 185, 129, 0.1)';
-                }
-                
-                toast.classList.add('show');
-                
-                if (window.toastTimeout) {
-                    clearTimeout(window.toastTimeout);
-                }
-                
-                window.toastTimeout = setTimeout(() => {
-                    toast.classList.remove('show');
-                }, 3000);
-            }
-
-            window.closeToast = function() {
-                const toast = document.getElementById('toastNotification');
-                toast.classList.remove('show');
-                if (window.toastTimeout) {
-                    clearTimeout(window.toastTimeout);
-                    window.toastTimeout = null;
-                }
-            };
-
-            function applyFilters() {
-                const user = document.getElementById('user-filter').value;
-                const category = document.getElementById('category-filter').value;
-                const startDate = document.getElementById('start-date').value;
-                const endDate = document.getElementById('end-date').value;
-                
-                let url = window.location.pathname + '?';
-                if (user && user !== 'all') url += `user=${user}&`;
-                if (category && category !== 'all') url += `category=${encodeURIComponent(category)}&`;
-                if (startDate) url += `start_date=${startDate}&`;
-                if (endDate) url += `end_date=${endDate}`;
-                
-                window.location.href = url;
-            }
-
-            function resetFilters() {
-                window.location.href = window.location.pathname;
-            }
-
-            function updateDeduction(reportId) {
-                const input = document.getElementById(`deduction_${reportId}`);
-                const saveBtn = document.getElementById(`saveBtn_${reportId}`);
-                
-                saveBtn.style.background = 'rgba(245, 158, 11, 0.1)';
-                saveBtn.style.borderColor = '#f59e0b';
-                saveBtn.style.color = '#f59e0b';
-                
-                if (window.deductionTimeout) {
-                    clearTimeout(window.deductionTimeout);
-                }
-                
-                window.deductionTimeout = setTimeout(() => {
-                    saveScore(reportId);
+                setTimeout(() => {
+                    location.reload();
                 }, 1500);
+            } else {
+                showToast('Error: ' + data.error, 'Error');
             }
+        })
+        .catch(error => {
+            indicator.style.display = 'none';
+            saveBtn.disabled = false;
+            console.error('Error:', error);
+            showToast('An error occurred while saving.', 'Error');
+        });
+    }
 
-            function saveScore(reportId) {
-                const input = document.getElementById(`deduction_${reportId}`);
-                const saveBtn = document.getElementById(`saveBtn_${reportId}`);
-                const indicator = document.getElementById(`savingIndicator_${reportId}`);
-                
-                const deduction = parseInt(input.value) || 0;
-                
-                if (deduction < 0 || deduction > 100) {
-                    showToast('Deduction must be between 0 and 100', 'Warning');
-                    return;
-                }
-                
-                saveBtn.disabled = true;
-                indicator.classList.add('active');
-                
-                fetch("{% url 'control_dashboard:api_update_report_score' %}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        report_id: reportId,
-                        manual_deduction: deduction
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    indicator.classList.remove('active');
-                    saveBtn.disabled = false;
-                    
-                    if (data.success) {
-                        showToast('Score updated successfully!', 'Success');
-                        
-                        saveBtn.style.background = 'rgba(16, 185, 129, 0.1)';
-                        saveBtn.style.borderColor = 'rgba(16, 185, 129, 0.2)';
-                        saveBtn.style.color = '#10b981';
-                        
-                        setTimeout(() => {
-                            location.reload();
-                        }, 1500);
-                    } else {
-                        showToast('Error: ' + data.error, 'Error');
-                    }
-                })
-                .catch(error => {
-                    indicator.classList.remove('active');
-                    saveBtn.disabled = false;
-                    console.error('Error:', error);
-                    showToast('An error occurred while saving.', 'Error');
-                });
+    // ============================================
+    // ENTER KEY SUPPORT
+    // ============================================
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const target = e.target;
+            if (target.id === 'start-date' || target.id === 'end-date') {
+                applyFilters();
             }
+        }
+    });
 
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    const target = e.target;
-                    if (target.id === 'start-date' || target.id === 'end-date') {
-                        applyFilters();
-                    }
-                }
-            });
+    // ============================================
+    // INITIALIZATION
+    // ============================================
 
-            document.addEventListener('DOMContentLoaded', function() {
-                const inputs = document.querySelectorAll('.text-center-input');
-                inputs.forEach(input => {
-                    input.addEventListener('blur', function() {
-                        const reportId = this.id.replace('deduction_', '');
-                        saveScore(reportId);
-                    });
-                });
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-save on blur for deduction inputs
+        const inputs = document.querySelectorAll('.deduction-input');
+        inputs.forEach(input => {
+            input.addEventListener('blur', function() {
+                const reportId = this.id.replace('deduction_', '');
+                saveScore(reportId);
             });
-        </script>
-    </body>
-</html>
+        });
+        
+        console.log('Submitted Reports page loaded');
+        console.log('Total reports:', {{ report_data|length }});
+    });
+</script>
+{% endblock %}

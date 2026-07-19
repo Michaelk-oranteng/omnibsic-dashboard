@@ -1,548 +1,282 @@
+{% extends 'control_dashboard/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Activity Logs</title>
-        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
-        <link rel="stylesheet" href="{% static 'stylesheets/admin.css' %}" type="text/css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-        <meta name="csrf-token" content="{{ csrf_token }}">
-    </head>
-    <body>
-        <div class="page-wrapper">
-            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
-            <div class="nav-bar">
-                <div class="logo">
-                    <a href="{% url 'control_dashboard:admin_page' %}">
-                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
-                    </a>
-                </div>
 
-                <ul class="nav-links">
-                    <li><a href="{% url 'control_dashboard:admin_page' %}">
-                        <span class="nav-icon"><i class="fas fa-user-cog"></i></span>
-                        <span class="nav-text">User Management</span>
-                    </a></li> 
-                    <li><a href="{% url 'control_dashboard:report_center' %}">
-                        <span class="nav-icon"><i class="fas fa-flag"></i></span>
-                        <span class="nav-text">Report Center</span>
-                    </a></li>  
-                    <li><a href="{% url 'control_dashboard:template_builder' %}">
-                        <span class="nav-icon"><i class="fas fa-cubes"></i></span>
-                        <span class="nav-text">Template Builder</span>
-                    </a></li>          
-                    <li><a href="{% url 'control_dashboard:checklist_builder' %}">
-                        <span class="nav-icon"><i class="fas fa-tools"></i></span>
-                        <span class="nav-text">Checklist Builder</span>
-                    </a></li>
-                    <li class="active"><a href="{% url 'control_dashboard:activity_logs' %}">
-                        <span class="nav-icon"><i class="fas fa-key"></i></span>
-                        <span class="nav-text">Activity Logs</span>
-                    </a></li> 
-                </ul>
+{% block title %}Activity Logs{% endblock %}
 
-                <!-- ==================== PROFILE CARD - LOGOUT BUTTON ==================== -->
-                <div class="nav-footer">
-                    <div class="nav-profile-card" onclick="logoutUser()" style="cursor: pointer;" title="Click to logout">
-                        <div class="nav-profile-img-wrapper">
-                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'stylesheets/activity-logs.css' %}" type="text/css">
+{% endblock %}
+
+{% block dashboard_url %}{% url 'control_dashboard:admin_page' %}{% endblock %}
+
+{% block nav_links %}
+<li><a href="{% url 'control_dashboard:admin_page' %}">
+    <span class="nav-icon"><i class="fas fa-user-cog"></i></span>
+    <span class="nav-text">User Management</span>
+</a></li> 
+<li><a href="{% url 'control_dashboard:report_center' %}">
+    <span class="nav-icon"><i class="fas fa-flag"></i></span>
+    <span class="nav-text">Report Center</span>
+</a></li>  
+<li><a href="{% url 'control_dashboard:template_builder' %}">
+    <span class="nav-icon"><i class="fas fa-cubes"></i></span>
+    <span class="nav-text">Template Builder</span>
+</a></li>          
+<li><a href="{% url 'control_dashboard:checklist_builder' %}">
+    <span class="nav-icon"><i class="fas fa-tools"></i></span>
+    <span class="nav-text">Checklist Builder</span>
+</a></li>
+<li class="active"><a href="{% url 'control_dashboard:activity_logs' %}">
+    <span class="nav-icon"><i class="fas fa-key"></i></span>
+    <span class="nav-text">Activity Logs</span>
+</a></li> 
+{% endblock %}
+
+{% block page_title %}Activity Logs{% endblock %}
+
+{% block top_header_center %}
+<div class="header-date-group">
+    <label for="start-date">Date Range</label>
+    <div class="header-date-wrapper">
+        <input type="date" id="start-date" name="start-date" class="header-date-input" value="{{ start_date|default:'' }}" onchange="applyFilters()">
+        <span>to</span>
+        <input type="date" id="end-date" name="end-date" class="header-date-input" value="{{ end_date|default:'' }}" onchange="applyFilters()">
+    </div>
+</div>
+
+<div class="header-divider"></div>
+
+<div class="header-filter-group">
+    <label for="activity-filter">Activity</label>
+    <select id="activity-filter" name="activity-filter" class="header-select" onchange="applyFilters()">
+        <option value="all">All Activities</option>
+        {% for value, label in activity_types %}
+        <option value="{{ value }}" {% if activity_filter == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<div class="header-divider"></div>
+
+<div class="header-filter-group">
+    <label for="user-filter">User</label>
+    <select id="user-filter" name="user-filter" class="header-select" onchange="applyFilters()">
+        <option value="all">All Users</option>
+        {% for user in users %}
+        <option value="{{ user.id }}" {% if user_filter == user.id|stringformat:"s" %}selected{% endif %}>{{ user.full_name|default:user.email }}</option>
+        {% endfor %}
+    </select>
+</div>
+{% endblock %}
+
+{% block top_header_right %}
+<button class="btn-export-header" onclick="exportLogs()">
+    <i class="fas fa-download"></i> Export
+</button>
+<button class="btn-refresh-header" onclick="location.reload()">
+    <i class="fas fa-sync"></i> Refresh
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="table-container">
+    <div class="table-header">
+        <h4>Activity Logs ({{ activity_logs|length }})</h4>
+    </div>
+
+    <div class="table-responsive">
+        <table class="activity-table">
+            <thead>
+                <tr>
+                    <th>Date & Time</th>
+                    <th>User</th>
+                    <th>Activity</th>
+                    <th>Details</th>
+                    <th>IP Address</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in activity_logs %}
+                <tr>
+                    <td>
+                        <span class="time-stamp">
+                            <i class="far fa-calendar-alt"></i> {{ log.created_at|date:"M d, Y" }}
+                            <br>
+                            <i class="far fa-clock"></i> {{ log.created_at|date:"H:i" }}
+                        </span>
+                    </td>
+                    <td class="font-bold">{{ log.user.full_name|default:log.user.email }}</td>
+                    <td>
+                        <span class="activity-tag {{ log.activity_type }}">
+                            <i class="fas {{ log.get_activity_icon }}"></i>
+                            {{ log.get_activity_type_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="activity-details">
+                            <i class="fas fa-info-circle"></i>
+                            {{ log.details|default:"No details available" }}
                         </div>
-                        <div class="nav-profile-info">
-                            <h4 class="nav-user-name">{{ request.user.get_full_name|default:"Admin User" }}</h4>
-                            <p class="nav-user-role">
-                                <i class="fas fa-sign-out-alt" style="font-size: 11px; margin-right: 4px;"></i>
-                                Click to logout
-                            </p>
-                        </div>
-                        <div class="nav-profile-logout-icon">
-                            <i class="fas fa-sign-out-alt"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==================== TOP HEADER ==================== -->
-            <div class="top-header">
-                <div class="top-header-left">
-                    <span class="page-title">Activity Logs</span>
-                </div>
-
-                <div class="top-header-center">
-                    <div class="header-date-group">
-                        <label for="start-date">Date Range</label>
-                        <div class="header-date-wrapper">
-                            <input type="date" id="start-date" name="start-date" class="header-date-input" value="{{ start_date|default:'' }}">
-                            <span>to</span>
-                            <input type="date" id="end-date" name="end-date" class="header-date-input" value="{{ end_date|default:'' }}">
-                        </div>
-                    </div>
-
-                    <div class="header-divider"></div>
-
-                    <div class="header-filter-group">
-                        <label for="activity-filter">Activity</label>
-                        <select id="activity-filter" name="activity-filter" class="header-select" onchange="applyFilters()">
-                            <option value="all">All Activities</option>
-                            {% for value, label in activity_types %}
-                            <option value="{{ value }}" {% if activity_filter == value %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="header-divider"></div>
-
-                    <div class="header-filter-group">
-                        <label for="user-filter">User</label>
-                        <select id="user-filter" name="user-filter" class="header-select" onchange="applyFilters()">
-                            <option value="all">All Users</option>
-                            {% for user in users %}
-                            <option value="{{ user.id }}" {% if user_filter == user.id|stringformat:"s" %}selected{% endif %}>{{ user.full_name|default:user.email }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-
-                <div class="top-header-right">
-                    <button class="btn-export-header" onclick="exportLogs()">
-                        <i class="fas fa-download"></i> Export
-                    </button>
-                    <button class="btn-refresh" onclick="location.reload()">
-                        <i class="fas fa-sync"></i> Refresh
-                    </button>
-                </div>
-            </div>
-
-            <!-- ==================== MESSAGES ==================== -->
-            {% if messages %}
-            <div class="messages-container">
-                {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">
-                    {{ message }}
-                    <button class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
-                </div>
+                    </td>
+                    <td>
+                        <span class="ip-address">{{ log.ip_address|default:"N/A" }}</span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center empty-row">
+                        <i class="fas fa-clipboard-list"></i>
+                        <p>No activity logs found.</p>
+                    </td>
+                </tr>
                 {% endfor %}
-            </div>
-            {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
 
-            <!-- ==================== MAIN CONTENT ==================== -->
-            <div class="main-content">
-                <div class="table-container">
-                    <div class="table-header">
-                        <h4>Activity Logs ({{ activity_logs|length }})</h4>
-                    </div>
-
-                    <table class="dashboard-table">
-                        <thead>
-                            <tr>
-                                <th>Date & Time</th>
-                                <th>User</th>
-                                <th>Activity</th>
-                                <th>Details</th>
-                                <th>IP Address</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for log in activity_logs %}
-                            <tr>
-                                <td><span class="time-stamp">{{ log.created_at|date:"F d, Y, H:i" }}</span></td>
-                                <td class="font-bold">{{ log.user.full_name|default:log.user.email }}</td>
-                                <td><span class="activity-tag {{ log.activity_type }}">{{ log.get_activity_type_display }}</span></td>
-                                <td>{{ log.details|default:"-" }}</td>
-                                <td><span class="time-stamp">{{ log.ip_address|default:"N/A" }}</span></td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center">
-                                    <i class="fas fa-history"></i>
-                                    No activity logs found.
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+<!-- Stats Summary -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon primary"><i class="fas fa-history"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ activity_logs|length }}</span>
+            <span class="stat-label">Total Logs</span>
         </div>
-
-        <!-- ==================== EDIT ACTIVITY MODAL ==================== -->
-        <div id="editActivityModal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <span class="close" onclick="document.getElementById('editActivityModal').style.display='none'">&times;</span>
-                <h2>Edit Activity Log</h2>
-                <form id="editActivityForm" onsubmit="submitEditActivity(event)">
-                    {% csrf_token %}
-                    <input type="hidden" id="editActivityId">
-                    
-                    <div class="form-group">
-                        <label>User</label>
-                        <select id="editActivityUser" class="form-control" required>
-                            {% for user in users %}
-                            <option value="{{ user.id }}">{{ user.full_name|default:user.email }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Activity Type</label>
-                        <select id="editActivityType" class="form-control" required>
-                            {% for value, label in activity_types %}
-                            <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Details</label>
-                        <textarea id="editActivityDetails" class="form-control" rows="3" placeholder="Enter activity details..."></textarea>
-                    </div>
-
-                    <div class="modal-actions">
-                        <button type="submit" class="btn-submit">Update Activity</button>
-                        <button type="button" class="btn-cancel-modal" onclick="document.getElementById('editActivityModal').style.display='none'">Cancel</button>
-                    </div>
-                </form>
-            </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon success"><i class="fas fa-users"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ unique_users|default:0 }}</span>
+            <span class="stat-label">Unique Users</span>
         </div>
-
-        <!-- ==================== LOGOUT CONFIRMATION MODAL ==================== -->
-        <div id="logoutModal" class="modal" style="display: none;">
-            <div class="modal-content" style="max-width: 400px; text-align: center;">
-                <div style="font-size: 48px; color: #ef4444; margin-bottom: 16px;">
-                    <i class="fas fa-sign-out-alt"></i>
-                </div>
-                <h2 style="margin-bottom: 8px;">Confirm Logout</h2>
-                <p style="color: rgba(26,35,50,0.6); margin-bottom: 24px;">
-                    Are you sure you want to logout?
-                </p>
-                <div style="display: flex; gap: 12px; justify-content: center;">
-                    <button onclick="closeLogoutModal()" class="btn-edit" style="padding: 10px 24px; background: #e5e7eb; color: #1a2332; border: none; border-radius: 6px; cursor: pointer;">
-                        Cancel
-                    </button>
-                    <button onclick="confirmLogout()" class="btn-create" style="padding: 10px 24px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
-                </div>
-            </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon warning"><i class="fas fa-calendar-day"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ today_logs|default:0 }}</span>
+            <span class="stat-label">Today's Logs</span>
         </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon info"><i class="fas fa-clock"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ last_activity|default:"Never" }}</span>
+            <span class="stat-label">Last Activity</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
 
-        <style>
-            /* Profile card logout styling */
-            .nav-profile-card {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 12px 16px;
-                border-radius: 8px;
-                background: rgba(255,255,255,0.05);
-                transition: all 0.2s ease;
-                position: relative;
+{% block extra_js %}
+<script>
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    }
+
+    // ============================================
+    // TOAST NOTIFICATION
+    // ============================================
+
+    function showToast(message, title = 'Success!') {
+        const toast = document.getElementById('toastNotification');
+        const msgEl = document.getElementById('toastMessage');
+        const titleEl = toast.querySelector('.toast-title');
+        
+        msgEl.textContent = message || 'Action completed successfully.';
+        titleEl.textContent = title;
+        
+        const icon = toast.querySelector('.toast-icon i');
+        if (title.toLowerCase().includes('error') || title.toLowerCase().includes('warning')) {
+            icon.className = 'fas fa-exclamation-circle';
+            toast.style.borderLeftColor = '#ef4444';
+            toast.querySelector('.toast-icon').style.color = '#ef4444';
+            toast.querySelector('.toast-icon').style.background = 'rgba(239, 68, 68, 0.1)';
+        } else {
+            icon.className = 'fas fa-check';
+            toast.style.borderLeftColor = '#10b981';
+            toast.querySelector('.toast-icon').style.color = '#10b981';
+            toast.querySelector('.toast-icon').style.background = 'rgba(16, 185, 129, 0.1)';
+        }
+        
+        toast.classList.add('show');
+        
+        if (window.toastTimeout) {
+            clearTimeout(window.toastTimeout);
+        }
+        
+        window.toastTimeout = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    window.closeToast = function() {
+        const toast = document.getElementById('toastNotification');
+        toast.classList.remove('show');
+        if (window.toastTimeout) {
+            clearTimeout(window.toastTimeout);
+            window.toastTimeout = null;
+        }
+    };
+
+    // ============================================
+    // FILTER FUNCTIONS
+    // ============================================
+
+    function applyFilters() {
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        const activityFilter = document.getElementById('activity-filter').value;
+        const userFilter = document.getElementById('user-filter').value;
+        
+        let url = window.location.pathname + '?';
+        if (startDate) url += `start_date=${startDate}&`;
+        if (endDate) url += `end_date=${endDate}&`;
+        if (activityFilter && activityFilter !== 'all') url += `activity=${activityFilter}&`;
+        if (userFilter && userFilter !== 'all') url += `user=${userFilter}`;
+        
+        // Remove trailing & or ?
+        url = url.replace(/[?&]$/, '');
+        
+        window.location.href = url;
+    }
+
+    function exportLogs() {
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        const activityFilter = document.getElementById('activity-filter').value;
+        const userFilter = document.getElementById('user-filter').value;
+        
+        let url = "/adminboard/api/export-logs/?";
+        if (startDate) url += `start_date=${startDate}&`;
+        if (endDate) url += `end_date=${endDate}&`;
+        if (activityFilter && activityFilter !== 'all') url += `activity=${activityFilter}&`;
+        if (userFilter && userFilter !== 'all') url += `user=${userFilter}`;
+        
+        url = url.replace(/[?&]$/, '');
+        window.location.href = url;
+    }
+
+    // ============================================
+    // ENTER KEY SUPPORT
+    // ============================================
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const target = e.target;
+            if (target.id === 'start-date' || target.id === 'end-date') {
+                applyFilters();
             }
+        }
+    });
 
-            .nav-profile-card:hover {
-                background: rgba(255,255,255,0.1);
-                transform: translateX(4px);
-            }
+    // ============================================
+    // INITIALIZATION
+    // ============================================
 
-            .nav-profile-card:hover .nav-profile-logout-icon {
-                opacity: 1;
-                transform: translateX(0);
-            }
-
-            .nav-profile-logout-icon {
-                margin-left: auto;
-                color: rgba(255,255,255,0.4);
-                font-size: 14px;
-                transition: all 0.2s ease;
-                opacity: 0;
-                transform: translateX(-8px);
-            }
-
-            .nav-user-role {
-                font-size: 11px;
-                color: rgba(255,255,255,0.5);
-                margin: 0;
-            }
-
-            .nav-user-role i {
-                color: #ef4444;
-            }
-
-            /* Modal styles */
-            .modal {
-                position: fixed;
-                z-index: 9999;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                background-color: rgba(0, 0, 0, 0.5);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                animation: fadeIn 0.3s ease;
-            }
-
-            .modal-content {
-                background: white;
-                border-radius: 12px;
-                padding: 32px;
-                animation: slideUp 0.3s ease;
-                max-width: 500px;
-                width: 90%;
-                max-height: 90vh;
-                overflow-y: auto;
-            }
-
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
-
-            @keyframes slideUp {
-                from { transform: translateY(30px); opacity: 0; }
-                to { transform: translateY(0); opacity: 1; }
-            }
-
-            .close {
-                float: right;
-                font-size: 28px;
-                font-weight: bold;
-                cursor: pointer;
-                color: #aaa;
-            }
-
-            .close:hover {
-                color: #000;
-            }
-
-            .form-group {
-                margin-bottom: 16px;
-            }
-
-            .form-group label {
-                display: block;
-                font-weight: 500;
-                margin-bottom: 4px;
-                font-size: 14px;
-                color: #374151;
-            }
-
-            .form-control {
-                width: 100%;
-                padding: 10px 12px;
-                border: 1px solid #d1d5db;
-                border-radius: 6px;
-                font-size: 14px;
-                transition: border-color 0.2s;
-            }
-
-            .form-control:focus {
-                outline: none;
-                border-color: #0066cc;
-                box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
-            }
-
-            .modal-actions {
-                display: flex;
-                gap: 12px;
-                justify-content: flex-end;
-                margin-top: 20px;
-            }
-
-            .btn-submit {
-                padding: 10px 24px;
-                background: #0066cc;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: 500;
-                transition: background 0.2s;
-            }
-
-            .btn-submit:hover {
-                background: #004e8c;
-            }
-
-            .btn-cancel-modal {
-                padding: 10px 24px;
-                background: #e5e7eb;
-                color: #1a2332;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: 500;
-                transition: background 0.2s;
-            }
-
-            .btn-cancel-modal:hover {
-                background: #d1d5db;
-            }
-
-            /* Responsive modal */
-            @media (max-width: 480px) {
-                .modal-content {
-                    margin: 20px;
-                    padding: 24px;
-                }
-                .modal-content h2 {
-                    font-size: 20px;
-                }
-                .modal-actions {
-                    flex-direction: column;
-                }
-                .modal-actions button {
-                    width: 100%;
-                }
-            }
-        </style>
-
-        <script>
-            function getCsrfToken() {
-                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            }
-
-            // ============================================
-            // LOGOUT FUNCTION
-            // ============================================
-
-            function logoutUser() {
-                document.getElementById('logoutModal').style.display = 'flex';
-            }
-
-            function closeLogoutModal() {
-                document.getElementById('logoutModal').style.display = 'none';
-            }
-
-            function confirmLogout() {
-                // Show loading state
-                const btn = document.querySelector('#logoutModal .btn-create');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
-                btn.disabled = true;
-
-                // Redirect to logout URL
-                window.location.href = "{% url 'control_dashboard:logout' %}";
-            }
-
-            // Close modal on background click
-            document.addEventListener('click', function(event) {
-                const modal = document.getElementById('logoutModal');
-                if (event.target === modal) {
-                    closeLogoutModal();
-                }
-            });
-
-            // Close modal on Escape key
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape') {
-                    closeLogoutModal();
-                }
-            });
-
-            // ============================================
-            // EXISTING FUNCTIONS
-            // ============================================
-
-            function exportLogs() {
-                const startDate = document.getElementById('start-date').value;
-                const endDate = document.getElementById('end-date').value;
-                const activityFilter = document.getElementById('activity-filter').value;
-                const userFilter = document.getElementById('user-filter').value;
-                
-                window.location.href = "{% url 'control_dashboard:export_logs' %}?start_date=" + startDate + "&end_date=" + endDate + "&activity=" + activityFilter + "&user=" + userFilter;
-            }
-
-            function applyFilters() {
-                const startDate = document.getElementById('start-date').value;
-                const endDate = document.getElementById('end-date').value;
-                const activityFilter = document.getElementById('activity-filter').value;
-                const userFilter = document.getElementById('user-filter').value;
-                
-                let url = "{% url 'control_dashboard:activity_logs' %}?";
-                if (startDate) url += "start_date=" + startDate + "&";
-                if (endDate) url += "end_date=" + endDate + "&";
-                if (activityFilter && activityFilter !== 'all') url += "activity=" + activityFilter + "&";
-                if (userFilter && userFilter !== 'all') url += "user=" + userFilter;
-                
-                window.location.href = url;
-            }
-
-            document.getElementById('start-date').addEventListener('change', applyFilters);
-            document.getElementById('end-date').addEventListener('change', applyFilters);
-
-            function editActivity(activityId) {
-                fetch("{% url 'control_dashboard:api_get_activity' 0 %}".replace('0', activityId), {
-                    method: 'GET',
-                    headers: {
-                        'X-CSRFToken': getCsrfToken()
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const activity = data.activity;
-                        document.getElementById('editActivityId').value = activityId;
-                        document.getElementById('editActivityUser').value = activity.user;
-                        document.getElementById('editActivityType').value = activity.activity_type;
-                        document.getElementById('editActivityDetails').value = activity.details || '';
-                        
-                        document.getElementById('editActivityModal').style.display = 'block';
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred. Please try again.');
-                });
-            }
-
-            function submitEditActivity(event) {
-                event.preventDefault();
-                
-                const activityId = document.getElementById('editActivityId').value;
-                const userId = document.getElementById('editActivityUser').value;
-                const activityType = document.getElementById('editActivityType').value;
-                const details = document.getElementById('editActivityDetails').value;
-
-                fetch("{% url 'control_dashboard:api_edit_activity' 0 %}".replace('0', activityId), {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        user_id: userId,
-                        activity_type: activityType,
-                        details: details
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Activity updated successfully!');
-                        document.getElementById('editActivityModal').style.display = 'none';
-                        location.reload();
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred. Please try again.');
-                });
-            }
-
-            window.onclick = function(event) {
-                const editModal = document.getElementById('editActivityModal');
-                if (event.target == editModal) {
-                    editModal.style.display = 'none';
-                }
-            }
-        </script>
-    </body>
-</html>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Admin Activity Logs page loaded');
+        console.log('Total logs:', {{ activity_logs|length }});
+    });
+</script>
+{% endblock %}

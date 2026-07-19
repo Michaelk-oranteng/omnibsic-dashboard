@@ -1,0 +1,900 @@
+/* ==========================================================================
+   REPORTS PAGE - OMNIBsic BANK DASHBOARD
+   Extends base.css with reports-specific styles
+   ========================================================================== */
+
+/* ==========================================================================
+   1. REPORT TYPE GROUPS
+   ========================================================================== */
+
+.report-type-group {
+    margin-bottom: var(--space-lg);
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+    border: 1px solid var(--glass-border);
+    overflow: hidden;
+    box-shadow: 0 2px 12px var(--glass-shadow);
+    transition: all 0.3s ease;
+}
+
+.report-type-group:hover {
+    box-shadow: 0 4px 24px var(--glass-shadow-hover);
+}
+
+.report-type-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-md) var(--space-lg);
+    cursor: pointer;
+    background: rgba(0, 51, 153, 0.02);
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+.report-type-header:hover {
+    background: rgba(0, 51, 153, 0.04);
+}
+
+.report-type-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.report-type-icon {
+    font-size: 20px;
+    color: var(--omni-primary);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 51, 153, 0.06);
+    border-radius: 10px;
+}
+
+.report-type-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--omni-primary-dark);
+    margin: 0;
+}
+
+.report-type-count {
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(26, 35, 50, 0.4);
+    background: rgba(0, 0, 0, 0.04);
+    padding: 2px 12px;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+.report-type-toggle {
+    color: rgba(26, 35, 50, 0.3);
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.report-type-toggle.collapsed {
+    transform: rotate(-90deg);
+}
+
+.report-type-body {
+    padding: 0 var(--space-lg) var(--space-lg);
+    overflow: hidden;
+    max-height: 2000px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.report-type-body.collapsed {
+    max-height: 0;
+    padding: 0 var(--space-lg);
+    opacity: 0;
+}
+
+/* ==========================================================================
+   2. REPORT DETAILS TABLE
+   ========================================================================== */
+
+.report-details-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: transparent;
+    font-size: 13px;
+}
+
+.report-details-table thead {
+    background: rgba(0, 51, 153, 0.03);
+}
+
+.report-details-table thead th {
+    color: rgba(26, 35, 50, 0.5);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    text-align: left;
+    padding: var(--space-md) var(--space-lg);
+    border-bottom: 2px solid var(--glass-border-dark);
+    white-space: nowrap;
+}
+
+.report-details-table tbody td {
+    padding: 14px var(--space-lg);
+    color: rgba(26, 35, 50, 0.8);
+    font-size: 13px;
+    border-bottom: 1px solid var(--glass-border-dark);
+    vertical-align: middle;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.report-details-table tbody td:first-child {
+    font-weight: 500;
+    color: var(--omni-primary-dark);
+}
+
+.report-details-table tbody tr {
+    transition: all 0.2s ease;
+}
+
+.report-details-table tbody tr:hover {
+    background: rgba(0, 51, 153, 0.02);
+}
+
+.report-details-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ==========================================================================
+   3. TABLE ACTIONS CLUSTER
+   ========================================================================== */
+
+.table-actions-cluster {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+}
+
+.btn-edit-modal {
+    padding: 4px 14px;
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--omni-primary);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.btn-edit-modal:hover {
+    background: var(--omni-primary);
+    color: #ffffff;
+    border-color: var(--omni-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 51, 153, 0.2);
+}
+
+.btn-edit-modal i {
+    font-size: 12px;
+}
+
+.btn-delete {
+    padding: 4px 14px;
+    background: rgba(220, 38, 38, 0.08);
+    color: #dc2626;
+    border: 1px solid rgba(220, 38, 38, 0.12);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.btn-delete:hover {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+}
+
+.btn-delete i {
+    font-size: 12px;
+}
+
+/* ==========================================================================
+   4. BADGES
+   ========================================================================== */
+
+.badge-success {
+    display: inline-block;
+    padding: 3px 12px;
+    background: #d1fae5;
+    color: #065f46;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-secondary {
+    display: inline-block;
+    padding: 3px 12px;
+    background: #f3f4f6;
+    color: #6b7280;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-warning {
+    display: inline-block;
+    padding: 3px 12px;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* ==========================================================================
+   5. MODAL
+   ========================================================================== */
+
+.modal-wrapper {
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    animation: modalFadeIn 0.3s ease;
+    padding: var(--space-md);
+}
+
+.modal-wrapper .modal-content {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 0;
+    animation: modalSlideUp 0.3s ease;
+    max-width: 640px;
+    width: 100%;
+    max-height: 90vh;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes modalSlideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-lg) var(--space-xl);
+    border-bottom: 1px solid var(--glass-border-dark);
+    background: rgba(0, 51, 153, 0.02);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--omni-primary-dark);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: rgba(26, 35, 50, 0.3);
+    transition: all 0.3s ease;
+    padding: 4px 8px;
+    border-radius: 8px;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: var(--omni-danger);
+    background: rgba(220, 38, 38, 0.08);
+}
+
+/* Modal Form */
+.modal-content form {
+    padding: var(--space-xl);
+}
+
+.modal-content .form-group {
+    margin-bottom: var(--space-lg);
+}
+
+.modal-content .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.modal-content .form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: #374151;
+}
+
+.modal-content .form-group label .required {
+    color: var(--omni-danger);
+}
+
+.modal-content .form-control {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.3s ease;
+    background: #fafafa;
+    color: #1a2332;
+}
+
+.modal-content .form-control:focus {
+    outline: none;
+    border-color: var(--omni-primary);
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(0, 51, 153, 0.08);
+}
+
+.modal-content .form-control::placeholder {
+    color: #9ca3af;
+}
+
+.modal-content select.form-control {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='rgba(0,0,0,0.3)' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 40px;
+    cursor: pointer;
+}
+
+.modal-content textarea.form-control {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.modal-content input[type="checkbox"].form-control {
+    width: auto;
+    height: 18px;
+    width: 18px;
+    cursor: pointer;
+    padding: 0;
+    accent-color: var(--omni-primary);
+}
+
+.modal-content input[type="date"].form-control {
+    padding: 9px 14px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: var(--space-md);
+    justify-content: flex-end;
+    padding-top: var(--space-lg);
+    border-top: 1px solid var(--glass-border-dark);
+    margin-top: var(--space-lg);
+}
+
+.btn-cancel {
+    padding: 10px 24px;
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-cancel:hover {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.btn-create {
+    padding: 10px 28px;
+    background: var(--omni-primary);
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-create:hover {
+    background: var(--omni-primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0, 51, 153, 0.2);
+}
+
+.btn-create:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.btn-create i {
+    margin-right: 6px;
+}
+
+.btn-danger {
+    background: #dc2626;
+}
+
+.btn-danger:hover {
+    background: #b91c1c;
+    box-shadow: 0 4px 16px rgba(220, 38, 38, 0.25);
+}
+
+/* ==========================================================================
+   6. EMPTY STATE
+   ========================================================================== */
+
+.empty-state {
+    text-align: center;
+    padding: var(--space-3xl) var(--space-xl);
+    color: rgba(26, 35, 50, 0.4);
+}
+
+.empty-state i {
+    font-size: 48px;
+    color: rgba(0, 51, 153, 0.1);
+    margin-bottom: var(--space-md);
+    display: block;
+}
+
+.empty-state p {
+    font-size: 16px;
+    margin: 0;
+}
+
+/* ==========================================================================
+   7. TOAST NOTIFICATION
+   ========================================================================== */
+
+.toast-notification {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: var(--space-md) var(--space-lg);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.12);
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    max-width: 420px;
+    width: 100%;
+    transform: translateX(calc(100% + 40px));
+    opacity: 0;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10000;
+    border: 1px solid var(--glass-border);
+}
+
+.toast-notification.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.toast-notification.success .toast-icon {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.toast-notification.error .toast-icon {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.toast-notification.warning .toast-icon {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.toast-notification.info .toast-icon {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a2332;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.toast-message {
+    font-size: 13px;
+    color: rgba(26, 35, 50, 0.6);
+    margin: 2px 0 0;
+    line-height: 1.4;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: rgba(26, 35, 50, 0.2);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.toast-close:hover {
+    color: rgba(26, 35, 50, 0.5);
+}
+
+/* ==========================================================================
+   8. HEADER DATE GROUP
+   ========================================================================== */
+
+.header-date-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.header-date-group label {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(26, 35, 50, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.header-date-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.header-date-wrapper span {
+    font-size: 12px;
+    color: rgba(26, 35, 50, 0.3);
+}
+
+.header-date-input {
+    background: rgba(255, 255, 255, 0.8);
+    color: #1a2332;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--glass-border-dark);
+    outline: none;
+    transition: all 0.3s ease;
+    min-width: 120px;
+}
+
+.header-date-input:hover,
+.header-date-input:focus {
+    border-color: var(--omni-primary);
+    box-shadow: 0 0 0 3px rgba(0, 51, 153, 0.08);
+}
+
+.header-date-input::-webkit-calendar-picker-indicator {
+    opacity: 0.5;
+    cursor: pointer;
+}
+
+.header-date-input::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
+
+/* ==========================================================================
+   9. RESET BUTTON
+   ========================================================================== */
+
+.btn-reset-header {
+    background: var(--glass-bg-dark);
+    color: #1a2332;
+    border: 1px solid var(--glass-border-dark);
+    padding: var(--space-sm) 18px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.btn-reset-header:hover {
+    background: rgba(0, 51, 153, 0.04);
+    border-color: var(--omni-primary);
+    color: var(--omni-primary);
+    transform: translateY(-1px);
+}
+
+.btn-reset-header i {
+    font-size: 12px;
+}
+
+/* ==========================================================================
+   10. RESPONSIVE
+   ========================================================================== */
+
+/* Tablet */
+@media (max-width: 1024px) {
+    .report-type-body {
+        padding: 0 var(--space-md) var(--space-md);
+    }
+    
+    .report-type-body.collapsed {
+        padding: 0 var(--space-md);
+    }
+    
+    .report-details-table thead th,
+    .report-details-table tbody td {
+        padding: var(--space-sm) var(--space-md);
+    }
+    
+    .report-type-header {
+        padding: var(--space-sm) var(--space-md);
+    }
+    
+    .modal-wrapper .modal-content {
+        max-width: 90%;
+    }
+    
+    .modal-content form {
+        padding: var(--space-lg);
+    }
+    
+    .toast-notification {
+        bottom: 20px;
+        right: 20px;
+        max-width: 360px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .report-type-title {
+        font-size: 14px;
+    }
+    
+    .report-type-count {
+        font-size: 10px;
+        padding: 1px 8px;
+    }
+    
+    .report-type-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 16px;
+    }
+    
+    .report-details-table {
+        font-size: 12px;
+    }
+    
+    .report-details-table thead th {
+        font-size: 10px;
+        padding: 6px 8px;
+        letter-spacing: 0.5px;
+    }
+    
+    .report-details-table tbody td {
+        padding: 8px 8px;
+        font-size: 11px;
+        max-width: 100px;
+        white-space: normal;
+        word-break: break-word;
+    }
+    
+    .report-details-table tbody td:first-child {
+        max-width: 60px;
+    }
+    
+    .table-actions-cluster {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .btn-edit-modal,
+    .btn-delete {
+        font-size: 10px;
+        padding: 2px 10px;
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .modal-wrapper .modal-content {
+        max-width: 95%;
+        border-radius: 16px;
+    }
+    
+    .modal-content form {
+        padding: var(--space-md);
+    }
+    
+    .modal-actions {
+        flex-direction: column-reverse;
+        gap: var(--space-sm);
+    }
+    
+    .btn-cancel,
+    .btn-create {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .toast-notification {
+        bottom: 16px;
+        right: 16px;
+        left: 16px;
+        max-width: none;
+        padding: var(--space-sm) var(--space-md);
+        border-radius: 12px;
+    }
+    
+    .toast-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+    
+    .toast-title {
+        font-size: 13px;
+    }
+    
+    .toast-message {
+        font-size: 12px;
+    }
+    
+    .header-date-group label {
+        display: none;
+    }
+    
+    .header-date-wrapper {
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+    
+    .header-date-input {
+        font-size: 11px;
+        padding: 4px 8px;
+        min-width: 80px;
+    }
+    
+    .header-date-wrapper span {
+        font-size: 10px;
+    }
+    
+    .btn-reset-header {
+        font-size: 11px;
+        padding: 4px 12px;
+    }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+    .report-type-left {
+        gap: var(--space-sm);
+        flex-wrap: wrap;
+    }
+    
+    .report-type-count {
+        display: none;
+    }
+    
+    .report-details-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    
+    .report-details-table thead th,
+    .report-details-table tbody td {
+        padding: 6px 8px;
+        font-size: 10px;
+    }
+    
+    .report-details-table tbody td {
+        max-width: 80px;
+    }
+}
+
+/* ==========================================================================
+   11. TABLE CONTAINER OVERRIDES
+   ========================================================================== */
+
+.table-container .report-type-group:last-child {
+    margin-bottom: 0;
+}
+
+/* Loading state for edit modal */
+#editFormFields .loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: rgba(26, 35, 50, 0.4);
+}
+
+#editFormFields .loading i {
+    font-size: 32px;
+    display: block;
+    margin-bottom: var(--space-md);
+    color: var(--omni-primary);
+}
+
+/* ==========================================================================
+   12. SCROLLBAR FOR MODAL
+   ========================================================================== */
+
+.modal-wrapper .modal-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.modal-wrapper .modal-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.modal-wrapper .modal-content::-webkit-scrollbar-thumb {
+    background: var(--omni-primary);
+    border-radius: 4px;
+}
+
+/* For Firefox */
+.modal-wrapper .modal-content {
+    scrollbar-width: thin;
+    scrollbar-color: var(--omni-primary) transparent;
+}

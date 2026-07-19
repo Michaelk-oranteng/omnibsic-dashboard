@@ -1,1322 +1,803 @@
+{% extends 'control_dashboard/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Member Dashboard - Submit Exception Report</title>
-        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
-        <link rel="stylesheet" href="{% static 'stylesheets/member.css' %}" type="text/css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-        <meta name="csrf-token" content="{{ csrf_token }}">
-    </head>
 
-    <body>
-        <div class="page-wrapper">
-            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
-            <div class="nav-bar">
-                <div class="logo">
-                    <a href="{% url 'control_dashboard:member_dashboard' %}">
-                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
-                    </a>
-                </div>
+{% block title %}Submit Exception Report{% endblock %}
 
-                <ul class="nav-links">
-                    <li><a href="{% url 'control_dashboard:member_dashboard' %}">
-                        <span class="nav-icon"><i class="fas fa-chart-pie"></i></span>
-                        <span class="nav-text">Dashboard</span>
-                    </a></li>
-                    <li><a href="{% url 'control_dashboard:drafts_page' %}">
-                        <span class="nav-icon"><i class="fas fa-file-alt"></i></span>
-                        <span class="nav-text">Drafts</span>
-                    </a></li>     
-                    <li><a href="{% url 'control_dashboard:reports_page' %}">
-                        <span class="nav-icon"><i class="fas fa-file-pdf"></i></span>
-                        <span class="nav-text">Reports</span>
-                    </a></li>       
-                    <li class="active"><a href="{% url 'control_dashboard:submit_page' %}">
-                        <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
-                        <span class="nav-text">Submit</span>
-                    </a></li>  
-                    <li><a href="{% url 'control_dashboard:member_checklist' %}">
-                        <span class="nav-icon"><i class="fas fa-check-double"></i></span>
-                        <span class="nav-text">Checklist</span>
-                    </a></li> 
-                    <li><a href="{% url 'control_dashboard:member_activity_logs' %}">
-                        <span class="nav-icon"><i class="fas fa-clipboard-list"></i></span>
-                        <span class="nav-text">Activity logs</span>
-                    </a></li> 
-                </ul>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'stylesheets/submit.css' %}" type="text/css">
+{% endblock %}
 
-                <!-- ==================== PROFILE CARD - LOGOUT BUTTON ==================== -->
-                <div class="nav-footer">
-                    <div class="nav-profile-card" onclick="logoutUser()" style="cursor: pointer;" title="Click to logout">
-                        <div class="nav-profile-img-wrapper">
-                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
-                        </div>
-                        <div class="nav-profile-info">
-                            <h4 class="nav-user-name">{{ user_data.name }}</h4>
-                            <p class="nav-user-role">
-                                <i class="fas fa-sign-out-alt" style="font-size: 11px; margin-right: 4px;"></i>
-                                Click to logout
-                            </p>
-                        </div>
-                        <div class="nav-profile-logout-icon">
-                            <i class="fas fa-sign-out-alt"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
+{% block dashboard_url %}{% url 'control_dashboard:member_dashboard' %}{% endblock %}
 
-            <!-- ==================== TOP HEADER ==================== -->
-            <div class="top-header">
-                <div class="top-header-left">
-                    <span class="page-title">Submit Exception Report</span>
-                </div>
+{% block nav_links %}
+<li><a href="{% url 'control_dashboard:member_dashboard' %}">
+    <span class="nav-icon"><i class="fas fa-chart-pie"></i></span>
+    <span class="nav-text">Dashboard</span>
+</a></li>
+<li><a href="{% url 'control_dashboard:drafts_page' %}">
+    <span class="nav-icon"><i class="fas fa-file-alt"></i></span>
+    <span class="nav-text">Drafts</span>
+</a></li>     
+<li><a href="{% url 'control_dashboard:reports_page' %}">
+    <span class="nav-icon"><i class="fas fa-file-pdf"></i></span>
+    <span class="nav-text">Reports</span>
+</a></li>       
+<li class="active"><a href="{% url 'control_dashboard:submit_page' %}">
+    <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
+    <span class="nav-text">Submit</span>
+</a></li>  
+<li><a href="{% url 'control_dashboard:member_checklist' %}">
+    <span class="nav-icon"><i class="fas fa-check-double"></i></span>
+    <span class="nav-text">Checklist</span>
+</a></li> 
+<li><a href="{% url 'control_dashboard:member_activity_logs' %}">
+    <span class="nav-icon"><i class="fas fa-clipboard-list"></i></span>
+    <span class="nav-text">Activity logs</span>
+</a></li> 
+{% endblock %}
 
-                <div class="top-header-center">
-                    <div class="header-filter-group">
-                        <label for="report-type-filter">Report Type</label>
-                        <select id="report-type-filter" class="header-select" onchange="filterExceptions()">
-                            <option value="all">All Categories</option>
-                            {% for report_type in report_types %}
-                            <option value="{{ report_type }}">{{ report_type }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
+{% block page_title %}Submit Exception Report{% endblock %}
 
-                <div class="top-header-right">
-                    <button class="btn-send-header" onclick="sendEmail()">
-                        <i class="fas fa-paper-plane"></i> Send Mail
-                    </button>
-                </div>
-            </div>
+{% block top_header_center %}
+<div class="header-filter-group">
+    <label for="report-type-filter"><i class="fas fa-file-alt"></i> Report Type</label>
+    <select id="report-type-filter" class="header-select" onchange="filterByReportType()">
+        <option value="all">All Report Types ({{ assigned_report_types|length }})</option>
+        {% for report_type in assigned_report_types %}
+        <option value="{{ report_type }}">{{ report_type }}</option>
+        {% endfor %}
+    </select>
+</div>
+{% endblock %}
 
-            <!-- ==================== MESSAGES ==================== -->
-            {% if messages %}
-            <div class="messages-container">
-                {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">
-                    {{ message }}
-                    <button class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
-                </div>
+{% block top_header_right %}
+<button class="btn-send-header" onclick="sendEmail()">
+    <i class="fas fa-paper-plane"></i> Send Mail
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="email-builder-grid">
+    <div class="builder-card email-form-box">
+        <div class="form-row">
+            <label for="email-to">To <span class="required">*</span></label>
+            <select id="email-to" class="table-select">
+                <option value="">Select Recipient...</option>
+                {% for recipient in email_recipients %}
+                <option value="{{ recipient.email }}">{{ recipient.name }} ({{ recipient.department }})</option>
                 {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-row">
+            <label for="email-cc">CC</label>
+            <select id="email-cc" class="table-select">
+                <option value="">Select CC Recipient...</option>
+                {% for recipient in email_recipients %}
+                <option value="{{ recipient.email }}">{{ recipient.name }} ({{ recipient.department }})</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-row">
+            <label for="email-subject">Email Subject Line <span class="required">*</span></label>
+            <input type="text" id="email-subject" class="table-input" placeholder="Enter email subject...">
+        </div>
+
+        <div class="form-row">
+            <label for="email-body">Email Body Template <span class="required">*</span></label>
+            <textarea id="email-body" class="template-textarea" placeholder="Dear Sir,&#10;&#10;Kindly find attached exceptions for the week ending...&#10;&#10;Best regards,"></textarea>
+        </div>
+
+        <div class="selected-summary" id="selectedSummary">
+            <div class="selected-header">
+                <span class="selected-count" id="selectedCount">0</span>
+                <span class="selected-label">Exceptions Selected</span>
             </div>
-            {% endif %}
+            <div class="selected-tags" id="selectedTags">
+                <span class="empty-selection-text">No exceptions selected</span>
+            </div>
+        </div>
 
-            <!-- ==================== MAIN CONTENT ==================== -->
-            <div class="main-content">
-                <div class="email-builder-grid">
-                    <div class="builder-card email-form-box">
-                        <div class="form-row">
-                            <label for="email-to">To</label>
-                            <select id="email-to" class="table-select">
-                                <option value="">Select Recipient...</option>
-                                {% for recipient in email_recipients %}
-                                <option value="{{ recipient.email }}">{{ recipient.name }} ({{ recipient.department }})</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        <div class="form-row">
-                            <label for="email-cc">CC</label>
-                            <select id="email-cc" class="table-select">
-                                <option value="">Select CC Recipient...</option>
-                                {% for recipient in email_recipients %}
-                                <option value="{{ recipient.email }}">{{ recipient.name }} ({{ recipient.department }})</option>
-                                {% endfor %}
-                            </select>
-                        </div>
+        <button class="btn-send-mail" id="sendMailBtn" onclick="sendEmail()">
+            <i class="fas fa-paper-plane"></i> Send Email
+        </button>
+    </div>
 
-                        <div class="form-row">
-                            <label for="email-subject">Email Subject Line</label>
-                            <input type="text" id="email-subject" class="table-input" placeholder="Enter email subject...">
-                        </div>
+    <div class="builder-card exception-selector-box">
+        <div class="selector-header">
+            <div class="selector-header-left">
+                <h4>Available Exceptions</h4>
+                <span class="exception-count" id="exceptionCount">0 exceptions</span>
+            </div>
+            <div class="selector-header-right">
+                <button class="btn-select-all" onclick="toggleSelectAll()">
+                    <i class="fas fa-check-double"></i> <span id="selectAllText">Select All</span>
+                </button>
+            </div>
+        </div>
 
-                        <div class="form-row">
-                            <label for="email-body">Email Body Template</label>
-                            <textarea id="email-body" class="template-textarea" placeholder="Dear Sir,&#10;&#10;Kindly find attached exceptions for the week ending...&#10;&#10;Best regards,"></textarea>
-                        </div>
+        <!-- Debug info - will show current state -->
+        <div class="debug-info" id="debugInfo">
+            <i class="fas fa-info-circle"></i> 
+            Total: <span id="debugTotal">0</span> | 
+            Filtered: <span id="debugFiltered">0</span> | 
+            Selected: <span id="debugSelected">0</span>
+        </div>
 
-                        <div class="selected-summary" id="selectedSummary">
-                            <div class="selected-header">
-                                <span class="selected-count" id="selectedCount">0</span>
-                                <span class="selected-label">Exceptions Selected</span>
-                            </div>
-                            <div class="selected-tags" id="selectedTags">
-                                <span style="color: rgba(26,35,50,0.3);">No exceptions selected</span>
-                            </div>
-                        </div>
+        <div class="category-filter" id="categoryFilter">
+            <button class="category-btn active" data-category="all" onclick="filterByCategory('all')">All</button>
+            {% for category in categories_list %}
+            <button class="category-btn" data-category="{{ category.id }}" onclick="filterByCategory('{{ category.id }}')">
+                {{ category.name }}
+            </button>
+            {% endfor %}
+        </div>
 
-                        <button class="btn-send-mail" id="sendMailBtn" onclick="sendEmail()">
-                            <i class="fas fa-paper-plane"></i> Send Email
-                        </button>
-                    </div>
+        <div class="exception-checklist-stack" id="exceptionStack">
+            <!-- Rendered by JavaScript -->
+        </div>
+    </div>
+</div>
 
-                    <div class="builder-card exception-selector-box">
-                        <div class="selector-header">
-                            <div class="selector-header-left">
-                                <h4>Available Exceptions</h4>
-                                <span class="exception-count" id="exceptionCount">0 exceptions</span>
-                            </div>
-                            <div class="selector-header-right">
-                                <button class="btn-select-all" onclick="toggleSelectAll()">
-                                    <i class="fas fa-check-double"></i> <span id="selectAllText">Select All</span>
-                                </button>
-                            </div>
-                        </div>
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay" style="display: none;">
+    <div class="loading-content">
+        <div class="spinner"></div>
+        <p>Sending email...</p>
+    </div>
+</div>
 
-                        <div class="category-filter" id="categoryFilter">
-                            <button class="category-btn active" data-category="all" onclick="filterByCategory('all')">All</button>
-                            {% for category in categories_list %}
-                            <button class="category-btn" data-category="{{ category.id }}" onclick="filterByCategory('{{ category.id }}')">
-                                {{ category.name }}
-                            </button>
-                            {% endfor %}
-                        </div>
+<!-- Toast Notification -->
+<div id="toastNotification" class="toast-notification">
+    <div class="toast-icon"><i class="fas fa-check"></i></div>
+    <div class="toast-content">
+        <p class="toast-title">Success!</p>
+        <p class="toast-message" id="toastMessage">Action completed successfully.</p>
+    </div>
+    <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
+</div>
+{% endblock %}
 
-                        <div class="exception-checklist-stack" id="exceptionStack">
-                            <!-- Rendered by JavaScript -->
-                        </div>
-                    </div>
+{% block extra_js %}
+<script>
+    // ============================================
+    // CSRF Token Helper
+    // ============================================
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    }
+
+    // ============================================
+    // TOAST NOTIFICATION
+    // ============================================
+
+    function showToast(message, title = 'Success!') {
+        const toast = document.getElementById('toastNotification');
+        const msgEl = document.getElementById('toastMessage');
+        const titleEl = toast.querySelector('.toast-title');
+        msgEl.textContent = message || 'Action completed successfully.';
+        titleEl.textContent = title;
+        toast.classList.add('show');
+        
+        if (window.toastTimeout) {
+            clearTimeout(window.toastTimeout);
+        }
+        
+        window.toastTimeout = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 4000);
+    }
+
+    window.closeToast = function() {
+        const toast = document.getElementById('toastNotification');
+        toast.classList.remove('show');
+        if (window.toastTimeout) {
+            clearTimeout(window.toastTimeout);
+            window.toastTimeout = null;
+        }
+    };
+
+    // ============================================
+    // EXCEPTION DATA - Coming from server
+    // ============================================
+
+    // Parse exceptions data from server
+    let exceptionsData = [];
+    try {
+        exceptionsData = JSON.parse('{{ exceptions_json|safe }}');
+        console.log('Exceptions loaded:', exceptionsData.length);
+        console.log('Sample exception:', exceptionsData.length > 0 ? exceptionsData[0] : 'No exceptions');
+    } catch (e) {
+        console.error('Exception payload error:', e);
+        // Fallback using direct template variables - FIXED to avoid branch lookup error
+        {% if exceptions %}
+            exceptionsData = [
+            {% for exception in exceptions %}
+                {
+                    id: {{ exception.id }},
+                    report_type: '{{ exception.report_type|escapejs }}',
+                    status: '{{ exception.status|escapejs }}',
+                    status_display: '{{ exception.get_status_display|escapejs }}',
+                    data: {{ exception.data|safe }},
+                    created_at: '{{ exception.created_at|date:"M d, Y" }}',
+                    unit: '{{ exception.unit|default:"N/A"|escapejs }}',
+                    category: '{{ exception.category|default:"uncategorized"|escapejs }}',
+                    assigned_to: '{{ exception.assigned_to|default:"" }}',
+                    created_by: '{{ exception.created_by|default:"" }}'
+                },
+            {% endfor %}
+            ];
+        {% endif %}
+    }
+
+    // Get user data from context
+    const userData = {
+        name: '{{ user_data.name|escapejs }}',
+        email: '{{ user_data.email|escapejs }}',
+        department: '{{ user_data.department|escapejs }}'
+    };
+
+    // Assigned report types from server
+    const assignedReportTypes = {{ assigned_report_types|safe }};
+    console.log('Assigned report types:', assignedReportTypes);
+
+    // Filter exceptions to only show those assigned to the current user
+    const userEmail = '{{ user_data.email }}';
+    exceptionsData = exceptionsData.filter(ex => {
+        // Check if the exception is assigned to the current user or created by them
+        return ex.assigned_to === userEmail || ex.created_by === userEmail;
+    });
+
+    console.log('After filtering by user, exceptions:', exceptionsData.length);
+    console.log('Exception report types:', exceptionsData.map(e => e.report_type));
+
+    let selectedExceptions = new Set();
+    let currentCategory = 'all';
+    let currentReportType = 'all';
+
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, exceptions count:', exceptionsData.length);
+        loadDraft();
+        renderExceptions();
+        updateSelectedSummary();
+        updateSubjectLine();
+        updateDebugInfo();
+        
+        // Log the current state
+        console.log('Current report types in dropdown:', assignedReportTypes);
+        console.log('Categories available:', document.querySelectorAll('.category-btn').length);
+    });
+
+    // ============================================
+    // UPDATE DEBUG INFO
+    // ============================================
+
+    function updateDebugInfo() {
+        document.getElementById('debugTotal').textContent = exceptionsData.length;
+        document.getElementById('debugSelected').textContent = selectedExceptions.size;
+        
+        // Count filtered
+        let filtered = getFilteredExceptions();
+        document.getElementById('debugFiltered').textContent = filtered.length;
+    }
+
+    function getFilteredExceptions() {
+        let filtered = exceptionsData;
+
+        // Filter by report type
+        if (currentReportType !== 'all') {
+            filtered = filtered.filter(ex => ex.report_type === currentReportType);
+        }
+
+        // Filter by category
+        if (currentCategory !== 'all') {
+            filtered = filtered.filter(ex => ex.category === currentCategory);
+        }
+
+        // Show ALL exceptions regardless of status
+        return filtered;
+    }
+
+    // ============================================
+    // RENDER EXCEPTIONS
+    // ============================================
+
+    function renderExceptions() {
+        const stack = document.getElementById('exceptionStack');
+        if (!stack) {
+            console.error('Exception stack element not found');
+            return;
+        }
+        
+        stack.innerHTML = '';
+
+        let filtered = getFilteredExceptions();
+
+        console.log('Filtered exceptions for rendering:', filtered.length);
+        console.log('Current report type filter:', currentReportType);
+
+        if (filtered.length === 0) {
+            let msg = 'No exceptions available for selection';
+            let subMsg = 'You have no submitted reports available to send via email';
+            
+            if (currentReportType !== 'all') {
+                msg = `No exceptions found for "${currentReportType}"`;
+                subMsg = 'Try selecting a different report type or "All Report Types"';
+            }
+            
+            // Check if there are any exceptions at all
+            if (exceptionsData.length > 0) {
+                const statuses = [...new Set(exceptionsData.map(e => e.status))];
+                subMsg = `You have ${exceptionsData.length} exceptions with status: ${statuses.join(', ')}. Select a report type to view exceptions.`;
+            }
+            
+            stack.innerHTML = `
+                <div class="no-exceptions-msg">
+                    <i class="fas fa-inbox"></i>
+                    <p>${msg}</p>
+                    <p class="sub-text">${subMsg}</p>
                 </div>
-            </div>
-        </div>
-
-        <!-- Loading Overlay -->
-        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
-            <div class="loading-content">
-                <div class="spinner"></div>
-                <p>Sending email...</p>
-            </div>
-        </div>
-
-        <!-- Logout Confirmation Modal -->
-        <div id="logoutModal" class="modal" style="display: none;">
-            <div class="modal-content" style="max-width: 400px; text-align: center;">
-                <div style="font-size: 48px; color: #ef4444; margin-bottom: 16px;">
-                    <i class="fas fa-sign-out-alt"></i>
-                </div>
-                <h2 style="margin-bottom: 8px;">Confirm Logout</h2>
-                <p style="color: rgba(26,35,50,0.6); margin-bottom: 24px;">
-                    Are you sure you want to logout?
-                </p>
-                <div style="display: flex; gap: 12px; justify-content: center;">
-                    <button onclick="closeLogoutModal()" class="btn-edit" style="padding: 10px 24px; background: #e5e7eb; color: #1a2332; border: none; border-radius: 6px; cursor: pointer;">
-                        Cancel
-                    </button>
-                    <button onclick="confirmLogout()" class="btn-create" style="padding: 10px 24px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div id="toastNotification" class="toast-notification">
-            <div class="toast-icon"><i class="fas fa-check"></i></div>
-            <div class="toast-content">
-                <p class="toast-title">Success!</p>
-                <p class="toast-message" id="toastMessage">Action completed successfully.</p>
-            </div>
-            <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
-        </div>
-
-        <style>
-            /* Profile card logout styling */
-            .nav-profile-card {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 12px 16px;
-                border-radius: 8px;
-                background: rgba(255,255,255,0.05);
-                transition: all 0.2s ease;
-                position: relative;
-            }
-
-            .nav-profile-card:hover {
-                background: rgba(255,255,255,0.1);
-                transform: translateX(4px);
-            }
-
-            .nav-profile-card:hover .nav-profile-logout-icon {
-                opacity: 1;
-                transform: translateX(0);
-            }
-
-            .nav-profile-logout-icon {
-                margin-left: auto;
-                color: rgba(255,255,255,0.4);
-                font-size: 14px;
-                transition: all 0.2s ease;
-                opacity: 0;
-                transform: translateX(-8px);
-            }
-
-            .nav-user-role {
-                font-size: 11px;
-                color: rgba(255,255,255,0.5);
-                margin: 0;
-            }
-
-            .nav-user-role i {
-                color: #ef4444;
-            }
-
-            /* Email Builder Grid */
-            .email-builder-grid {
-                display: grid;
-                grid-template-columns: 1fr 2fr;
-                gap: 20px;
-                margin-top: 20px;
-            }
-
-            .builder-card {
-                background: white;
-                border-radius: 12px;
-                padding: 24px;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                border: 1px solid #e5e7eb;
-            }
-
-            .form-row {
-                margin-bottom: 16px;
-            }
-
-            .form-row label {
-                display: block;
-                font-size: 13px;
-                font-weight: 600;
-                color: #374151;
-                margin-bottom: 6px;
-            }
-
-            .table-select,
-            .table-input {
-                width: 100%;
-                padding: 10px 12px;
-                border: 1px solid #d1d5db;
-                border-radius: 6px;
-                font-size: 14px;
-                font-family: 'Poppins', sans-serif;
-                transition: border-color 0.2s ease;
-                background: #fafbfc;
-            }
-
-            .table-select:focus,
-            .table-input:focus {
-                outline: none;
-                border-color: #0066cc;
-                box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
-            }
-
-            .template-textarea {
-                width: 100%;
-                min-height: 120px;
-                padding: 12px;
-                border: 1px solid #d1d5db;
-                border-radius: 6px;
-                font-size: 14px;
-                font-family: 'Poppins', sans-serif;
-                resize: vertical;
-                transition: border-color 0.2s ease;
-                background: #fafbfc;
-            }
-
-            .template-textarea:focus {
-                outline: none;
-                border-color: #0066cc;
-                box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
-            }
-
-            /* Selected Summary */
-            .selected-summary {
-                background: #f8fafc;
-                border-radius: 8px;
-                padding: 12px 16px;
-                margin: 16px 0;
-                border: 1px solid #e5e7eb;
-            }
-
-            .selected-header {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                margin-bottom: 8px;
-            }
-
-            .selected-count {
-                font-size: 20px;
-                font-weight: 700;
-                color: #0066cc;
-            }
-
-            .selected-label {
-                font-size: 14px;
-                color: #6b7280;
-            }
-
-            .selected-tags {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 6px;
-            }
-
-            .selected-tag {
-                background: #e5e7eb;
-                padding: 2px 10px;
-                border-radius: 12px;
-                font-size: 12px;
-                color: #1a2332;
-            }
-
-            .btn-send-mail {
-                width: 100%;
-                padding: 12px;
-                background: #0066cc;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                font-size: 16px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.2s ease;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 8px;
-            }
-
-            .btn-send-mail:hover {
-                background: #004e8c;
-                transform: translateY(-1px);
-                box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
-            }
-
-            .btn-send-mail:disabled {
-                opacity: 0.6;
-                cursor: not-allowed;
-                transform: none;
-            }
-
-            /* Exception Selector */
-            .selector-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 16px;
-            }
-
-            .selector-header-left {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-            }
-
-            .selector-header-left h4 {
-                margin: 0;
-                font-size: 16px;
-                color: #1a2332;
-            }
-
-            .exception-count {
-                font-size: 13px;
-                color: #6b7280;
-            }
-
-            .btn-select-all {
-                padding: 6px 14px;
-                background: #f3f4f6;
-                border: 1px solid #d1d5db;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 13px;
-                transition: all 0.2s ease;
-                display: flex;
-                align-items: center;
-                gap: 6px;
-            }
-
-            .btn-select-all:hover {
-                background: #e5e7eb;
-            }
-
-            .category-filter {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 6px;
-                margin-bottom: 16px;
-            }
-
-            .category-btn {
-                padding: 4px 14px;
-                background: #f3f4f6;
-                border: 1px solid #e5e7eb;
-                border-radius: 16px;
-                cursor: pointer;
-                font-size: 12px;
-                font-weight: 500;
-                transition: all 0.2s ease;
-                color: #6b7280;
-            }
-
-            .category-btn:hover {
-                background: #e5e7eb;
-            }
-
-            .category-btn.active {
-                background: #0066cc;
-                color: white;
-                border-color: #0066cc;
-            }
-
-            .exception-checklist-stack {
-                max-height: 500px;
-                overflow-y: auto;
-            }
-
-            .exception-checklist-stack::-webkit-scrollbar {
-                width: 6px;
-            }
-
-            .exception-checklist-stack::-webkit-scrollbar-thumb {
-                background: #d1d5db;
-                border-radius: 3px;
-            }
-
-            .exception-select-card {
-                display: flex;
-                align-items: flex-start;
-                gap: 12px;
-                padding: 14px 16px;
-                border: 1px solid #e5e7eb;
-                border-radius: 8px;
-                margin-bottom: 8px;
-                cursor: pointer;
-                transition: all 0.2s ease;
-                background: white;
-            }
-
-            .exception-select-card:hover {
-                background: #f8fafc;
-                border-color: #0066cc;
-            }
-
-            .exception-select-card.active {
-                background: #f0f7ff;
-                border-color: #0066cc;
-            }
-
-            .exception-select-card input[type="checkbox"] {
-                width: 18px;
-                height: 18px;
-                cursor: pointer;
-                flex-shrink: 0;
-                margin-top: 2px;
-            }
-
-            .exception-card-info {
-                flex: 1;
-                min-width: 0;
-            }
-
-            .ex-unit {
-                font-size: 11px;
-                font-weight: 600;
-                color: #6b7280;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            }
-
-            .ex-title {
-                margin: 4px 0;
-                font-size: 14px;
-                font-weight: 500;
-                color: #1a2332;
-            }
-
-            .ex-details {
-                font-size: 13px;
-                color: #6b7280;
-                margin: 4px 0;
-                display: -webkit-box;
-                -webkit-line-clamp: 2;
-                -webkit-box-orient: vertical;
-                overflow: hidden;
-            }
-
-            .ex-meta {
-                display: flex;
-                flex-wrap: wrap;
-                align-items: center;
-                gap: 12px;
-                font-size: 12px;
-                color: #6b7280;
-                margin-top: 4px;
-            }
-
-            .ex-meta span {
-                display: inline-flex;
-                align-items: center;
-                gap: 4px;
-            }
-
-            .ex-status {
-                padding: 2px 10px;
-                border-radius: 12px;
-                font-size: 11px;
-                font-weight: 600;
-                text-transform: capitalize;
-            }
-
-            .ex-status.draft {
-                background: #f3f4f6;
-                color: #6b7280;
-            }
-
-            .ex-status.submitted {
-                background: #fef3c7;
-                color: #d97706;
-            }
-
-            .ex-status.in_review {
-                background: #dbeafe;
-                color: #2563eb;
-            }
-
-            .ex-status.approved {
-                background: #d1fae5;
-                color: #065f46;
-            }
-
-            .ex-status.rejected {
-                background: #fee2e2;
-                color: #dc2626;
-            }
-
-            .ex-status.revision_requested {
-                background: #fef3c7;
-                color: #d97706;
-            }
-
-            .empty-state {
-                text-align: center;
-                padding: 40px 20px;
-                color: #6b7280;
-            }
-
-            .empty-state i {
-                font-size: 48px;
-                color: #d1d5db;
-                margin-bottom: 12px;
-                display: block;
-            }
-
-            .empty-state .sub-text {
-                font-size: 13px;
-                color: #9ca3af;
-                margin-top: 4px;
-            }
-
-            /* Modal styles */
-            .modal {
-                position: fixed;
-                z-index: 9999;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                background-color: rgba(0, 0, 0, 0.5);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                animation: fadeIn 0.3s ease;
-            }
-
-            .modal-content {
-                background: white;
-                border-radius: 12px;
-                padding: 32px;
-                animation: slideUp 0.3s ease;
-            }
-
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
-
-            @keyframes slideUp {
-                from { transform: translateY(30px); opacity: 0; }
-                to { transform: translateY(0); opacity: 1; }
-            }
-
-            /* Loading Overlay */
-            .loading-overlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0,0,0,0.6);
-                display: none;
-                justify-content: center;
-                align-items: center;
-                z-index: 10000;
-            }
-
-            .loading-content {
-                background: white;
-                padding: 40px;
-                border-radius: 12px;
-                text-align: center;
-            }
-
-            .spinner {
-                width: 48px;
-                height: 48px;
-                border: 4px solid #e5e7eb;
-                border-top: 4px solid #0066cc;
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-                margin: 0 auto 16px;
-            }
-
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-
-            .btn-send-header {
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                padding: 8px 16px;
-                background: #0066cc;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 13px;
-                font-weight: 500;
-                transition: all 0.2s ease;
-            }
-
-            .btn-send-header:hover {
-                background: #004e8c;
-                transform: translateY(-1px);
-                box-shadow: 0 2px 8px rgba(0, 102, 204, 0.3);
-            }
-
-            /* Toast Notification */
-            .toast-notification {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: white;
-                border-radius: 12px;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-                padding: 16px 20px;
-                display: flex;
-                align-items: center;
-                gap: 14px;
-                max-width: 400px;
-                z-index: 10001;
-                transform: translateX(120%);
-                transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-                border-left: 4px solid #0066cc;
-            }
-
-            .toast-notification.show {
-                transform: translateX(0);
-            }
-
-            .toast-icon {
-                width: 40px;
-                height: 40px;
-                background: #d1fae5;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: #065f46;
-                font-size: 18px;
-                flex-shrink: 0;
-            }
-
-            .toast-content {
-                flex: 1;
-            }
-
-            .toast-title {
-                margin: 0;
-                font-weight: 600;
-                font-size: 14px;
-                color: #1a2332;
-            }
-
-            .toast-message {
-                margin: 4px 0 0 0;
-                font-size: 13px;
-                color: #6b7280;
-            }
-
-            .toast-close {
-                background: none;
-                border: none;
-                color: #9ca3af;
-                cursor: pointer;
-                font-size: 16px;
-                padding: 4px;
-                transition: color 0.2s;
-            }
-
-            .toast-close:hover {
-                color: #1a2332;
-            }
-
-            /* Responsive */
-            @media (max-width: 1024px) {
-                .email-builder-grid {
-                    grid-template-columns: 1fr;
-                }
-            }
-
-            @media (max-width: 768px) {
-                .top-header {
-                    flex-wrap: wrap;
-                    gap: 10px;
-                }
-                .top-header-center {
-                    order: 3;
-                    width: 100%;
-                }
-                .top-header-right {
-                    flex-wrap: wrap;
-                }
-                .builder-card {
-                    padding: 16px;
-                }
-                .exception-select-card {
-                    padding: 10px 12px;
-                }
-                .ex-title {
-                    font-size: 13px;
-                }
-            }
-
-            @media (max-width: 480px) {
-                .modal-content {
-                    margin: 20px;
-                    padding: 24px;
-                }
-                .modal-content h2 {
-                    font-size: 20px;
-                }
-                .selector-header {
-                    flex-wrap: wrap;
-                    gap: 8px;
-                }
-                .category-filter {
-                    gap: 4px;
-                }
-                .category-btn {
-                    font-size: 11px;
-                    padding: 3px 10px;
-                }
-            }
-        </style>
-
-        <script>
+            `;
+            document.getElementById('exceptionCount').textContent = '0 exceptions';
+            updateDebugInfo();
+            return;
+        }
+
+        filtered.forEach(exception => {
+            const isChecked = selectedExceptions.has(exception.id);
+            const card = document.createElement('div');
+            card.className = `exception-select-card ${isChecked ? 'active' : ''}`;
+            card.dataset.id = exception.id;
+
+            // Safely get values with fallbacks
+            const header = exception.data?.header || exception.report_type || 'Untitled';
+            const unit = exception.unit || 'N/A';
+            const statusClass = exception.status || 'draft';
+            const statusDisplay = exception.status_display || (exception.status ? exception.status.charAt(0).toUpperCase() + exception.status.slice(1) : 'Draft');
+            
             // ============================================
-            // CSRF Token Helper
+            // FIX: Get the observation/description from form_data
             // ============================================
-            function getCsrfToken() {
-                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            }
-
-            // ============================================
-            // LOGOUT FUNCTION
-            // ============================================
-
-            function logoutUser() {
-                document.getElementById('logoutModal').style.display = 'flex';
-            }
-
-            function closeLogoutModal() {
-                document.getElementById('logoutModal').style.display = 'none';
-            }
-
-            function confirmLogout() {
-                const btn = document.querySelector('#logoutModal .btn-create');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
-                btn.disabled = true;
-                window.location.href = "{% url 'control_dashboard:logout' %}";
-            }
-
-            document.addEventListener('click', function(event) {
-                const modal = document.getElementById('logoutModal');
-                if (event.target === modal) {
-                    closeLogoutModal();
-                }
-            });
-
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape') {
-                    closeLogoutModal();
-                }
-            });
-
-            // ============================================
-            // TOAST NOTIFICATION
-            // ============================================
-
-            function showToast(message, title = 'Success!') {
-                const toast = document.getElementById('toastNotification');
-                const msgEl = document.getElementById('toastMessage');
-                const titleEl = toast.querySelector('.toast-title');
-                msgEl.textContent = message || 'Action completed successfully.';
-                titleEl.textContent = title;
-                toast.classList.add('show');
-                
-                if (window.toastTimeout) {
-                    clearTimeout(window.toastTimeout);
+            let details = 'No details provided';
+            
+            // Check if we have form_data
+            const formData = exception.data?.form_data || exception.data;
+            
+            if (formData) {
+                // If form_data is an array, get the first item
+                let dataObj = formData;
+                if (Array.isArray(formData) && formData.length > 0) {
+                    dataObj = formData[0];
                 }
                 
-                window.toastTimeout = setTimeout(() => {
-                    toast.classList.remove('show');
-                }, 3000);
-            }
-
-            window.closeToast = function() {
-                const toast = document.getElementById('toastNotification');
-                toast.classList.remove('show');
-                if (window.toastTimeout) {
-                    clearTimeout(window.toastTimeout);
-                    window.toastTimeout = null;
-                }
-            };
-
-            // ============================================
-            // EXCEPTION DATA - Coming from server
-            // ============================================
-
-            // Parse exceptions data from server
-            let exceptionsData = [];
-            try {
-                exceptionsData = JSON.parse('{{ exceptions_json|safe }}');
-                console.log('Exceptions loaded:', exceptionsData.length);
-            } catch (e) {
-                console.error('Exception payload error:', e);
-                // Fallback: try to render from context
-                {% if exceptions %}
-                    exceptionsData = [
-                    {% for exception in exceptions %}
-                        {
-                            id: {{ exception.id }},
-                            report_type: '{{ exception.report_type|escapejs }}',
-                            status: '{{ exception.status|escapejs }}',
-                            status_display: '{{ exception.get_status_display|escapejs }}',
-                            data: {{ exception.data|safe }},
-                            created_at: '{{ exception.created_at|date:"M d, Y" }}',
-                            unit: '{{ exception.data.unit|default:exception.data.branch|default:"N/A"|escapejs }}',
-                            category: '{{ exception.data.unit|default:exception.data.branch|default:"uncategorized"|escapejs }}'
-                        },
-                    {% endfor %}
+                // Try to find observation/description fields
+                if (dataObj && typeof dataObj === 'object') {
+                    // List of possible field names for observation/description
+                    const observationFields = [
+                        'OBSERVATION', 
+                        'observation', 
+                        'Details', 
+                        'details', 
+                        'DESCRIPTION', 
+                        'description',
+                        'KEY FINDINGS',
+                        'key_findings',
+                        'FINDINGS',
+                        'findings',
+                        'COMMENT',
+                        'comment',
+                        'REMARKS',
+                        'remarks',
+                        'NOTES',
+                        'notes',
+                        'OBSERVATIONS',
+                        'observations'
                     ];
-                {% endif %}
-            }
-
-            // Filter exceptions to only show those assigned to the current user
-            // The server should already filter this, but we'll do it client-side too
-            const userEmail = '{{ user_data.email }}';
-            exceptionsData = exceptionsData.filter(ex => {
-                // Check if the exception is assigned to the current user
-                // This depends on how you store assignment - adjust accordingly
-                return ex.assigned_to === userEmail || ex.created_by === userEmail;
-            });
-
-            const userData = {
-                name: '{{ user_data.name|escapejs }}',
-                email: '{{ user_data.email|escapejs }}',
-                department: '{{ user_data.department|escapejs }}'
-            };
-
-            let selectedExceptions = new Set();
-            let currentCategory = 'all';
-            let currentReportType = 'all';
-
-            // ============================================
-            // INITIALIZATION
-            // ============================================
-
-            document.addEventListener('DOMContentLoaded', function() {
-                console.log('DOM loaded, exceptions count:', exceptionsData.length);
-                loadDraft();
-                renderExceptions();
-                updateSelectedSummary();
-                updateSubjectLine();
-            });
-
-            // ============================================
-            // RENDER EXCEPTIONS
-            // ============================================
-
-            function renderExceptions() {
-                const stack = document.getElementById('exceptionStack');
-                if (!stack) {
-                    console.error('Exception stack element not found');
-                    return;
-                }
-                
-                stack.innerHTML = '';
-
-                let filtered = exceptionsData;
-
-                // Filter by category
-                if (currentCategory !== 'all') {
-                    filtered = filtered.filter(ex => ex.category === currentCategory);
-                }
-
-                // Filter by report type
-                if (currentReportType !== 'all') {
-                    filtered = filtered.filter(ex => ex.report_type === currentReportType);
-                }
-
-                // Only show draft and rejected exceptions for submission
-                filtered = filtered.filter(ex => ex.status === 'draft' || ex.status === 'rejected');
-
-                console.log('Filtered exceptions:', filtered.length);
-
-                if (filtered.length === 0) {
-                    stack.innerHTML = `
-                        <div class="empty-state">
-                            <i class="fas fa-inbox"></i>
-                            <p>No exceptions available for selection</p>
-                            <p class="sub-text">Only draft and rejected exceptions assigned to you can be submitted</p>
-                        </div>
-                    `;
-                    document.getElementById('exceptionCount').textContent = '0 exceptions';
-                    return;
-                }
-
-                filtered.forEach(exception => {
-                    const isChecked = selectedExceptions.has(exception.id);
-                    const card = document.createElement('label');
-                    card.className = `exception-select-card ${isChecked ? 'active' : ''}`;
-                    card.dataset.id = exception.id;
-
-                    const header = exception.data.header || exception.report_type || 'Untitled';
-                    const unit = exception.unit || 'N/A';
-                    const statusClass = exception.status || 'draft';
-                    const statusDisplay = exception.status_display || exception.status.charAt(0).toUpperCase() + exception.status.slice(1);
-                    const details = exception.data.details || exception.data.Details || 'No details provided';
-                    const createdDate = exception.created_at || new Date().toLocaleDateString();
-
-                    card.innerHTML = `
-                        <input type="checkbox" class="exception-checkbox" ${isChecked ? 'checked' : ''} 
-                               onchange="toggleException(${exception.id})">
-                        <div class="exception-card-info">
-                            <span class="ex-unit">
-                                <i class="fas fa-building"></i> ${unit}
-                            </span>
-                            <h5 class="ex-title">${header}</h5>
-                            <div class="ex-details">
-                                <i class="fas fa-align-left"></i> ${details}
-                            </div>
-                            <div class="ex-meta">
-                                <span><i class="far fa-calendar-alt"></i> ${createdDate}</span>
-                                <span><i class="fas fa-tag"></i> ${exception.report_type || 'General'}</span>
-                                <span class="ex-status ${statusClass}">${statusDisplay}</span>
-                            </div>
-                        </div>
-                    `;
-
-                    stack.appendChild(card);
-                });
-
-                updateSelectAllButton();
-                updateExceptionCount();
-            }
-
-            // ============================================
-            // FILTER FUNCTIONS
-            // ============================================
-
-            function filterByCategory(category) {
-                currentCategory = category;
-                
-                document.querySelectorAll('.category-btn').forEach(btn => {
-                    btn.classList.toggle('active', btn.dataset.category === category);
-                });
-                
-                renderExceptions();
-            }
-
-            function filterExceptions() {
-                const select = document.getElementById('report-type-filter');
-                currentReportType = select ? select.value : 'all';
-                renderExceptions();
-            }
-
-            // ============================================
-            // SELECTION FUNCTIONS
-            // ============================================
-
-            function toggleException(id) {
-                if (selectedExceptions.has(id)) {
-                    selectedExceptions.delete(id);
-                } else {
-                    selectedExceptions.add(id);
-                }
-                
-                renderExceptions();
-                updateSelectedSummary();
-                updateSubjectLine();
-                autoSaveDraft();
-            }
-
-            function toggleSelectAll() {
-                const visibleCards = document.querySelectorAll('.exception-select-card');
-                const visibleIds = Array.from(visibleCards).map(card => parseInt(card.dataset.id));
-                
-                if (visibleIds.length === 0) return;
-                
-                const allSelected = visibleIds.every(id => selectedExceptions.has(id));
-                
-                if (allSelected) {
-                    visibleIds.forEach(id => selectedExceptions.delete(id));
-                } else {
-                    visibleIds.forEach(id => selectedExceptions.add(id));
-                }
-                
-                renderExceptions();
-                updateSelectedSummary();
-                updateSubjectLine();
-                updateSelectAllButton();
-                autoSaveDraft();
-            }
-
-            function updateSelectAllButton() {
-                const textSpan = document.getElementById('selectAllText');
-                if (!textSpan) return;
-
-                const visibleCards = document.querySelectorAll('.exception-select-card');
-                const visibleIds = Array.from(visibleCards).map(card => parseInt(card.dataset.id));
-                
-                if (visibleIds.length === 0) {
-                    textSpan.textContent = 'Select All';
-                    return;
-                }
-                
-                const allSelected = visibleIds.every(id => selectedExceptions.has(id));
-                textSpan.textContent = allSelected ? 'Deselect All' : 'Select All';
-            }
-
-            // ============================================
-            // UPDATE UI FUNCTIONS
-            // ============================================
-
-            function updateSelectedSummary() {
-                const count = selectedExceptions.size;
-                const countEl = document.getElementById('selectedCount');
-                const tagsContainer = document.getElementById('selectedTags');
-                
-                if (countEl) countEl.textContent = count;
-                if (!tagsContainer) return;
-                
-                if (count === 0) {
-                    tagsContainer.innerHTML = '<span style="color: rgba(26,35,50,0.3);">No exceptions selected</span>';
-                    return;
-                }
-                
-                const selectedItems = exceptionsData.filter(ex => selectedExceptions.has(ex.id));
-                
-                tagsContainer.innerHTML = selectedItems.map(ex => {
-                    const header = ex.data.header || ex.report_type || 'Untitled';
-                    const unit = ex.unit || 'N/A';
-                    return `<span class="selected-tag">${unit}: ${header}</span>`;
-                }).join('');
-            }
-
-            function updateSubjectLine() {
-                const count = selectedExceptions.size;
-                const subjectInput = document.getElementById('email-subject');
-                if (!subjectInput) return;
-                
-                if (count === 0) {
-                    if (!subjectInput.value) {
-                        subjectInput.placeholder = 'Select exceptions to auto-generate subject...';
-                    }
-                    return;
-                }
-                
-                const selectedItems = exceptionsData.filter(ex => selectedExceptions.has(ex.id));
-                const units = [...new Set(selectedItems.map(ex => ex.unit || 'Various'))];
-                const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-                
-                let subject = 'EXCEPTION REPORT';
-                if (units.length > 0 && units.length <= 3) {
-                    subject += ` - ${units.join(' & ')}`;
-                }
-                subject += ` (${selectedItems.length} exceptions) for ${date}`;
-                
-                subjectInput.value = subject;
-            }
-
-            function updateExceptionCount() {
-                const countEl = document.getElementById('exceptionCount');
-                if (!countEl) return;
-                const visible = document.querySelectorAll('.exception-select-card').length;
-                countEl.textContent = `${visible} exceptions`;
-            }
-
-            // ============================================
-            // DRAFT SAVE/LOAD
-            // ============================================
-
-            function autoSaveDraft() {
-                const emailData = {
-                    to: document.getElementById('email-to').value,
-                    cc: document.getElementById('email-cc').value,
-                    subject: document.getElementById('email-subject').value,
-                    body: document.getElementById('email-body').value,
-                    selected: Array.from(selectedExceptions)
-                };
-                
-                try {
-                    localStorage.setItem('emailDraft_' + userData.email, JSON.stringify(emailData));
-                } catch (e) {
-                    console.warn("Storage limits exceeded: ", e);
-                }
-            }
-
-            function loadDraft() {
-                try {
-                    const draft = localStorage.getItem('emailDraft_' + userData.email);
-                    if (draft) {
-                        const data = JSON.parse(draft);
-                        if (data.to) document.getElementById('email-to').value = data.to;
-                        if (data.cc) document.getElementById('email-cc').value = data.cc;
-                        if (data.subject) document.getElementById('email-subject').value = data.subject;
-                        if (data.body) document.getElementById('email-body').value = data.body;
-                        if (data.selected && data.selected.length > 0) {
-                            data.selected.forEach(id => {
-                                // Only select if the exception still exists and is assigned to user
-                                if (exceptionsData.some(ex => ex.id === id)) {
-                                    selectedExceptions.add(id);
-                                }
-                            });
-                            renderExceptions();
-                            updateSelectedSummary();
-                            updateSubjectLine();
+                    
+                    // Find the first matching field
+                    for (const field of observationFields) {
+                        if (dataObj[field] && dataObj[field] !== '' && dataObj[field] !== 'N/A') {
+                            details = dataObj[field];
+                            break;
                         }
                     }
-                } catch (e) {
-                    console.warn("Draft loading failed: ", e);
-                }
-            }
-
-            // Track input changes for auto-save
-            document.addEventListener('input', function(e) {
-                if (e.target.closest('.email-form-box')) {
-                    autoSaveDraft();
-                }
-            });
-
-            // ============================================
-            // SEND EMAIL
-            // ============================================
-
-            function sendEmail() {
-                const to = document.getElementById('email-to').value;
-                const cc = document.getElementById('email-cc').value;
-                const subject = document.getElementById('email-subject').value;
-                const body = document.getElementById('email-body').value;
-                
-                if (!to) {
-                    showToast('Please select a recipient.', 'Error');
-                    return;
-                }
-                
-                if (!subject) {
-                    showToast('Please enter a subject.', 'Error');
-                    return;
-                }
-                
-                if (!body) {
-                    showToast('Please enter an email body.', 'Error');
-                    return;
-                }
-                
-                if (selectedExceptions.size === 0) {
-                    showToast('Please select at least one exception to send.', 'Error');
-                    return;
-                }
-                
-                // Get selected exception details
-                const selectedExList = exceptionsData.filter(ex => selectedExceptions.has(ex.id));
-                
-                // Show loading overlay
-                const overlay = document.getElementById('loadingOverlay');
-                const sendBtn = document.getElementById('sendMailBtn');
-                overlay.style.display = 'flex';
-                sendBtn.disabled = true;
-                sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-                
-                // Prepare email data
-                const emailData = {
-                    to: to,
-                    cc: cc,
-                    subject: subject,
-                    body: body,
-                    from: userData.email,
-                    from_name: userData.name,
-                    exceptions: selectedExList.map(ex => ({
-                        id: ex.id,
-                        unit: ex.unit,
-                        header: ex.data.header || ex.report_type,
-                        details: ex.data.details || '',
-                        created_at: ex.created_at,
-                        report_type: ex.report_type
-                    }))
-                };
-                
-                // Send to server
-                fetch("{% url 'control_dashboard:api_send_email' %}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify(emailData)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    overlay.style.display = 'none';
-                    sendBtn.disabled = false;
-                    sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Email';
                     
-                    if (data.success) {
-                        showToast(data.message || 'Email sent successfully!', 'Success');
-                        // Clear selection after sending
-                        selectedExceptions.clear();
-                        renderExceptions();
-                        updateSelectedSummary();
-                        updateSubjectLine();
-                        autoSaveDraft();
-                    } else {
-                        showToast('Error: ' + data.error, 'Error');
+                    // If still no details, try to get any text field that's not a system field
+                    if (details === 'No details provided') {
+                        const excludeFields = ['header', 'unit', 'branch', 'status', 'BRANCH/UNIT', 'DATE', 'date', 'created_at', 'id'];
+                        for (const [key, value] of Object.entries(dataObj)) {
+                            if (!excludeFields.includes(key) && 
+                                !excludeFields.includes(key.toLowerCase()) &&
+                                typeof value === 'string' && 
+                                value.length > 3 && 
+                                value !== '' && 
+                                value !== 'N/A') {
+                                details = value;
+                                break;
+                            }
+                        }
                     }
-                })
-                .catch(error => {
-                    overlay.style.display = 'none';
-                    sendBtn.disabled = false;
-                    sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Email';
-                    console.error('Error:', error);
-                    showToast('An error occurred while sending the email.', 'Error');
-                });
+                }
             }
-        </script>
-    </body>
-</html>
+            
+            const createdDate = exception.created_at || new Date().toLocaleDateString();
+
+            // Get all form data fields to display
+            let fieldsHtml = '';
+            if (formData) {
+                let dataObj = formData;
+                if (Array.isArray(formData) && formData.length > 0) {
+                    dataObj = formData[0];
+                }
+                
+                if (dataObj && typeof dataObj === 'object' && !Array.isArray(dataObj)) {
+                    const excludeFields = ['header', 'details', 'unit', 'branch', 'status', 'OBSERVATION', 'observation', 'Details', 'details'];
+                    const displayFields = Object.keys(dataObj).filter(key => 
+                        !excludeFields.includes(key) && 
+                        !excludeFields.includes(key.toLowerCase()) &&
+                        !key.startsWith('_')
+                    );
+                    if (displayFields.length > 0) {
+                        fieldsHtml = '<div class="ex-fields">';
+                        displayFields.slice(0, 4).forEach(key => {
+                            const value = dataObj[key] || 'N/A';
+                            if (value && value !== '' && value !== 'N/A') {
+                                const displayValue = typeof value === 'string' && value.length > 30 ? value.substring(0, 30) + '...' : value;
+                                fieldsHtml += `<span class="ex-field"><strong>${key}:</strong> ${displayValue}</span>`;
+                            }
+                        });
+                        if (displayFields.length > 4) {
+                            fieldsHtml += `<span class="ex-field-more">+${displayFields.length - 4} more</span>`;
+                        }
+                        fieldsHtml += '</div>';
+                    }
+                }
+            }
+
+            card.innerHTML = `
+                <div class="exception-checkbox-wrapper" onclick="toggleException(${exception.id})">
+                    <input type="checkbox" class="exception-checkbox" ${isChecked ? 'checked' : ''} 
+                           onclick="event.stopPropagation(); toggleException(${exception.id})">
+                </div>
+                <div class="exception-card-info" onclick="toggleException(${exception.id})">
+                    <div class="ex-header">
+                        <span class="ex-unit">
+                            <i class="fas fa-building"></i> ${unit}
+                        </span>
+                        <span class="report-type-badge">${exception.report_type || 'General'}</span>
+                        <span class="ex-status ${statusClass}">${statusDisplay}</span>
+                    </div>
+                    <h5 class="ex-title">${header}</h5>
+                    <div class="ex-details">
+                        <i class="fas fa-align-left"></i> ${details}
+                    </div>
+                    ${fieldsHtml}
+                    <div class="ex-meta">
+                        <span><i class="far fa-calendar-alt"></i> ${createdDate}</span>
+                        <span><i class="fas fa-id-card"></i> ID: ${exception.id}</span>
+                    </div>
+                </div>
+                <div class="exception-select-arrow" onclick="toggleException(${exception.id})">
+                    <i class="fas fa-chevron-right ${isChecked ? 'selected' : ''}"></i>
+                </div>
+            `;
+
+            stack.appendChild(card);
+        });
+
+        updateSelectAllButton();
+        updateExceptionCount();
+        updateDebugInfo();
+    }
+
+    // ============================================
+    // FILTER FUNCTIONS
+    // ============================================
+
+    function filterByCategory(category) {
+        currentCategory = category;
+        
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.category === category);
+        });
+        
+        renderExceptions();
+    }
+
+    function filterByReportType() {
+        const select = document.getElementById('report-type-filter');
+        currentReportType = select ? select.value : 'all';
+        console.log('Filtering by report type:', currentReportType);
+        console.log('Available exceptions with this type:', exceptionsData.filter(e => e.report_type === currentReportType).length);
+        renderExceptions();
+    }
+
+    // ============================================
+    // SELECTION FUNCTIONS
+    // ============================================
+
+    function toggleException(id) {
+        if (selectedExceptions.has(id)) {
+            selectedExceptions.delete(id);
+        } else {
+            selectedExceptions.add(id);
+        }
+        
+        renderExceptions();
+        updateSelectedSummary();
+        updateSubjectLine();
+        autoSaveDraft();
+    }
+
+    function toggleSelectAll() {
+        const visibleCards = document.querySelectorAll('.exception-select-card');
+        const visibleIds = Array.from(visibleCards).map(card => parseInt(card.dataset.id));
+        
+        if (visibleIds.length === 0) return;
+        
+        const allSelected = visibleIds.every(id => selectedExceptions.has(id));
+        
+        if (allSelected) {
+            visibleIds.forEach(id => selectedExceptions.delete(id));
+        } else {
+            visibleIds.forEach(id => selectedExceptions.add(id));
+        }
+        
+        renderExceptions();
+        updateSelectedSummary();
+        updateSubjectLine();
+        updateSelectAllButton();
+        autoSaveDraft();
+    }
+
+    function updateSelectAllButton() {
+        const textSpan = document.getElementById('selectAllText');
+        if (!textSpan) return;
+
+        const visibleCards = document.querySelectorAll('.exception-select-card');
+        const visibleIds = Array.from(visibleCards).map(card => parseInt(card.dataset.id));
+        
+        if (visibleIds.length === 0) {
+            textSpan.textContent = 'Select All';
+            return;
+        }
+        
+        const allSelected = visibleIds.every(id => selectedExceptions.has(id));
+        textSpan.textContent = allSelected ? 'Deselect All' : 'Select All';
+    }
+
+    // ============================================
+    // UPDATE UI FUNCTIONS
+    // ============================================
+
+    function updateSelectedSummary() {
+        const count = selectedExceptions.size;
+        const countEl = document.getElementById('selectedCount');
+        const tagsContainer = document.getElementById('selectedTags');
+        
+        if (countEl) countEl.textContent = count;
+        if (!tagsContainer) return;
+        
+        if (count === 0) {
+            tagsContainer.innerHTML = '<span class="empty-selection-text">No exceptions selected</span>';
+            return;
+        }
+        
+        const selectedItems = exceptionsData.filter(ex => selectedExceptions.has(ex.id));
+        
+        tagsContainer.innerHTML = selectedItems.map(ex => {
+            const header = ex.data?.header || ex.report_type || 'Untitled';
+            const unit = ex.unit || 'N/A';
+            return `<span class="selected-tag">
+                <i class="fas fa-file-alt"></i> ${unit}: ${header}
+                <span class="remove-tag" onclick="event.stopPropagation(); toggleException(${ex.id})">
+                    <i class="fas fa-times"></i>
+                </span>
+            </span>`;
+        }).join('');
+        
+        // Add class to summary when selections exist
+        const summary = document.getElementById('selectedSummary');
+        if (summary) {
+            summary.classList.toggle('has-selections', count > 0);
+        }
+    }
+
+    function updateSubjectLine() {
+        const count = selectedExceptions.size;
+        const subjectInput = document.getElementById('email-subject');
+        if (!subjectInput) return;
+        
+        // Only auto-generate if subject is empty or was auto-generated
+        if (count === 0) {
+            if (!subjectInput.value || subjectInput.value.startsWith('EXCEPTION REPORT')) {
+                subjectInput.placeholder = 'Select exceptions to auto-generate subject...';
+                if (subjectInput.value.startsWith('EXCEPTION REPORT')) {
+                    subjectInput.value = '';
+                }
+            }
+            return;
+        }
+        
+        const selectedItems = exceptionsData.filter(ex => selectedExceptions.has(ex.id));
+        const units = [...new Set(selectedItems.map(ex => ex.unit || 'Various'))];
+        const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        const reportTypes = [...new Set(selectedItems.map(ex => ex.report_type || 'Exception'))];
+        
+        let subject = 'EXCEPTION REPORT';
+        if (reportTypes.length === 1 && reportTypes[0] !== 'Exception') {
+            subject = reportTypes[0];
+        }
+        if (units.length > 0 && units.length <= 3) {
+            subject += ` - ${units.join(' & ')}`;
+        }
+        subject += ` (${selectedItems.length} exceptions) for ${date}`;
+        
+        // Only update if subject is empty or was auto-generated
+        if (!subjectInput.value || subjectInput.value.startsWith('EXCEPTION REPORT') || subjectInput.value.includes('exceptions) for')) {
+            subjectInput.value = subject;
+        }
+    }
+
+    function updateExceptionCount() {
+        const countEl = document.getElementById('exceptionCount');
+        if (!countEl) return;
+        const visible = document.querySelectorAll('.exception-select-card').length;
+        countEl.textContent = `${visible} exceptions`;
+    }
+
+    // ============================================
+    // DRAFT SAVE/LOAD
+    // ============================================
+
+    function autoSaveDraft() {
+        const emailData = {
+            to: document.getElementById('email-to').value,
+            cc: document.getElementById('email-cc').value,
+            subject: document.getElementById('email-subject').value,
+            body: document.getElementById('email-body').value,
+            selected: Array.from(selectedExceptions)
+        };
+        
+        try {
+            localStorage.setItem('emailDraft_' + userData.email, JSON.stringify(emailData));
+        } catch (e) {
+            console.warn("Storage limits exceeded: ", e);
+        }
+    }
+
+    function loadDraft() {
+        try {
+            const draft = localStorage.getItem('emailDraft_' + userData.email);
+            if (draft) {
+                const data = JSON.parse(draft);
+                if (data.to) document.getElementById('email-to').value = data.to;
+                if (data.cc) document.getElementById('email-cc').value = data.cc;
+                if (data.subject) document.getElementById('email-subject').value = data.subject;
+                if (data.body) document.getElementById('email-body').value = data.body;
+                if (data.selected && data.selected.length > 0) {
+                    data.selected.forEach(id => {
+                        if (exceptionsData.some(ex => ex.id === id)) {
+                            selectedExceptions.add(id);
+                        }
+                    });
+                    renderExceptions();
+                    updateSelectedSummary();
+                    updateSubjectLine();
+                }
+            }
+        } catch (e) {
+            console.warn("Draft loading failed: ", e);
+        }
+    }
+
+    // Track input changes for auto-save
+    document.addEventListener('input', function(e) {
+        if (e.target.closest('.email-form-box')) {
+            autoSaveDraft();
+        }
+    });
+
+    // ============================================
+    // SEND EMAIL
+    // ============================================
+
+    function sendEmail() {
+        const to = document.getElementById('email-to').value;
+        const cc = document.getElementById('email-cc').value;
+        const subject = document.getElementById('email-subject').value;
+        const body = document.getElementById('email-body').value;
+        
+        if (!to) {
+            showToast('Please select a recipient.', 'Error');
+            return;
+        }
+        
+        if (!subject) {
+            showToast('Please enter a subject.', 'Error');
+            return;
+        }
+        
+        if (!body) {
+            showToast('Please enter an email body.', 'Error');
+            return;
+        }
+        
+        if (selectedExceptions.size === 0) {
+            showToast('Please select at least one exception to send.', 'Error');
+            return;
+        }
+        
+        // Get selected exception details
+        const selectedExList = exceptionsData.filter(ex => selectedExceptions.has(ex.id));
+        
+        // Show loading overlay
+        const overlay = document.getElementById('loadingOverlay');
+        const sendBtn = document.getElementById('sendMailBtn');
+        overlay.style.display = 'flex';
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        
+        // Prepare email data with full exception details for attachment
+        const emailData = {
+            to: to,
+            cc: cc,
+            subject: subject,
+            body: body,
+            from: userData.email,
+            from_name: userData.name,
+            exceptions: selectedExList.map(ex => ({
+                id: ex.id,
+                unit: ex.unit,
+                header: ex.data?.header || ex.report_type,
+                details: ex.data?.details || '',
+                created_at: ex.created_at,
+                report_type: ex.report_type,
+                status: ex.status,
+                data: ex.data,
+                form_data: ex.data?.form_data || ex.data
+            }))
+        };
+        
+        // Send to server
+        fetch("/adminboard/api/send-email/", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify(emailData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            overlay.style.display = 'none';
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Email';
+            
+            if (data.success) {
+                showToast(data.message || 'Email sent successfully!', 'Success');
+                // Clear selection after sending
+                selectedExceptions.clear();
+                renderExceptions();
+                updateSelectedSummary();
+                updateSubjectLine();
+                autoSaveDraft();
+            } else {
+                showToast('Error: ' + data.error, 'Error');
+            }
+        })
+        .catch(error => {
+            overlay.style.display = 'none';
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Email';
+            console.error('Error:', error);
+            showToast('An error occurred while sending the email.', 'Error');
+        });
+    }
+</script>
+{% endblock %}

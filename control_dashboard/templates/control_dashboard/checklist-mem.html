@@ -1,124 +1,73 @@
+{% extends 'control_dashboard/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Member Dashboard · Checklist</title>
-    <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
-    <link rel="stylesheet" href="{% static 'stylesheets/member.css' %}" type="text/css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <meta name="csrf-token" content="{{ csrf_token }}">
-</head>
-<body>
-<div class="page-wrapper">
 
-    <!-- ==================== SIDEBAR ==================== -->
-    <div class="nav-bar">
-        <div class="logo">
-            <a href="{% url 'control_dashboard:member_dashboard' %}">
-                <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
-            </a>
-        </div>
-        <ul class="nav-links">
-            <li><a href="{% url 'control_dashboard:member_dashboard' %}"><span class="nav-icon"><i class="fas fa-chart-pie"></i></span><span class="nav-text">Dashboard</span></a></li>
-            <li><a href="{% url 'control_dashboard:drafts_page' %}"><span class="nav-icon"><i class="fas fa-file-alt"></i></span><span class="nav-text">Drafts</span></a></li>     
-            <li><a href="{% url 'control_dashboard:reports_page' %}"><span class="nav-icon"><i class="fas fa-file-pdf"></i></span><span class="nav-text">Reports</span></a></li>       
-            <li><a href="{% url 'control_dashboard:submit_page' %}"><span class="nav-icon"><i class="fas fa-paper-plane"></i></span><span class="nav-text">Submit</span></a></li>  
-            <li class="active"><a href="{% url 'control_dashboard:member_checklist' %}"><span class="nav-icon"><i class="fas fa-check-double"></i></span><span class="nav-text">Checklist</span></a></li> 
-            <li><a href="{% url 'control_dashboard:member_activity_logs' %}"><span class="nav-icon"><i class="fas fa-clipboard-list"></i></span><span class="nav-text">Activity logs</span></a></li> 
-        </ul>
-        
-        <!-- ==================== PROFILE CARD - LOGOUT BUTTON ==================== -->
-        <div class="nav-footer">
-            <div class="nav-profile-card" onclick="logoutUser()" style="cursor: pointer;" title="Click to logout">
-                <div class="nav-profile-img-wrapper">
-                    <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
-                </div>
-                <div class="nav-profile-info">
-                    <h4 class="nav-user-name">{{ request.user.get_full_name|default:user_profile.full_name|default:"Member User" }}</h4>
-                    <p class="nav-user-role">
-                        <i class="fas fa-sign-out-alt" style="font-size: 11px; margin-right: 4px;"></i>
-                        Click to logout
-                    </p>
-                </div>
-                <div class="nav-profile-logout-icon">
-                    <i class="fas fa-sign-out-alt"></i>
-                </div>
-            </div>
-        </div>
-    </div>
+{% block title %}Member Checklist{% endblock %}
 
-    <!-- ==================== TOP HEADER ==================== -->
-    <div class="top-header">
-        <div class="top-header-left">
-            <span class="page-title">My Checklist</span>
-        </div>
-        <div class="top-header-center"></div>
-        <div class="top-header-right">
-            <button class="btn-export-header" onclick="exportChecklist()"><i class="fas fa-download"></i> <span>Export</span></button>
-            <button class="btn-refresh-header" onclick="refreshChecklist()" style="margin-left: 8px; background: #6b7280;">
-                <i class="fas fa-sync"></i> <span>Refresh</span>
-            </button>
-        </div>
-    </div>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'stylesheets/member_checklist.css' %}" type="text/css">
+{% endblock %}
 
-    <!-- ==================== MESSAGES ==================== -->
-    {% if messages %}
-    <div class="messages-container">
-        {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}">
-            {{ message }}
-            <button class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
+{% block dashboard_url %}{% url 'control_dashboard:member_dashboard' %}{% endblock %}
 
-    <!-- ==================== MAIN CONTENT ==================== -->
-    <div class="main-content">
-        <div class="checklist-container">
-            <div class="glass-card">
-                <h2>Hello, {{ user_profile.full_name|default:"Member" }}!</h2>
-                <p>Welcome to your checklist dashboard. Click on any date in the calendar to mark it as completed.</p>
+{% block nav_links %}
+<li><a href="{% url 'control_dashboard:member_dashboard' %}">
+    <span class="nav-icon"><i class="fas fa-chart-pie"></i></span>
+    <span class="nav-text">Dashboard</span>
+</a></li>
+<li><a href="{% url 'control_dashboard:drafts_page' %}">
+    <span class="nav-icon"><i class="fas fa-file-alt"></i></span>
+    <span class="nav-text">Submit Report</span>
+</a></li>     
+<li><a href="{% url 'control_dashboard:reports_page' %}">
+    <span class="nav-icon"><i class="fas fa-file-pdf"></i></span>
+    <span class="nav-text">Reports</span>
+</a></li>       
+<li><a href="{% url 'control_dashboard:submit_page' %}">
+    <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
+    <span class="nav-text">Submit</span>
+</a></li>  
+<li class="active"><a href="{% url 'control_dashboard:member_checklist' %}">
+    <span class="nav-icon"><i class="fas fa-check-double"></i></span>
+    <span class="nav-text">Checklist</span>
+</a></li> 
+<li><a href="{% url 'control_dashboard:member_activity_logs' %}">
+    <span class="nav-icon"><i class="fas fa-clipboard-list"></i></span>
+    <span class="nav-text">Activity logs</span>
+</a></li> 
+{% endblock %}
 
-                <div class="table-container">
-                    <table class="dashboard-table">
-                        <thead>
-                            <tr>
-                                <th>Activity</th>
-                                <th>Task</th>
-                                <th>Frequency</th>
-                                <th class="text-center">Calendar</th>
-                                <th class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="taskTableBody">
-                            <!-- rows injected by JS from Django data -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{% block page_title %}My Checklist{% endblock %}
 
-<!-- Logout Confirmation Modal -->
-<div id="logoutModal" class="modal" style="display: none;">
-    <div class="modal-content" style="max-width: 400px; text-align: center;">
-        <div style="font-size: 48px; color: #ef4444; margin-bottom: 16px;">
-            <i class="fas fa-sign-out-alt"></i>
-        </div>
-        <h2 style="margin-bottom: 8px;">Confirm Logout</h2>
-        <p style="color: rgba(26,35,50,0.6); margin-bottom: 24px;">
-            Are you sure you want to logout?
-        </p>
-        <div style="display: flex; gap: 12px; justify-content: center;">
-            <button onclick="closeLogoutModal()" class="btn-edit" style="padding: 10px 24px; background: #e5e7eb; color: #1a2332; border: none; border-radius: 6px; cursor: pointer;">
-                Cancel
-            </button>
-            <button onclick="confirmLogout()" class="btn-create" style="padding: 10px 24px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </button>
+{% block top_header_right %}
+<button class="btn-export-header" onclick="exportChecklist()">
+    <i class="fas fa-download"></i> Export
+</button>
+<button class="btn-refresh-header" onclick="refreshChecklist()">
+    <i class="fas fa-sync"></i> Refresh
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="checklist-container">
+    <div class="glass-card">
+        <h2>Hello, {{ user_profile.full_name|default:"Member" }}!</h2>
+        <p>Welcome to your checklist dashboard. Click on any date in the calendar to mark it as completed.</p>
+
+        <div class="table-container">
+            <table class="dashboard-table">
+                <thead>
+                    <tr>
+                        <th>Activity</th>
+                        <th>Task</th>
+                        <th>Frequency</th>
+                        <th class="text-center">Calendar</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="taskTableBody">
+                    <!-- rows injected by JS from Django data -->
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -132,392 +81,28 @@
     </div>
     <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
 </div>
+{% endblock %}
 
-<style>
-    /* Profile card logout styling */
-    .nav-profile-card {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 16px;
-        border-radius: 8px;
-        background: rgba(255,255,255,0.05);
-        transition: all 0.2s ease;
-        position: relative;
-    }
-
-    .nav-profile-card:hover {
-        background: rgba(255,255,255,0.1);
-        transform: translateX(4px);
-    }
-
-    .nav-profile-card:hover .nav-profile-logout-icon {
-        opacity: 1;
-        transform: translateX(0);
-    }
-
-    .nav-profile-logout-icon {
-        margin-left: auto;
-        color: rgba(255,255,255,0.4);
-        font-size: 14px;
-        transition: all 0.2s ease;
-        opacity: 0;
-        transform: translateX(-8px);
-    }
-
-    .nav-user-role {
-        font-size: 11px;
-        color: rgba(255,255,255,0.5);
-        margin: 0;
-    }
-
-    .nav-user-role i {
-        color: #ef4444;
-    }
-
-    .btn-refresh-header {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        background: #6b7280;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 13px;
-        font-weight: 500;
-        transition: all 0.2s ease;
-    }
-
-    .btn-refresh-header:hover {
-        background: #4b5563;
-        transform: translateY(-1px);
-    }
-
-    /* Modal styles */
-    .modal {
-        position: fixed;
-        z-index: 9999;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        animation: fadeIn 0.3s ease;
-    }
-
-    .modal-content {
-        background: white;
-        border-radius: 12px;
-        padding: 32px;
-        animation: slideUp 0.3s ease;
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-
-    @keyframes slideUp {
-        from { transform: translateY(30px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-    }
-
-    /* Mini Calendar Styles */
-    .mini-calendar {
-        display: inline-block;
-        background: #f8fafc;
-        border-radius: 8px;
-        padding: 8px;
-        min-width: 200px;
-        border: 1px solid #e5e7eb;
-    }
-
-    .cal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 6px;
-        font-size: 13px;
-        font-weight: 600;
-        color: #1a2332;
-    }
-
-    .cal-header button {
-        background: none;
-        border: none;
-        cursor: pointer;
-        color: #6b7280;
-        padding: 2px 8px;
-        border-radius: 4px;
-        transition: all 0.2s ease;
-    }
-
-    .cal-header button:hover {
-        background: #e5e7eb;
-        color: #1a2332;
-    }
-
-    .cal-grid {
-        display: grid;
-        grid-template-columns: repeat(7, 1fr);
-        gap: 2px;
-        text-align: center;
-    }
-
-    .day-label {
-        font-size: 10px;
-        font-weight: 600;
-        color: #9ca3af;
-        padding: 2px 0;
-    }
-
-    .cal-day {
-        width: 28px;
-        height: 28px;
-        border: none;
-        border-radius: 50%;
-        cursor: pointer;
-        font-size: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        transition: all 0.2s ease;
-        background: transparent;
-        color: #1a2332;
-        font-family: 'Poppins', sans-serif;
-        margin: 0 auto;
-    }
-
-    .cal-day:hover:not(.empty) {
-        background: #e5e7eb;
-        transform: scale(1.1);
-    }
-
-    .cal-day.today {
-        border: 2px solid #0066cc;
-        font-weight: 600;
-    }
-
-    .cal-day.logged {
-        background: #d1fae5;
-        color: #065f46;
-    }
-
-    .cal-day.logged:hover {
-        background: #a7f3d0;
-    }
-
-    .cal-day.logged .cal-tick-mark {
-        display: block;
-        position: absolute;
-        bottom: -2px;
-        right: -2px;
-        font-size: 10px;
-        color: #10b981;
-    }
-
-    .cal-day.empty {
-        cursor: default;
-        visibility: hidden;
-    }
-
-    .cal-tick-mark {
-        display: none;
-    }
-
-    .day-num {
-        position: relative;
-        z-index: 1;
-    }
-
-    .cal-day .fa-check.cal-tick-mark {
-        position: absolute;
-        bottom: -2px;
-        right: -2px;
-        font-size: 10px;
-        color: #10b981;
-        display: block;
-    }
-
-    .frequency-tag {
-        display: inline-block;
-        padding: 2px 12px;
-        background: #f3f4f6;
-        border-radius: 12px;
-        font-size: 12px;
-        color: #6b7280;
-        font-weight: 500;
-    }
-
-    .table-actions-cluster {
-        display: flex;
-        gap: 4px;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .btn-edit-row {
-        padding: 4px 12px;
-        background: #fef3c7;
-        color: #d97706;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        transition: all 0.2s ease;
-    }
-
-    .btn-edit-row:hover {
-        background: #fde68a;
-        transform: scale(1.02);
-    }
-
-    .btn-save {
-        padding: 4px 12px;
-        background: #d1fae5;
-        color: #065f46;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        transition: all 0.2s ease;
-    }
-
-    .btn-save:hover {
-        background: #a7f3d0;
-        transform: scale(1.02);
-    }
-
-    .btn-cancel-row {
-        padding: 4px 12px;
-        background: #fee2e2;
-        color: #dc2626;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        transition: all 0.2s ease;
-    }
-
-    .btn-cancel-row:hover {
-        background: #fecaca;
-        transform: scale(1.02);
-    }
-
-    .editable-cell .cell-input {
-        width: 100%;
-        padding: 4px 8px;
-        border: 1px solid #0066cc;
-        border-radius: 4px;
-        font-size: 13px;
-        font-family: 'Poppins', sans-serif;
-        background: white;
-    }
-
-    .editable-cell .cell-input:focus {
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-        .mini-calendar {
-            min-width: 150px;
-            padding: 4px;
-        }
-        .cal-day {
-            width: 22px;
-            height: 22px;
-            font-size: 10px;
-        }
-        .cal-day .fa-check.cal-tick-mark {
-            font-size: 8px;
-        }
-        .table-actions-cluster button span {
-            display: none;
-        }
-    }
-
-    @media (max-width: 480px) {
-        .modal-content {
-            margin: 20px;
-            padding: 24px;
-        }
-        .modal-content h2 {
-            font-size: 20px;
-        }
-        .mini-calendar {
-            min-width: 120px;
-            padding: 4px;
-        }
-        .cal-day {
-            width: 18px;
-            height: 18px;
-            font-size: 9px;
-        }
-        .cal-header {
-            font-size: 11px;
-        }
-        .cal-day .fa-check.cal-tick-mark {
-            font-size: 7px;
-            bottom: -1px;
-            right: -1px;
-        }
-    }
-</style>
-
+{% block extra_js %}
 <script>
+    // ============================================
+    // CSRF TOKEN HELPER
+    // ============================================
+    
     function getCsrfToken() {
-        return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    }
-
-    // ============================================
-    // LOGOUT FUNCTION
-    // ============================================
-
-    function logoutUser() {
-        document.getElementById('logoutModal').style.display = 'flex';
-    }
-
-    function closeLogoutModal() {
-        document.getElementById('logoutModal').style.display = 'none';
-    }
-
-    function confirmLogout() {
-        const btn = document.querySelector('#logoutModal .btn-create');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
-        btn.disabled = true;
-        window.location.href = "{% url 'control_dashboard:logout' %}";
-    }
-
-    document.addEventListener('click', function(event) {
-        const modal = document.getElementById('logoutModal');
-        if (event.target === modal) {
-            closeLogoutModal();
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, 10) === 'csrftoken=') {
+                    cookieValue = decodeURIComponent(cookie.substring(10));
+                    break;
+                }
+            }
         }
-    });
-
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
-            closeLogoutModal();
-        }
-    });
+        return cookieValue || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    }
 
     // ============================================
     // TOAST NOTIFICATION
@@ -706,7 +291,6 @@
                 const dateStr = dateObj.toISOString().slice(0, 10);
                 let classes = 'cal-day';
                 
-                // Only highlight today, don't auto-log it
                 if (dateStr === todayStr) classes += ' today';
                 
                 const isLogged = loggedDates.includes(dateStr);
@@ -718,7 +302,6 @@
                 dayDiv.dataset.index = index;
                 dayDiv.innerHTML = `<span class="day-num">${d}</span>`;
                 
-                // Add tick mark for logged dates
                 if (isLogged) {
                     const tick = document.createElement('i');
                     tick.className = 'fas fa-check cal-tick-mark';
@@ -733,7 +316,6 @@
                 container.querySelector('.cal-grid').appendChild(dayDiv);
             }
 
-            // Navigation events
             container.querySelector('.cal-prev').addEventListener('click', function(e) {
                 e.stopPropagation();
                 calendarStates[index].month--;
@@ -760,7 +342,7 @@
     }
 
     // ============================================
-    // TOGGLE LOG COMPLETION - Saves to Database
+    // TOGGLE LOG COMPLETION
     // ============================================
 
     function toggleLogCompletion(index, date, dayElement) {
@@ -772,17 +354,16 @@
             return;
         }
 
-        // Check if already logged
         const isLogged = completionLogs[index] && completionLogs[index].includes(date);
         const action = isLogged ? 'unlog' : 'log';
 
-        // Show loading state on the day
         if (dayElement) {
             dayElement.style.opacity = '0.5';
             dayElement.disabled = true;
         }
 
-        fetch("{% url 'control_dashboard:api_log_checklist' %}", {
+        // Using hardcoded URL instead of
+        fetch("/adminboard/api/checklist-log/", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -802,7 +383,6 @@
         })
         .then(data => {
             if (data.success) {
-                // Update local state
                 if (!completionLogs[index]) {
                     completionLogs[index] = [];
                 }
@@ -815,11 +395,9 @@
                     showToast(`"${tasksData[index]?.activity}" logged for ${date}`, 'Logged!');
                 }
                 
-                // Update the UI for this row
                 updateRowUI(index);
             } else {
                 showToast('Error: ' + (data.error || 'Unknown error'), 'Error');
-                // Revert the UI
                 if (dayElement) {
                     dayElement.style.opacity = '1';
                     dayElement.disabled = false;
@@ -854,7 +432,7 @@
     }
 
     // ============================================
-    // REFRESH CHECKLIST - Reload from Server
+    // REFRESH CHECKLIST
     // ============================================
 
     function refreshChecklist() {
@@ -977,7 +555,8 @@
         const taskId = tasksData[index]?.id;
         if (!taskId) return;
 
-        fetch("{% url 'control_dashboard:api_edit_checklist' 0 %}".replace('0', taskId), {
+        // Using hardcoded URL instead of
+        fetch("/adminboard/api/checklists/" + taskId + "/edit/", {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -1043,5 +622,4 @@
         renderTable();
     });
 </script>
-</body>
-</html>
+{% endblock %}

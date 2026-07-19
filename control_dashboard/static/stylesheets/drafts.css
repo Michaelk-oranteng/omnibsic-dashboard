@@ -1,0 +1,667 @@
+/* ============================================
+   DRAFTS PAGE STYLES - Submit Report
+   OmniBSIC Bank - Member Submit Report
+   ============================================ */
+
+/* ==========================================================================
+   1. CONTAINER
+   ========================================================================== */
+
+.checklist-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.glass-card {
+    background: var(--glass-bg, rgba(255, 255, 255, 0.6));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.3));
+    border-radius: 20px;
+    padding: var(--space-lg, 24px);
+    box-shadow: 0 8px 32px var(--glass-shadow, rgba(0, 0, 0, 0.08));
+    transition: all 0.4s ease;
+}
+
+.glass-card:hover {
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 8px 40px var(--glass-shadow-hover, rgba(0, 0, 0, 0.12));
+}
+
+.glass-card h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1a2332;
+    margin-bottom: 4px;
+}
+
+.glass-card p {
+    color: rgba(26, 35, 50, 0.6);
+    margin-bottom: var(--space-lg, 20px);
+    font-size: 14px;
+}
+
+.glass-card p i {
+    color: #217346;
+}
+
+/* ==========================================================================
+   2. EMPTY STATE
+   ========================================================================== */
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #9ca3af;
+}
+
+.empty-state i {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 16px;
+    opacity: 0.3;
+}
+
+.empty-state span {
+    font-size: 16px;
+}
+
+/* ==========================================================================
+   3. TEMPLATE HEADER
+   ========================================================================== */
+
+.template-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-md, 16px);
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.template-header h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a2332;
+}
+
+.template-header h4 span {
+    color: var(--omni-primary, #003399);
+}
+
+/* ==========================================================================
+   4. TABLE FORM
+   ========================================================================== */
+
+.table-container {
+    background: var(--glass-bg, rgba(255, 255, 255, 0.4));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.3));
+    padding: var(--space-md, 16px);
+    overflow-x: auto;
+    box-shadow: 0 2px 12px var(--glass-shadow, rgba(0, 0, 0, 0.08));
+}
+
+.template-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.template-table thead {
+    background: #f8fafc;
+}
+
+.template-table thead th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
+}
+
+.template-table thead th:last-child {
+    border-right: none;
+}
+
+.template-table tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
+    vertical-align: middle;
+}
+
+.template-table tbody td:last-child {
+    border-right: none;
+}
+
+.template-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.template-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.template-table input,
+.template-table select,
+.template-table textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: border-color 0.2s ease;
+    background: #fafbfc;
+    font-family: 'Poppins', sans-serif;
+    min-width: 100px;
+}
+
+.template-table input:focus,
+.template-table select:focus,
+.template-table textarea:focus {
+    outline: none;
+    border-color: #0066cc;
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+    background: white;
+}
+
+.template-table textarea {
+    resize: vertical;
+    min-height: 38px;
+}
+
+.template-table input[type="checkbox"] {
+    width: auto;
+    min-width: auto;
+    cursor: pointer;
+}
+
+.template-table .required {
+    color: #dc2626;
+    margin-left: 2px;
+}
+
+/* ==========================================================================
+   5. ROW ACTIONS
+   ========================================================================== */
+
+.row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-remove-row {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #fee2e2;
+    color: #dc2626;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.btn-remove-row:hover {
+    background: #fecaca;
+    transform: scale(1.1);
+}
+
+.btn-remove-row:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ==========================================================================
+   6. ADD ROW BUTTON
+   ========================================================================== */
+
+.btn-add-field {
+    padding: 10px 24px;
+    background: #f3f4f6;
+    color: #1a2332;
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    justify-content: center;
+    font-family: 'Poppins', sans-serif;
+}
+
+.btn-add-field:hover {
+    background: #e5e7eb;
+    border-color: #0066cc;
+    color: #0066cc;
+}
+
+.btn-add-field i {
+    font-size: 18px;
+}
+
+/* ==========================================================================
+   7. HEADER BUTTONS
+   ========================================================================== */
+
+.btn-upload-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #217346;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    font-family: 'Poppins', sans-serif;
+}
+
+.btn-upload-header:hover {
+    background: #1a5c38;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(33, 115, 70, 0.3);
+}
+
+.btn-upload-header i {
+    font-size: 16px;
+}
+
+.btn-upload-header.loading {
+    background: #6b7280;
+    cursor: wait;
+    opacity: 0.7;
+}
+
+.btn-upload-header.loading:hover {
+    background: #6b7280;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-submit-draft-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #0066cc;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    font-family: 'Poppins', sans-serif;
+}
+
+.btn-submit-draft-header:hover {
+    background: #004e8c;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 102, 204, 0.3);
+}
+
+.btn-submit-draft-header:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-clear-upload-sm {
+    padding: 4px 12px;
+    background: #fee2e2;
+    color: #dc2626;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: background 0.2s ease;
+    font-family: 'Poppins', sans-serif;
+}
+
+.btn-clear-upload-sm:hover {
+    background: #fecaca;
+}
+
+/* ==========================================================================
+   8. UPLOAD PROGRESS
+   ========================================================================== */
+
+.progress-track {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+    flex: 1;
+}
+
+.progress-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress-bar.success {
+    background: #10b981;
+}
+
+.progress-bar.error {
+    background: #ef4444;
+}
+
+#uploadStats {
+    border-left: 4px solid #10b981;
+}
+
+#uploadStats .btn-clear-upload-sm {
+    margin-left: 12px;
+}
+
+/* ==========================================================================
+   9. TOAST NOTIFICATION
+   ========================================================================== */
+
+.toast-notification {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    padding: 16px 24px;
+    display: none;
+    align-items: center;
+    gap: 14px;
+    max-width: 400px;
+    z-index: 10000;
+    border-left: 4px solid #10b981;
+    font-family: 'Poppins', sans-serif;
+}
+
+.toast-notification.show {
+    display: flex;
+    animation: slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.toast-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.toast-icon.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-title {
+    margin: 0;
+    font-weight: 600;
+    font-size: 14px;
+    color: #1a2332;
+}
+
+.toast-message {
+    margin: 2px 0 0 0;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    font-size: 20px;
+    padding: 4px;
+    transition: color 0.2s;
+    line-height: 1;
+}
+
+.toast-close:hover {
+    color: #1a2332;
+}
+
+/* ==========================================================================
+   10. RESPONSIVE DESIGN
+   ========================================================================== */
+
+/* Tablet */
+@media (max-width: 1024px) {
+    .glass-card {
+        padding: var(--space-md, 16px);
+        border-radius: 16px;
+    }
+    
+    .template-table {
+        font-size: 13px;
+    }
+    
+    .template-table thead th,
+    .template-table tbody td {
+        padding: 8px 12px;
+    }
+    
+    .template-table input,
+    .template-table select,
+    .template-table textarea {
+        font-size: 12px;
+        padding: 6px 8px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .top-header {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .top-header-center {
+        order: 3;
+        width: 100%;
+    }
+    
+    .top-header-right {
+        flex-wrap: wrap;
+        width: 100%;
+        justify-content: flex-end;
+    }
+    
+    .btn-upload-header {
+        font-size: 12px;
+        padding: 6px 12px;
+    }
+    
+    .btn-upload-header span {
+        display: none;
+    }
+    
+    .btn-submit-draft-header {
+        font-size: 12px;
+        padding: 6px 12px;
+    }
+    
+    .btn-submit-draft-header span {
+        display: none;
+    }
+    
+    .glass-card {
+        padding: 12px;
+        border-radius: 12px;
+    }
+    
+    .glass-card h2 {
+        font-size: 20px;
+    }
+    
+    .glass-card p {
+        font-size: 13px;
+    }
+    
+    .table-container {
+        padding: 8px;
+        border-radius: 8px;
+        overflow-x: auto;
+    }
+    
+    .template-table {
+        font-size: 12px;
+        min-width: 600px;
+    }
+    
+    .template-table thead th,
+    .template-table tbody td {
+        padding: 6px 8px;
+        min-width: 120px;
+    }
+    
+    .template-table input,
+    .template-table select,
+    .template-table textarea {
+        font-size: 11px;
+        padding: 4px 6px;
+        min-width: 80px;
+    }
+    
+    .btn-add-field {
+        font-size: 12px;
+        padding: 8px 16px;
+    }
+    
+    .modal-content {
+        margin: 20px;
+        padding: 24px;
+    }
+    
+    .modal-content h2 {
+        font-size: 20px;
+    }
+    
+    .toast-notification {
+        bottom: 16px;
+        right: 16px;
+        left: 16px;
+        max-width: none;
+        padding: 14px 18px;
+    }
+    
+    .btn-clear-upload-sm {
+        font-size: 10px;
+        padding: 2px 8px;
+    }
+    
+    #uploadStats {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+    .glass-card {
+        padding: 10px;
+    }
+    
+    .glass-card h2 {
+        font-size: 18px;
+    }
+    
+    .glass-card p {
+        font-size: 12px;
+    }
+    
+    .template-table {
+        font-size: 11px;
+        min-width: 500px;
+    }
+    
+    .template-table thead th,
+    .template-table tbody td {
+        padding: 4px 6px;
+        min-width: 80px;
+    }
+    
+    .template-table input,
+    .template-table select,
+    .template-table textarea {
+        font-size: 10px;
+        padding: 3px 5px;
+        min-width: 60px;
+    }
+    
+    .btn-upload-header {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+    
+    .btn-submit-draft-header {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+    
+    .btn-add-field {
+        font-size: 11px;
+        padding: 6px 12px;
+    }
+    
+    .toast-notification {
+        padding: 12px 16px;
+    }
+    
+    .toast-title {
+        font-size: 13px;
+    }
+    
+    .toast-message {
+        font-size: 12px;
+    }
+}

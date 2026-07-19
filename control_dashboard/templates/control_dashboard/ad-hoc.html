@@ -1,696 +1,463 @@
+{% extends 'control_dashboard/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Ad-Hoc Scorecard</title>
-        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
-        <link rel="stylesheet" href="{% static 'stylesheets/supervisor.css' %}" type="text/css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-        <meta name="csrf-token" content="{{ csrf_token }}">
-    </head>
-    <body>
-        <div class="page-wrapper">
-            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
-            <div class="nav-bar">
-                <div class="logo">
-                    <a href="{% url 'control_dashboard:supervisor_dashboard' %}">
-                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
-                    </a>
-                </div>
 
-                <ul class="nav-links">
-                    <li><a href="{% url 'control_dashboard:supervisor_dashboard' %}">
-                        <span class="nav-icon"><i class="fas fa-chart-line"></i></span>
-                        <span class="nav-text">Dashboard</span>
-                    </a></li>  
-                    <li><a href="{% url 'control_dashboard:team_performance' %}">
-                        <span class="nav-icon"><i class="fas fa-users"></i></span>
-                        <span class="nav-text">Team Performance</span>
-                    </a></li> 
-                    <li><a href="{% url 'control_dashboard:submitted_reports' %}">
-                        <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
-                        <span class="nav-text">Submitted Reports</span>
-                    </a></li>
-                    <li class="active"><a href="{% url 'control_dashboard:ad_hoc_scorecard' %}">
-                        <span class="nav-icon"><i class="fas fa-star"></i></span>
-                        <span class="nav-text">Ad-Hoc Scorecard</span>
-                    </a></li>
-                    <li><a href="{% url 'control_dashboard:logged_exceptions' %}">
-                        <span class="nav-icon"><i class="fas fa-exclamation-triangle"></i></span>
-                        <span class="nav-text">Logged Exceptions</span>
-                    </a></li>       
-                    <li><a href="{% url 'control_dashboard:supervisor_checklist' %}">
-                        <span class="nav-icon"><i class="fas fa-tasks"></i></span>
-                        <span class="nav-text">Activity Checklist</span>
-                    </a></li>
-                    <li><a href="{% url 'control_dashboard:supervisor_activity_logs' %}">
-                        <span class="nav-icon"><i class="fas fa-search"></i></span>
-                        <span class="nav-text">Activity Logs</span>
-                    </a></li> 
-                </ul>
+{% block title %}Ad-Hoc Scorecard{% endblock %}
 
-                <!-- ==================== PROFILE CARD - LOGOUT BUTTON ==================== -->
-                <div class="nav-footer">
-                    <div class="nav-profile-card" onclick="logoutUser()" style="cursor: pointer;" title="Click to logout">
-                        <div class="nav-profile-img-wrapper">
-                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
-                        </div>
-                        <div class="nav-profile-info">
-                            <h4 class="nav-user-name">{{ user_profile.full_name|default:"Supervisor" }}</h4>
-                            <p class="nav-user-role">
-                                <i class="fas fa-sign-out-alt" style="font-size: 11px; margin-right: 4px;"></i>
-                                Click to logout
-                            </p>
-                        </div>
-                        <div class="nav-profile-logout-icon">
-                            <i class="fas fa-sign-out-alt"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'stylesheets/ad-hoc-scorecard.css' %}" type="text/css">
+{% endblock %}
 
-            <!-- ==================== TOP HEADER ==================== -->
-            <div class="top-header">
-                <div class="top-header-left">
-                    <span class="page-title">Ad-Hoc Scorecard</span>
-                </div>
+{% block dashboard_url %}{% url 'control_dashboard:supervisor_dashboard' %}{% endblock %}
 
-                <div class="top-header-center">
-                    <div class="header-filter-group">
-                        <label for="user-filter">Filter By User</label>
-                        <select id="user-filter" class="header-select" onchange="applyFilter()">
-                            <option value="all">All Users</option>
-                            {% for user in users %}
-                            <option value="{{ user.id }}" {% if user_filter|add:"0" == user.id %}selected{% endif %}>
-                                {{ user.full_name|default:user.email }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
+{% block nav_links %}
+<li><a href="{% url 'control_dashboard:supervisor_dashboard' %}">
+    <span class="nav-icon"><i class="fas fa-chart-line"></i></span>
+    <span class="nav-text">Dashboard</span>
+</a></li>  
+<li><a href="{% url 'control_dashboard:team_performance' %}">
+    <span class="nav-icon"><i class="fas fa-users"></i></span>
+    <span class="nav-text">Team Performance</span>
+</a></li> 
+<li><a href="{% url 'control_dashboard:submitted_reports' %}">
+    <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
+    <span class="nav-text">Submitted Reports</span>
+</a></li>
+<li class="active"><a href="{% url 'control_dashboard:ad_hoc_scorecard' %}">
+    <span class="nav-icon"><i class="fas fa-star"></i></span>
+    <span class="nav-text">Ad-Hoc Scorecard</span>
+</a></li>
+<li><a href="{% url 'control_dashboard:logged_exceptions' %}">
+    <span class="nav-icon"><i class="fas fa-exclamation-triangle"></i></span>
+    <span class="nav-text">Logged Exceptions</span>
+</a></li>       
+<li><a href="{% url 'control_dashboard:supervisor_checklist' %}">
+    <span class="nav-icon"><i class="fas fa-tasks"></i></span>
+    <span class="nav-text">Activity Checklist</span>
+</a></li>
+<li><a href="{% url 'control_dashboard:supervisor_activity_logs' %}">
+    <span class="nav-icon"><i class="fas fa-search"></i></span>
+    <span class="nav-text">Activity Logs</span>
+</a></li> 
+{% endblock %}
 
-                <div class="top-header-right">
-                    <button class="btn-create-header" onclick="toggleCreateForm()">
-                        <i class="fas fa-plus"></i> <span id="createBtnText">Create New Score</span>
-                    </button>
-                </div>
-            </div>
+{% block page_title %}Ad-Hoc Scorecard{% endblock %}
 
-            <!-- ==================== MAIN CONTENT ==================== -->
-            <div class="main-content">
-                <div class="stat-summary">
-                    <div class="stat-card">
-                        <div class="stat-value text-primary">{{ total_deductions }}</div>
-                        <div class="stat-label">Total Deductions</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value text-warning">{{ users.count }}</div>
-                        <div class="stat-label">Team Members</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value text-danger">
-                            {% with total_points=0 %}
-                                {% for d in deductions %}
-                                    {% with total_points=total_points|add:d.points %}{% endwith %}
-                                {% endfor %}
-                                {{ total_points }}
-                            {% endwith %}
-                        </div>
-                        <div class="stat-label">Total Points Deducted</div>
-                    </div>
-                </div>
-                
-                <div class="table-container">
-                    <!-- Inline Create Form -->
-                    <div id="createForm" style="display: none; background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #e5e7eb;">
-                        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: end;">
-                            <div style="flex: 1; min-width: 150px;">
-                                <label style="font-size: 12px; font-weight: 600; color: #6b7280; display: block; margin-bottom: 4px;">User</label>
-                                <select id="inline-user" class="form-control" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
-                                    <option value="">Select User...</option>
-                                    {% for user in users %}
-                                    <option value="{{ user.id }}">{{ user.full_name|default:user.email }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div style="flex: 2; min-width: 150px;">
-                                <label style="font-size: 12px; font-weight: 600; color: #6b7280; display: block; margin-bottom: 4px;">Task Description</label>
-                                <input type="text" id="inline-task" class="form-control" placeholder="e.g., Weekly Exceptions Report" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
-                            </div>
-                            <div style="flex: 0.5; min-width: 100px;">
-                                <label style="font-size: 12px; font-weight: 600; color: #6b7280; display: block; margin-bottom: 4px;">Points</label>
-                                <input type="number" id="inline-points" class="form-control" placeholder="0" min="0" max="100" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
-                            </div>
-                            <div style="flex: 1.5; min-width: 150px;">
-                                <label style="font-size: 12px; font-weight: 600; color: #6b7280; display: block; margin-bottom: 4px;">Reason</label>
-                                <input type="text" id="inline-reason" class="form-control" placeholder="e.g., Late submission" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
-                            </div>
-                            <div style="display: flex; gap: 8px;">
-                                <button onclick="createInlineDeduction()" class="btn-create-header" style="padding: 8px 16px; background: #0066cc; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                                    <i class="fas fa-save"></i> Save
-                                </button>
-                                <button onclick="toggleCreateForm()" class="btn-edit" style="padding: 8px 16px; background: #e5e7eb; color: #1a2332; border: none; border-radius: 6px; cursor: pointer;">
-                                    <i class="fas fa-times"></i> Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+{% block top_header_center %}
+<div class="header-filter-group">
+    <label for="user-filter">Filter By User</label>
+    <select id="user-filter" class="header-select" onchange="applyFilter()">
+        <option value="all">All Users</option>
+        {% for user in users %}
+        <option value="{{ user.id }}" {% if user_filter|add:"0" == user.id %}selected{% endif %}>
+            {{ user.full_name|default:user.email }}
+        </option>
+        {% endfor %}
+    </select>
+</div>
+{% endblock %}
 
-                    <table class="users-table">
-                        <thead>
-                            <tr>
-                                <th>Full Name</th>
-                                <th>Task Description</th>
-                                <th>Deduction</th>
-                                <th>Penalty Reason</th>
-                                <th>Date</th>
-                                <th class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="deductionsTableBody">
-                            {% for deduction in deductions %}
-                            <tr id="row_{{ deduction.id }}">
-                                <td><span class="font-bold">{{ deduction.user_name }}</span></td>
-                                <td><span>{{ deduction.task_description|default:"-" }}</span></td>
-                                <td class="text-center">
-                                    <span class="deduction-badge {% if deduction.points >= 20 %}high{% elif deduction.points >= 10 %}medium{% else %}low{% endif %}">
-                                        -{{ deduction.points }}%
-                                    </span>
-                                </td>
-                                <td><span>{{ deduction.reason|default:"-" }}</span></td>
-                                <td><span class="time-stamp">{{ deduction.created_at|date:"M d, Y" }}</span></td>
-                                <td class="text-center">
-                                    <div class="table-actions-cluster">
-                                        <button class="btn-edit-row" onclick="editDeduction({{ deduction.id }})">
-                                            <i class="fas fa-edit"></i> Edit
-                                        </button>
-                                        <button class="btn-delete-row" onclick="deleteDeduction({{ deduction.id }})">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="6" class="text-center">
-                                    <i class="fas fa-star"></i>
-                                    No ad-hoc deductions found.
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+{% block top_header_right %}
+<button class="btn-create-header" onclick="toggleCreateForm()">
+    <i class="fas fa-plus"></i> <span id="createBtnText">Create New Score</span>
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Stats Summary -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon primary"><i class="fas fa-list"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ total_deductions|default:0 }}</span>
+            <span class="stat-label">Total Deductions</span>
         </div>
-
-        <!-- Logout Confirmation Modal -->
-        <div id="logoutModal" class="modal" style="display: none;">
-            <div class="modal-content" style="max-width: 400px; text-align: center;">
-                <div style="font-size: 48px; color: #ef4444; margin-bottom: 16px;">
-                    <i class="fas fa-sign-out-alt"></i>
-                </div>
-                <h2 style="margin-bottom: 8px;">Confirm Logout</h2>
-                <p style="color: rgba(26,35,50,0.6); margin-bottom: 24px;">
-                    Are you sure you want to logout?
-                </p>
-                <div style="display: flex; gap: 12px; justify-content: center;">
-                    <button onclick="closeLogoutModal()" class="btn-edit" style="padding: 10px 24px; background: #e5e7eb; color: #1a2332; border: none; border-radius: 6px; cursor: pointer;">
-                        Cancel
-                    </button>
-                    <button onclick="confirmLogout()" class="btn-create" style="padding: 10px 24px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
-                </div>
-            </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon warning"><i class="fas fa-users"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ users|length }}</span>
+            <span class="stat-label">Team Members</span>
         </div>
-
-        <div id="toastNotification" class="toast-notification">
-            <div class="toast-icon"><i class="fas fa-check"></i></div>
-            <div class="toast-content">
-                <p class="toast-title">Success!</p>
-                <p class="toast-message" id="toastMessage">Action completed successfully.</p>
-            </div>
-            <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon danger"><i class="fas fa-minus-circle"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ total_points|default:0 }}</span>
+            <span class="stat-label">Total Points Deducted</span>
         </div>
+    </div>
+</div>
 
-        <style>
-            /* Profile card logout styling */
-            .nav-profile-card {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 12px 16px;
-                border-radius: 8px;
-                background: rgba(255,255,255,0.05);
-                transition: all 0.2s ease;
-                position: relative;
+<!-- Inline Create Form -->
+<div id="createForm" class="create-form" style="display: none;">
+    <div class="create-form-header">
+        <h4><i class="fas fa-plus-circle"></i> New Ad-Hoc Deduction</h4>
+        <button class="close-form" onclick="toggleCreateForm()">&times;</button>
+    </div>
+    <div class="create-form-body">
+        <div class="form-group">
+            <label for="inline-user">User <span class="required">*</span></label>
+            <select id="inline-user" class="form-control">
+                <option value="">Select User...</option>
+                {% for user in users %}
+                <option value="{{ user.id }}">{{ user.full_name|default:user.email }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="inline-task">Task Description <span class="required">*</span></label>
+            <input type="text" id="inline-task" class="form-control" placeholder="e.g., Weekly Exceptions Report">
+        </div>
+        <div class="form-group">
+            <label for="inline-points">Points Deducted <span class="required">*</span></label>
+            <input type="number" id="inline-points" class="form-control" placeholder="0" min="0" max="100">
+        </div>
+        <div class="form-group">
+            <label for="inline-reason">Penalty Reason</label>
+            <input type="text" id="inline-reason" class="form-control" placeholder="e.g., Late submission">
+        </div>
+    </div>
+    <div class="create-form-footer">
+        <button onclick="toggleCreateForm()" class="btn-cancel">Cancel</button>
+        <button onclick="createInlineDeduction()" class="btn-save-form">
+            <i class="fas fa-save"></i> Save Deduction
+        </button>
+    </div>
+</div>
+
+<!-- Deductions Table -->
+<div class="table-container">
+    <div class="table-header">
+        <h4>Ad-Hoc Deductions ({{ deductions|length }})</h4>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="deductions-table">
+            <thead>
+                <tr>
+                    <th>Full Name</th>
+                    <th>Task Description</th>
+                    <th class="text-center">Deduction</th>
+                    <th>Penalty Reason</th>
+                    <th>Date</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="deductionsTableBody">
+                {% for deduction in deductions %}
+                <tr id="row_{{ deduction.id }}">
+                    <td><span class="font-bold">{{ deduction.user_name }}</span></td>
+                    <td><span>{{ deduction.task_description|default:"-" }}</span></td>
+                    <td class="text-center">
+                        <span class="deduction-badge {% if deduction.points >= 20 %}high{% elif deduction.points >= 10 %}medium{% else %}low{% endif %}">
+                            -{{ deduction.points }}%
+                        </span>
+                    </td>
+                    <td><span>{{ deduction.reason|default:"-" }}</span></td>
+                    <td><span class="time-stamp">{{ deduction.created_at|date:"M d, Y" }}</span></td>
+                    <td class="text-center">
+                        <div class="table-actions">
+                            <button class="btn-edit" onclick="editDeduction({{ deduction.id }})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-delete" onclick="deleteDeduction({{ deduction.id }})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center empty-row">
+                        <i class="fas fa-star"></i>
+                        <p>No ad-hoc deductions found.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    }
+
+    // ============================================
+    // TOAST NOTIFICATION
+    // ============================================
+
+    function showToast(message, title = 'Success!') {
+        const toast = document.getElementById('toastNotification');
+        const msgEl = document.getElementById('toastMessage');
+        const titleEl = toast.querySelector('.toast-title');
+        
+        msgEl.textContent = message || 'Action completed successfully.';
+        titleEl.textContent = title;
+        
+        const icon = toast.querySelector('.toast-icon i');
+        const iconContainer = toast.querySelector('.toast-icon');
+        if (title.toLowerCase().includes('error') || title.toLowerCase().includes('warning')) {
+            icon.className = 'fas fa-exclamation-circle';
+            toast.style.borderLeftColor = '#ef4444';
+            iconContainer.style.color = '#ef4444';
+            iconContainer.style.background = 'rgba(239, 68, 68, 0.1)';
+        } else {
+            icon.className = 'fas fa-check';
+            toast.style.borderLeftColor = '#10b981';
+            iconContainer.style.color = '#10b981';
+            iconContainer.style.background = 'rgba(16, 185, 129, 0.1)';
+        }
+        
+        toast.classList.add('show');
+        
+        if (window.toastTimeout) {
+            clearTimeout(window.toastTimeout);
+        }
+        
+        window.toastTimeout = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    window.closeToast = function() {
+        const toast = document.getElementById('toastNotification');
+        toast.classList.remove('show');
+        if (window.toastTimeout) {
+            clearTimeout(window.toastTimeout);
+            window.toastTimeout = null;
+        }
+    };
+
+    // ============================================
+    // INLINE CREATE FORM
+    // ============================================
+
+    let createFormVisible = false;
+
+    function toggleCreateForm() {
+        createFormVisible = !createFormVisible;
+        const form = document.getElementById('createForm');
+        const btnText = document.getElementById('createBtnText');
+        
+        if (createFormVisible) {
+            form.style.display = 'block';
+            btnText.textContent = 'Cancel';
+            setTimeout(() => {
+                form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        } else {
+            form.style.display = 'none';
+            btnText.textContent = 'Create New Score';
+            // Reset form
+            document.getElementById('inline-user').value = '';
+            document.getElementById('inline-task').value = '';
+            document.getElementById('inline-points').value = '';
+            document.getElementById('inline-reason').value = '';
+        }
+    }
+
+    function createInlineDeduction() {
+        const user_id = document.getElementById('inline-user').value;
+        const task = document.getElementById('inline-task').value;
+        const points = document.getElementById('inline-points').value;
+        const reason = document.getElementById('inline-reason').value;
+        
+        if (!user_id) {
+            showToast('Please select a user', 'Warning');
+            document.getElementById('inline-user').focus();
+            return;
+        }
+        
+        if (!task) {
+            showToast('Please enter a task description', 'Warning');
+            document.getElementById('inline-task').focus();
+            return;
+        }
+        
+        if (!points || points < 0 || points > 100) {
+            showToast('Please enter valid points (0-100)', 'Warning');
+            document.getElementById('inline-points').focus();
+            return;
+        }
+        
+        const btn = document.querySelector('#createForm .btn-save-form');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        
+        fetch("/adminboard/api/ad-hoc/create/", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                user_id: user_id,
+                task_description: task,
+                points: points,
+                reason: reason
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            
+            if (data.success) {
+                showToast('Deduction created successfully!', 'Success');
+                toggleCreateForm();
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error: ' + data.error, 'Error');
             }
+        })
+        .catch(error => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            console.error('Error:', error);
+            showToast('An error occurred while creating the deduction.', 'Error');
+        });
+    }
 
-            .nav-profile-card:hover {
-                background: rgba(255,255,255,0.1);
-                transform: translateX(4px);
+    // ============================================
+    // FILTER FUNCTIONS
+    // ============================================
+
+    function applyFilter() {
+        const user = document.getElementById('user-filter').value;
+        let url = window.location.pathname + '?';
+        if (user && user !== 'all') url += `user=${user}`;
+        window.location.href = url;
+    }
+
+    // ============================================
+    // EDIT FUNCTIONS
+    // ============================================
+
+    function editDeduction(deductionId) {
+        const row = document.getElementById(`row_${deductionId}`);
+        const task = row.querySelector('td:nth-child(2) span').textContent;
+        const points = row.querySelector('td:nth-child(3) span').textContent.replace('-', '').replace('%', '');
+        const reason = row.querySelector('td:nth-child(4) span').textContent;
+        
+        const newTask = prompt('Task Description:', task === '-' ? '' : task);
+        if (newTask === null) return;
+        
+        const newPoints = prompt('Deduction Points (0-100):', points);
+        if (newPoints === null) return;
+        
+        const newReason = prompt('Penalty Reason:', reason === '-' ? '' : reason);
+        if (newReason === null) return;
+        
+        if (newPoints < 0 || newPoints > 100) {
+            showToast('Points must be between 0 and 100', 'Error');
+            return;
+        }
+        
+        const btn = row.querySelector('.btn-edit');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        fetch(`/adminboard/api/ad-hoc/${deductionId}/update/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                task_description: newTask,
+                points: newPoints,
+                reason: newReason
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            
+            if (data.success) {
+                showToast('Deduction updated successfully!', 'Success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error: ' + data.error, 'Error');
             }
+        })
+        .catch(error => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            console.error('Error:', error);
+            showToast('An error occurred while updating the deduction.', 'Error');
+        });
+    }
 
-            .nav-profile-card:hover .nav-profile-logout-icon {
-                opacity: 1;
-                transform: translateX(0);
+    // ============================================
+    // DELETE FUNCTIONS
+    // ============================================
+
+    function deleteDeduction(deductionId) {
+        if (!confirm('Are you sure you want to delete this deduction?')) {
+            return;
+        }
+        
+        const row = document.getElementById(`row_${deductionId}`);
+        const btn = row.querySelector('.btn-delete');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        fetch(`/adminboard/api/ad-hoc/${deductionId}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
             }
-
-            .nav-profile-logout-icon {
-                margin-left: auto;
-                color: rgba(255,255,255,0.4);
-                font-size: 14px;
-                transition: all 0.2s ease;
-                opacity: 0;
-                transform: translateX(-8px);
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Deduction deleted successfully!', 'Success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Error: ' + data.error, 'Error');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
             }
+        })
+        .catch(error => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            console.error('Error:', error);
+            showToast('An error occurred while deleting the deduction.', 'Error');
+        });
+    }
 
-            .nav-user-role {
-                font-size: 11px;
-                color: rgba(255,255,255,0.5);
-                margin: 0;
+    // ============================================
+    // ENTER KEY SUPPORT
+    // ============================================
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const target = e.target;
+            if (target.id === 'inline-task' || target.id === 'inline-points' || target.id === 'inline-reason') {
+                createInlineDeduction();
             }
+        }
+        if (e.key === 'Escape' && createFormVisible) {
+            toggleCreateForm();
+        }
+    });
 
-            .nav-user-role i {
-                color: #ef4444;
-            }
+    // ============================================
+    // INITIALIZATION
+    // ============================================
 
-            /* Modal styles - only for logout */
-            .modal {
-                position: fixed;
-                z-index: 9999;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                background-color: rgba(0, 0, 0, 0.5);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                animation: fadeIn 0.3s ease;
-            }
-
-            .modal-content {
-                background: white;
-                border-radius: 12px;
-                padding: 32px;
-                animation: slideUp 0.3s ease;
-                max-width: 500px;
-                width: 90%;
-                max-height: 90vh;
-                overflow-y: auto;
-            }
-
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
-
-            @keyframes slideUp {
-                from { transform: translateY(30px); opacity: 0; }
-                to { transform: translateY(0); opacity: 1; }
-            }
-
-            /* Toast Notification */
-            .toast-notification {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: white;
-                border-radius: 12px;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-                padding: 16px 20px;
-                display: flex;
-                align-items: center;
-                gap: 14px;
-                max-width: 400px;
-                z-index: 10000;
-                transform: translateX(120%);
-                transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-                border-left: 4px solid #0066cc;
-            }
-
-            .toast-notification.show {
-                transform: translateX(0);
-            }
-
-            .toast-icon {
-                width: 40px;
-                height: 40px;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 18px;
-                flex-shrink: 0;
-            }
-
-            .toast-content {
-                flex: 1;
-            }
-
-            .toast-title {
-                margin: 0;
-                font-weight: 600;
-                font-size: 14px;
-                color: #1a2332;
-            }
-
-            .toast-message {
-                margin: 4px 0 0 0;
-                font-size: 13px;
-                color: #6b7280;
-            }
-
-            .toast-close {
-                background: none;
-                border: none;
-                color: #9ca3af;
-                cursor: pointer;
-                font-size: 16px;
-                padding: 4px;
-                transition: color 0.2s;
-            }
-
-            .toast-close:hover {
-                color: #1a2332;
-            }
-
-            /* Responsive */
-            @media (max-width: 768px) {
-                .top-header {
-                    flex-wrap: wrap;
-                    gap: 10px;
-                }
-                .top-header-center {
-                    order: 3;
-                    width: 100%;
-                }
-                .top-header-right {
-                    flex-wrap: wrap;
-                }
-                #createForm > div {
-                    flex-direction: column;
-                }
-                #createForm > div > div {
-                    width: 100% !important;
-                    min-width: auto !important;
-                }
-            }
-
-            @media (max-width: 480px) {
-                .modal-content {
-                    margin: 20px;
-                    padding: 24px;
-                }
-                .modal-content h2 {
-                    font-size: 20px;
-                }
-            }
-        </style>
-
-        <script>
-            function getCsrfToken() {
-                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            }
-
-            // ============================================
-            // TOAST NOTIFICATION
-            // ============================================
-
-            function showToast(message, title = 'Success!') {
-                const toast = document.getElementById('toastNotification');
-                const msgEl = document.getElementById('toastMessage');
-                const titleEl = toast.querySelector('.toast-title');
-                
-                msgEl.textContent = message || 'Action completed successfully.';
-                titleEl.textContent = title;
-                
-                const icon = toast.querySelector('.toast-icon i');
-                const iconContainer = toast.querySelector('.toast-icon');
-                if (title.toLowerCase().includes('error') || title.toLowerCase().includes('warning')) {
-                    icon.className = 'fas fa-exclamation-circle';
-                    toast.style.borderLeftColor = '#ef4444';
-                    iconContainer.style.color = '#ef4444';
-                    iconContainer.style.background = 'rgba(239, 68, 68, 0.1)';
-                } else {
-                    icon.className = 'fas fa-check';
-                    toast.style.borderLeftColor = '#10b981';
-                    iconContainer.style.color = '#10b981';
-                    iconContainer.style.background = 'rgba(16, 185, 129, 0.1)';
-                }
-                
-                toast.classList.add('show');
-                
-                if (window.toastTimeout) {
-                    clearTimeout(window.toastTimeout);
-                }
-                
-                window.toastTimeout = setTimeout(() => {
-                    toast.classList.remove('show');
-                }, 3000);
-            }
-
-            window.closeToast = function() {
-                const toast = document.getElementById('toastNotification');
-                toast.classList.remove('show');
-                if (window.toastTimeout) {
-                    clearTimeout(window.toastTimeout);
-                    window.toastTimeout = null;
-                }
-            };
-
-            // ============================================
-            // LOGOUT FUNCTION
-            // ============================================
-
-            function logoutUser() {
-                document.getElementById('logoutModal').style.display = 'flex';
-            }
-
-            function closeLogoutModal() {
-                document.getElementById('logoutModal').style.display = 'none';
-            }
-
-            function confirmLogout() {
-                const btn = document.querySelector('#logoutModal .btn-create');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
-                btn.disabled = true;
-                window.location.href = "{% url 'control_dashboard:logout' %}";
-            }
-
-            document.addEventListener('click', function(event) {
-                const modal = document.getElementById('logoutModal');
-                if (event.target === modal) {
-                    closeLogoutModal();
-                }
-            });
-
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape') {
-                    closeLogoutModal();
-                }
-            });
-
-            // ============================================
-            // INLINE CREATE FORM
-            // ============================================
-
-            let createFormVisible = false;
-
-            function toggleCreateForm() {
-                createFormVisible = !createFormVisible;
-                const form = document.getElementById('createForm');
-                const btnText = document.getElementById('createBtnText');
-                
-                if (createFormVisible) {
-                    form.style.display = 'block';
-                    btnText.textContent = 'Cancel';
-                    // Scroll to form
-                    form.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                } else {
-                    form.style.display = 'none';
-                    btnText.textContent = 'Create New Score';
-                    // Reset form
-                    document.getElementById('inline-user').value = '';
-                    document.getElementById('inline-task').value = '';
-                    document.getElementById('inline-points').value = '';
-                    document.getElementById('inline-reason').value = '';
-                }
-            }
-
-            function createInlineDeduction() {
-                const user_id = document.getElementById('inline-user').value;
-                const task = document.getElementById('inline-task').value;
-                const points = document.getElementById('inline-points').value;
-                const reason = document.getElementById('inline-reason').value;
-                
-                if (!user_id) {
-                    showToast('Please select a user', 'Warning');
-                    document.getElementById('inline-user').focus();
-                    return;
-                }
-                
-                if (!task) {
-                    showToast('Please enter a task description', 'Warning');
-                    document.getElementById('inline-task').focus();
-                    return;
-                }
-                
-                if (!points || points < 0 || points > 100) {
-                    showToast('Please enter valid points (0-100)', 'Warning');
-                    document.getElementById('inline-points').focus();
-                    return;
-                }
-                
-                const btn = document.querySelector('#createForm .btn-create-header');
-                const originalText = btn.innerHTML;
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-                
-                fetch("{% url 'control_dashboard:api_create_ad_hoc_deduction' %}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        user_id: user_id,
-                        task_description: task,
-                        points: points,
-                        reason: reason
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                    
-                    if (data.success) {
-                        showToast('Deduction created successfully!', 'Success');
-                        toggleCreateForm();
-                        setTimeout(() => location.reload(), 1500);
-                    } else {
-                        showToast('Error: ' + data.error, 'Error');
-                    }
-                })
-                .catch(error => {
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                    console.error('Error:', error);
-                    showToast('An error occurred while creating the deduction.', 'Error');
-                });
-            }
-
-            // ============================================
-            // EXISTING FUNCTIONS
-            // ============================================
-
-            function applyFilter() {
-                const user = document.getElementById('user-filter').value;
-                let url = window.location.pathname + '?';
-                if (user && user !== 'all') url += `user=${user}`;
-                window.location.href = url;
-            }
-
-            function editDeduction(deductionId) {
-                // Simple inline edit - redirect to detail or show a prompt
-                // For now, we'll just show a prompt for simplicity
-                const row = document.getElementById(`row_${deductionId}`);
-                const task = row.querySelector('td:nth-child(2) span').textContent;
-                const points = row.querySelector('td:nth-child(3) span').textContent.replace('-', '').replace('%', '');
-                const reason = row.querySelector('td:nth-child(4) span').textContent;
-                
-                // Simple edit using prompt
-                const newTask = prompt('Task Description:', task === '-' ? '' : task);
-                if (newTask === null) return;
-                
-                const newPoints = prompt('Deduction Points (0-100):', points);
-                if (newPoints === null) return;
-                
-                const newReason = prompt('Penalty Reason:', reason === '-' ? '' : reason);
-                if (newReason === null) return;
-                
-                if (newPoints < 0 || newPoints > 100) {
-                    showToast('Points must be between 0 and 100', 'Error');
-                    return;
-                }
-                
-                const btn = row.querySelector('.btn-edit-row');
-                const originalText = btn.innerHTML;
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                
-                fetch(`/adminboard/api/ad-hoc/${deductionId}/update/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        task_description: newTask,
-                        points: newPoints,
-                        reason: newReason
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                    
-                    if (data.success) {
-                        showToast('Deduction updated successfully!', 'Success');
-                        setTimeout(() => location.reload(), 1500);
-                    } else {
-                        showToast('Error: ' + data.error, 'Error');
-                    }
-                })
-                .catch(error => {
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                    console.error('Error:', error);
-                    showToast('An error occurred while updating the deduction.', 'Error');
-                });
-            }
-
-            function deleteDeduction(deductionId) {
-                if (!confirm('Are you sure you want to delete this deduction?')) {
-                    return;
-                }
-                
-                const row = document.getElementById(`row_${deductionId}`);
-                const btn = row.querySelector('.btn-delete-row');
-                const originalText = btn.innerHTML;
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                
-                fetch(`/adminboard/api/ad-hoc/${deductionId}/delete/`, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRFToken': getCsrfToken()
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        showToast('Deduction deleted successfully!', 'Success');
-                        setTimeout(() => location.reload(), 1500);
-                    } else {
-                        showToast('Error: ' + data.error, 'Error');
-                        btn.disabled = false;
-                        btn.innerHTML = originalText;
-                    }
-                })
-                .catch(error => {
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                    console.error('Error:', error);
-                    showToast('An error occurred while deleting the deduction.', 'Error');
-                });
-            }
-        </script>
-    </body>
-</html>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Ad-Hoc Scorecard page loaded');
+        console.log('Total deductions:', {{ deductions|length }});
+    });
+</script>
+{% endblock %}

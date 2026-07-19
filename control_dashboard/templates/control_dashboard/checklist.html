@@ -1,898 +1,538 @@
+{% extends 'control_dashboard/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Admin Dashboard - Checklist Builder</title>
-        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
-        <link rel="stylesheet" href="{% static 'stylesheets/admin.css' %}" type="text/css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-        <meta name="csrf-token" content="{{ csrf_token }}">
-    </head>
-    <body>
-        <div class="page-wrapper">
-            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
-            <div class="nav-bar">
-                <div class="logo">
-                    <a href="{% url 'control_dashboard:admin_page' %}">
-                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
-                    </a>
-                </div>
 
-                <ul class="nav-links">
-                    <li><a href="{% url 'control_dashboard:admin_page' %}">
-                        <span class="nav-icon"><i class="fas fa-user-cog"></i></span>
-                        <span class="nav-text">User Management</span>
-                    </a></li> 
-                    <li><a href="{% url 'control_dashboard:report_center' %}">
-                        <span class="nav-icon"><i class="fas fa-flag"></i></span>
-                        <span class="nav-text">Report Center</span>
-                    </a></li>         
-                    <li><a href="{% url 'control_dashboard:template_builder' %}">
-                        <span class="nav-icon"><i class="fas fa-cubes"></i></span>
-                        <span class="nav-text">Template Builder</span>
-                    </a></li>   
-                    <li class="active"><a href="{% url 'control_dashboard:checklist_builder' %}">
-                        <span class="nav-icon"><i class="fas fa-tools"></i></span>
-                        <span class="nav-text">Checklist Builder</span>
-                    </a></li>
-                    <li><a href="{% url 'control_dashboard:activity_logs' %}">
-                        <span class="nav-icon"><i class="fas fa-key"></i></span>
-                        <span class="nav-text">Activity Logs</span>
-                    </a></li> 
-                </ul>
+{% block title %}Checklist Builder{% endblock %}
 
-                <!-- ==================== PROFILE CARD - LOGOUT BUTTON ==================== -->
-                <div class="nav-footer">
-                    <div class="nav-profile-card" onclick="logoutUser()" style="cursor: pointer;" title="Click to logout">
-                        <div class="nav-profile-img-wrapper">
-                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
-                        </div>
-                        <div class="nav-profile-info">
-                            <h4 class="nav-user-name">{{ request.user.get_full_name|default:"Admin User" }}</h4>
-                            <p class="nav-user-role">
-                                <i class="fas fa-sign-out-alt" style="font-size: 11px; margin-right: 4px;"></i>
-                                Click to logout
-                            </p>
-                        </div>
-                        <div class="nav-profile-logout-icon">
-                            <i class="fas fa-sign-out-alt"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'stylesheets/checklist.css' %}" type="text/css">
+{% endblock %}
 
-            <!-- ==================== TOP HEADER ==================== -->
-            <div class="top-header">
-                <div class="top-header-left">
-                    <span class="page-title">Create & Manage Activities</span>
-                </div>
+{% block dashboard_url %}{% url 'control_dashboard:admin_page' %}{% endblock %}
 
-                <div class="top-header-center">
-                    <div class="header-filter-group">
-                        <label for="checklist-filter">Checklist</label>
-                        <select id="checklist-filter" class="header-select" onchange="loadChecklist()">
-                            <option value="">Select Checklist...</option>
-                            {% for checklist in checklists %}
-                            <option value="{{ checklist.id }}">{{ checklist.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
+{% block nav_links %}
+<li><a href="{% url 'control_dashboard:admin_page' %}">
+    <span class="nav-icon"><i class="fas fa-user-cog"></i></span>
+    <span class="nav-text">User Management</span>
+</a></li> 
+<li><a href="{% url 'control_dashboard:report_center' %}">
+    <span class="nav-icon"><i class="fas fa-flag"></i></span>
+    <span class="nav-text">Report Center</span>
+</a></li>         
+<li><a href="{% url 'control_dashboard:template_builder' %}">
+    <span class="nav-icon"><i class="fas fa-cubes"></i></span>
+    <span class="nav-text">Template Builder</span>
+</a></li>   
+<li class="active"><a href="{% url 'control_dashboard:checklist_builder' %}">
+    <span class="nav-icon"><i class="fas fa-tools"></i></span>
+    <span class="nav-text">Checklist Builder</span>
+</a></li>
+<li><a href="{% url 'control_dashboard:activity_logs' %}">
+    <span class="nav-icon"><i class="fas fa-key"></i></span>
+    <span class="nav-text">Activity Logs</span>
+</a></li> 
+{% endblock %}
 
-                <div class="top-header-right">
-                    <button class="btn-create-header" onclick="saveChecklist()">
-                        <i class="fas fa-save"></i> Save Checklist
-                    </button>
-                </div>
-            </div>
+{% block page_title %}Create & Manage Activities{% endblock %}
 
-            <!-- ==================== MESSAGES ==================== -->
-            {% if messages %}
-            <div class="messages-container">
-                {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">
-                    {{ message }}
-                    <button class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
+{% block top_header_center %}
+<div class="header-divider"></div>
+<div class="header-filter-group">
+    <label for="checklist-filter">Checklist</label>
+    <select id="checklist-filter" class="header-select" onchange="loadChecklist()">
+        <option value="">Select Checklist...</option>
+        {% for checklist in checklists %}
+        <option value="{{ checklist.id }}">{{ checklist.name }}</option>
+        {% endfor %}
+    </select>
+</div>
+{% endblock %}
 
-            <!-- ==================== MAIN CONTENT ==================== -->
-            <div class="main-content">
-                <div class="table-container">
-                    <h4>Create New Activity</h4>
-                    <table class="dashboard-table">
-                        <thead>
-                            <tr>
-                                <th>Activity</th>
-                                <th>Tasks / Description</th>
-                                <th>Frequency</th>
-                                <th>Assignment Target</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>
-                                    <input type="text" id="checklist-name" class="table-input" placeholder="e.g., Mobile Money Review...">
-                                </td>
-                                <td>
-                                    <div id="task-list">
-                                        <div class="task-input-group">
-                                            <input type="text" class="table-input task-input" placeholder="Task 1: Enter task description..." style="margin-bottom: 6px;">
-                                            <i class="fas fa-trash-alt remove-task" onclick="removeTask(this)"></i>
-                                        </div>
-                                    </div>
-                                    <button type="button" class="btn-add-task" onclick="addTaskInput()">
-                                        <i class="fas fa-plus"></i> Add Task
-                                    </button>
-                                </td>
-                                <td>
-                                    <select id="checklist-frequency" class="table-select">
-                                        {% for value, label in frequencies %}
-                                        <option value="{{ value }}">{{ label }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </td>
-                                <td>
-                                    <select id="checklist-assignment" class="table-select" onchange="toggleUserAssignment()">
-                                        {% for value, label in assignments %}
-                                        <option value="{{ value }}">{{ label }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    <div id="user-assignment-group" style="margin-top: 8px; display: none;">
-                                        <select id="assigned-users" class="table-select" multiple style="height: 60px;">
-                                            {% for user in users %}
-                                            <option value="{{ user.id }}">{{ user.full_name|default:user.email }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <small>Hold Ctrl to select multiple users</small>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+{% block top_header_right %}
+<button class="btn-delete-checklist" id="deleteChecklistBtn" onclick="deleteFormChecklist()" style="display: none; background: #dc2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-right: 8px;">
+    <i class="fas fa-trash"></i> Delete
+</button>
+<button class="btn-create-header" id="mainSaveBtn" onclick="saveChecklist()">
+    <i class="fas fa-save"></i> Save Activity
+</button>
+{% endblock %}
 
-                <div class="table-container">
-                    <div class="table-header">
-                        <h4>Existing Activities ({{ checklists|length }})</h4>
-                        <button class="btn-refresh" onclick="location.reload()">
-                            <i class="fas fa-sync"></i> Refresh
-                        </button>
-                    </div>
+{% block content %}
+<!-- ==================== ACTIVITY CREATION FORM ==================== -->
+<div class="table-container">
+    <h4 id="form-title">Create New Activity</h4>
+    <table class="dashboard-table">
+        <thead>
+            <tr>
+                <th>Activity</th>
+                <th>Task / Description</th>
+                <th>Frequency</th>
+                <th>Assignment Target</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    <input type="text" id="checklist-name" class="table-input" placeholder="e.g., Mobile Money Review...">
+                </td>
+                <td>
+                    <textarea id="checklist-tasks" class="table-input" placeholder="Enter tasks, one per line..." rows="3"></textarea>
+                    <small>Enter each task on a new line</small>
+                </td>
+                <td>
+                    <select id="checklist-frequency" class="table-select">
+                        {% for value, label in frequencies %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td>
+                    <!-- Refined selection routing -->
+                    <select id="checklist-assignment" class="table-select" onchange="toggleUserAssignmentField()">
+                        <option value="all">All Personnel</option>
+                        <option value="hc">Head Office Control</option>
+                        <option value="cc">Cluster Control</option>
+                        <option value="specific">Specific Users (Select Below)</option>
+                    </select>
 
-                    <table class="users-table">
-                        <thead>
-                            <tr>
-                                <th>Activity</th>
-                                <th>Tasks / Description</th>
-                                <th>Frequency</th>
-                                <th>Assignment Target</th>
-                                <th class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for checklist in checklists %}
-                            <tr id="checklist-row-{{ checklist.id }}">
-                                <td class="font-bold">{{ checklist.name }}</td>
-                                <td>
-                                    <ul class="task-description-list">
-                                        {% for task in checklist.tasks.all %}
-                                        <li>{{ task.description }}</li>
-                                        {% empty %}
-                                        <li>No tasks defined</li>
-                                        {% endfor %}
-                                    </ul>
-                                </td>
-                                <td><span class="frequency-tag {{ checklist.frequency }}">{{ checklist.get_frequency_display }}</span></td>
-                                <td>
-                                    {% if checklist.assignment_target == 'specific' %}
-                                        <span class="assignment-tag-all">Specific Users</span>
-                                        <ul style="list-style: none; padding: 4px 0 0; margin: 0; font-size: 11px; color: rgba(255,255,255,0.5);">
-                                            {% for user in checklist.assigned_users.all %}
-                                            <li>{{ user.full_name|default:user.email }}</li>
-                                            {% endfor %}
-                                        </ul>
-                                    {% else %}
-                                        <span class="assignment-tag-all">{{ checklist.get_assignment_display }}</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-center">
-                                    <button class="btn-edit" onclick="editChecklist('{{ checklist.id }}')" title="Edit Activity">
-                                        <i class="fas fa-edit"></i> Edit
-                                    </button>
-                                    <button class="btn-delete" onclick="deleteChecklist('{{ checklist.id }}')" title="Delete Activity">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center">
-                                    <i class="fas fa-tasks"></i>
-                                    No activities found. Create your first activity!
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- ==================== EDIT CHECKLIST MODAL ==================== -->
-        <div id="editChecklistModal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <span class="close" onclick="document.getElementById('editChecklistModal').style.display='none'">&times;</span>
-                <h2>Edit Activity</h2>
-                <form id="editChecklistForm" onsubmit="submitEditChecklist(event)">
-                    {% csrf_token %}
-                    <input type="hidden" id="editChecklistId">
-                    
-                    <div class="form-group">
-                        <label>Activity Name</label>
-                        <input type="text" id="editChecklistName" class="form-control" required placeholder="Enter activity name...">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Frequency</label>
-                        <select id="editChecklistFrequency" class="form-control">
-                            {% for value, label in frequencies %}
-                            <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Assignment Target</label>
-                        <select id="editChecklistAssignment" class="form-control" onchange="toggleEditUserAssignment()">
-                            {% for value, label in assignments %}
-                            <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="form-group" id="edit-user-assignment-group" style="display: none;">
-                        <label>Assigned Users</label>
-                        <select id="editAssignedUsers" class="form-control" multiple style="height: 80px;">
+                    <!-- Dedicated multi-user selection group -->
+                    <div id="individual-users-wrapper" style="margin-top: 10px; display: none;">
+                        <label style="display: block; font-size: 11px; font-weight: 600; color: #4b5563; margin-bottom: 4px;">Assign To Specific Members:</label>
+                        <select id="checklist-specific-users" class="table-select" multiple style="height: 90px;">
                             {% for user in users %}
-                            <option value="{{ user.id }}">{{ user.full_name|default:user.email }}</option>
+                            <option value="{{ user.id }}">{{ user.full_name|default:user.email }} ({{ user.get_position_display }})</option>
                             {% endfor %}
                         </select>
-                        <small>Hold Ctrl to select multiple users</small>
+                        <small style="color: #6b7280; font-size: 10px; display: block; margin-top: 2px;">Hold Ctrl (Win) / Cmd (Mac) to select multiples</small>
                     </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
-                    <div class="form-group">
-                        <label>Tasks</label>
-                        <div id="edit-task-list">
-                            <div class="task-input-group">
-                                <input type="text" class="form-control task-input" placeholder="Task 1: Enter task description..." style="margin-bottom: 6px;">
-                            </div>
-                        </div>
-                        <button type="button" class="btn-add-task" onclick="addEditTaskInput()">
-                            <i class="fas fa-plus"></i> Add Task
+<!-- ==================== EXISTING ACTIVITIES ==================== -->
+<div class="table-container" style="margin-top: 30px;">
+    <h4>Existing Activities ({{ checklists|length }})</h4>
+    <table class="users-table">
+        <thead>
+            <tr>
+                <th>Activity</th>
+                <th style="width: 40%;">Task / Description</th>
+                <th>Frequency</th>
+                <th>Assignment Target</th>
+                <th class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for checklist in checklists %}
+            <tr id="checklist-row-{{ checklist.id }}">
+                <td class="font-bold">{{ checklist.name }}</td>
+                <td>
+                    <ul class="task-description-list">
+                        {% for task in checklist.tasks.all %}
+                        <li>{{ task.description }}</li>
+                        {% empty %}
+                        <li style="color: #9ca3af;">No tasks defined</li>
+                        {% endfor %}
+                    </ul>
+                </td>
+                <td><span class="frequency-tag {{ checklist.frequency }}">{{ checklist.get_frequency_display }}</span></td>
+                <td>
+                    {% if checklist.assignment_target == 'all' %}
+                        <span class="assignment-tag-all">All Personnel</span>
+                    {% elif checklist.assignment_target == 'hc' %}
+                        <span class="assignment-tag-hc">Head Office Control</span>
+                    {% elif checklist.assignment_target == 'cc' %}
+                        <span class="assignment-tag-cc">Cluster Control</span>
+                    {% else %}
+                        <span class="assignment-tag-all" style="background: rgba(59, 130, 246, 0.1); color: #2563eb;">Specific Users</span>
+                        <ul style="list-style: none; padding: 4px 0 0; margin: 0; font-size: 12px; color: #1a2332;">
+                            {% for user in checklist.assigned_users.all %}
+                            <li style="padding: 1px 0;">• {{ user.full_name|default:user.email }}</li>
+                            {% empty %}
+                            <li style="color: #9ca3af;">No users assigned</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </td>
+                <td class="text-center">
+                    <div class="table-actions-cluster">
+                        <button class="btn-edit" onclick="editChecklist('{{ checklist.id }}')" title="Edit Activity">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn-delete" onclick="deleteChecklist('{{ checklist.id }}')" title="Delete Activity">
+                            <i class="fas fa-trash"></i> Delete
                         </button>
                     </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="text-center" style="padding: 30px; color: #9ca3af;">
+                    <i class="fas fa-tasks" style="font-size: 32px; display: block; margin-bottom: 10px; opacity: 0.5;"></i>
+                    No activities found. Create your first activity!
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
-                    <button type="submit" class="btn-submit">Update Activity</button>
-                </form>
-            </div>
+<!-- ==================== DELETE CONFIRMATION MODAL ==================== -->
+<div id="deleteModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+        <div style="font-size: 48px; color: #dc2626; margin-bottom: 16px;">
+            <i class="fas fa-trash"></i>
         </div>
-
-        <!-- ==================== LOGOUT CONFIRMATION MODAL ==================== -->
-        <div id="logoutModal" class="modal" style="display: none;">
-            <div class="modal-content" style="max-width: 400px; text-align: center;">
-                <div style="font-size: 48px; color: #ef4444; margin-bottom: 16px;">
-                    <i class="fas fa-sign-out-alt"></i>
-                </div>
-                <h2 style="margin-bottom: 8px;">Confirm Logout</h2>
-                <p style="color: rgba(26,35,50,0.6); margin-bottom: 24px;">
-                    Are you sure you want to logout?
-                </p>
-                <div style="display: flex; gap: 12px; justify-content: center;">
-                    <button onclick="closeLogoutModal()" class="btn-edit" style="padding: 10px 24px; background: #e5e7eb; color: #1a2332; border: none; border-radius: 6px; cursor: pointer;">
-                        Cancel
-                    </button>
-                    <button onclick="confirmLogout()" class="btn-create" style="padding: 10px 24px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
-                </div>
-            </div>
+        <h2 style="margin-bottom: 8px;">Confirm Delete</h2>
+        <p style="color: rgba(26,35,50,0.6); margin-bottom: 24px;">
+            Are you sure you want to delete this activity? This action cannot be undone.
+        </p>
+        <input type="hidden" id="deleteChecklistId">
+        <div style="display: flex; gap: 12px; justify-content: center;">
+            <button onclick="closeDeleteModal()" class="btn-edit" style="padding: 10px 24px; background: #e5e7eb; color: #1a2332; border: none; border-radius: 6px; cursor: pointer;">
+                Cancel
+            </button>
+            <button onclick="confirmDeleteChecklist()" class="btn-create" style="padding: 10px 24px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                <i class="fas fa-trash"></i> Delete
+            </button>
         </div>
+    </div>
+</div>
+{% endblock %}
 
-        <style>
-            /* Profile card logout styling */
-            .nav-profile-card {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 12px 16px;
-                border-radius: 8px;
-                background: rgba(255,255,255,0.05);
-                transition: all 0.2s ease;
-                position: relative;
-            }
-
-            .nav-profile-card:hover {
-                background: rgba(255,255,255,0.1);
-                transform: translateX(4px);
-            }
-
-            .nav-profile-card:hover .nav-profile-logout-icon {
-                opacity: 1;
-                transform: translateX(0);
-            }
-
-            .nav-profile-logout-icon {
-                margin-left: auto;
-                color: rgba(255,255,255,0.4);
-                font-size: 14px;
-                transition: all 0.2s ease;
-                opacity: 0;
-                transform: translateX(-8px);
-            }
-
-            .nav-user-role {
-                font-size: 11px;
-                color: rgba(255,255,255,0.5);
-                margin: 0;
-            }
-
-            .nav-user-role i {
-                color: #ef4444;
-            }
-
-            /* Modal styles */
-            .modal {
-                position: fixed;
-                z-index: 9999;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                background-color: rgba(0, 0, 0, 0.5);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                animation: fadeIn 0.3s ease;
-            }
-
-            .modal-content {
-                background: white;
-                border-radius: 12px;
-                padding: 32px;
-                animation: slideUp 0.3s ease;
-                max-width: 600px;
-                width: 90%;
-                max-height: 90vh;
-                overflow-y: auto;
-            }
-
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
-
-            @keyframes slideUp {
-                from { transform: translateY(30px); opacity: 0; }
-                to { transform: translateY(0); opacity: 1; }
-            }
-
-            .close {
-                float: right;
-                font-size: 28px;
-                font-weight: bold;
-                cursor: pointer;
-                color: #aaa;
-                transition: color 0.2s;
-            }
-
-            .close:hover {
-                color: #000;
-            }
-
-            .form-group {
-                margin-bottom: 16px;
-            }
-
-            .form-group label {
-                display: block;
-                font-weight: 500;
-                margin-bottom: 4px;
-                font-size: 14px;
-                color: #374151;
-            }
-
-            .form-control {
-                width: 100%;
-                padding: 10px 12px;
-                border: 1px solid #d1d5db;
-                border-radius: 6px;
-                font-size: 14px;
-                transition: border-color 0.2s;
-                font-family: inherit;
-            }
-
-            .form-control:focus {
-                outline: none;
-                border-color: #0066cc;
-                box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
-            }
-
-            .btn-submit {
-                width: 100%;
-                padding: 12px;
-                background: #0066cc;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 15px;
-                font-weight: 500;
-                transition: background 0.2s;
-                margin-top: 8px;
-            }
-
-            .btn-submit:hover {
-                background: #004e8c;
-            }
-
-            .task-input-group {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-
-            .task-input-group .remove-task {
-                color: #dc2626;
-                cursor: pointer;
-                font-size: 14px;
-                transition: color 0.2s;
-                padding: 4px;
-            }
-
-            .task-input-group .remove-task:hover {
-                color: #b91c1c;
-            }
-
-            .btn-add-task {
-                margin-top: 8px;
-                padding: 6px 16px;
-                background: #e5e7eb;
-                color: #1a2332;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 13px;
-                transition: background 0.2s;
-            }
-
-            .btn-add-task:hover {
-                background: #d1d5db;
-            }
-
-            /* Responsive */
-            @media (max-width: 480px) {
-                .modal-content {
-                    margin: 20px;
-                    padding: 24px;
-                }
-                .modal-content h2 {
-                    font-size: 20px;
-                }
-                .task-input-group {
-                    flex-wrap: wrap;
+{% block extra_js %}
+<script>
+    console.log('JavaScript loaded successfully!');
+    
+    // ============================================
+    // CSRF TOKEN HELPER
+    // ============================================
+    function getCsrfToken() {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, 10) === 'csrftoken=') {
+                    cookieValue = decodeURIComponent(cookie.substring(10));
+                    break;
                 }
             }
-        </style>
+        }
+        return cookieValue || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    }
 
-        <script>
-            function getCsrfToken() {
-                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    // ============================================
+    // TOAST NOTIFICATION
+    // ============================================
+    function showToast(message, type = 'success') {
+        let toast = document.getElementById('toastNotification');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'toastNotification';
+            toast.style.cssText = `
+                position: fixed; bottom: 20px; right: 20px; 
+                background: white; border-radius: 8px; 
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                padding: 16px 24px; max-width: 400px;
+                z-index: 9999; display: none;
+                border-left: 4px solid #10b981;
+                font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            `;
+            toast.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); display: flex; align-items: center; justify-content: center;">
+                        <i id="toastIcon" class="fas fa-check" style="color: #10b981;"></i>
+                    </div>
+                    <div>
+                        <div id="toastTitle" style="font-weight: 600; font-size: 14px; color: #1a2332;">Success!</div>
+                        <div id="toastMessage" style="font-size: 13px; color: #6b7280; margin-top: 2px;"></div>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.style.display='none'" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #9ca3af; padding: 0 4px;">&times;</button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+        }
+        
+        const msgEl = document.getElementById('toastMessage');
+        const titleEl = document.getElementById('toastTitle');
+        const icon = document.getElementById('toastIcon');
+        
+        msgEl.textContent = message || 'Action completed successfully.';
+        
+        if (type === 'error') {
+            icon.className = 'fas fa-exclamation-circle';
+            toast.style.borderLeftColor = '#ef4444';
+            icon.style.color = '#ef4444';
+            titleEl.textContent = 'Error!';
+        } else {
+            icon.className = 'fas fa-check';
+            toast.style.borderLeftColor = '#10b981';
+            icon.style.color = '#10b981';
+            titleEl.textContent = 'Success!';
+        }
+        
+        toast.style.display = 'block';
+        
+        if (window.toastTimeout) {
+            clearTimeout(window.toastTimeout);
+        }
+        
+        window.toastTimeout = setTimeout(() => {
+            toast.style.display = 'none';
+        }, 4000);
+    }
+
+    // ============================================
+    // STATE & UTILITIES
+    // ============================================
+    let currentChecklistId = null;
+
+    function toggleUserAssignmentField() {
+        const val = document.getElementById('checklist-assignment').value;
+        const wrapper = document.getElementById('individual-users-wrapper');
+        wrapper.style.display = (val === 'specific') ? 'block' : 'none';
+    }
+
+    function resetForm() {
+        document.getElementById('checklist-name').value = '';
+        document.getElementById('checklist-tasks').value = '';
+        document.getElementById('checklist-frequency').value = 'weekly';
+        document.getElementById('checklist-assignment').value = 'all';
+        
+        const userSelect = document.getElementById('checklist-specific-users');
+        if (userSelect) {
+            Array.from(userSelect.options).forEach(opt => opt.selected = false);
+        }
+        
+        document.getElementById('form-title').textContent = "Create New Activity";
+        document.getElementById('deleteChecklistBtn').style.display = 'none';
+        currentChecklistId = null;
+        toggleUserAssignmentField();
+    }
+
+    // ============================================
+    // LOAD CHECKLIST FOR EDIT via FILTER
+    // ============================================
+    function loadChecklist() {
+        console.log('loadChecklist called');
+        const checklistId = document.getElementById('checklist-filter').value;
+        if (!checklistId) {
+            resetForm();
+            return;
+        }
+
+        fetch(`/adminboard/api/checklists/${checklistId}/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
             }
-
-            // ============================================
-            // LOGOUT FUNCTION
-            // ============================================
-
-            function logoutUser() {
-                document.getElementById('logoutModal').style.display = 'flex';
+        })
+        .then(response => {
+            if (!response.ok) return response.json().then(data => { throw new Error(data.error); });
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                populateFormWithData(data.checklist);
+                showToast('Checklist loaded successfully!');
+            } else {
+                showToast('Error: ' + data.error, 'error');
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error loading checklist data', 'error');
+        });
+    }
 
-            function closeLogoutModal() {
-                document.getElementById('logoutModal').style.display = 'none';
-            }
+    // Shared internal population routine
+    function populateFormWithData(checklist) {
+        currentChecklistId = checklist.id;
+        document.getElementById('checklist-name').value = checklist.name;
+        document.getElementById('checklist-frequency').value = checklist.frequency;
+        document.getElementById('checklist-tasks').value = checklist.tasks.map(t => t.description).join('\n');
 
-            function confirmLogout() {
-                // Show loading state
-                const btn = document.querySelector('#logoutModal .btn-create');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
-                btn.disabled = true;
+        const assignmentSelect = document.getElementById('checklist-assignment');
+        assignmentSelect.value = checklist.assignment_target;
+        
+        toggleUserAssignmentField();
 
-                // Redirect to logout URL
-                window.location.href = "{% url 'control_dashboard:logout' %}";
-            }
-
-            // Close modal on background click
-            document.addEventListener('click', function(event) {
-                const modal = document.getElementById('logoutModal');
-                if (event.target === modal) {
-                    closeLogoutModal();
-                }
+        // Populate multiple users selection gracefully if target is specific
+        const specificUsersSelect = document.getElementById('checklist-specific-users');
+        if (specificUsersSelect) {
+            Array.from(specificUsersSelect.options).forEach(option => {
+                const userId = parseInt(option.value);
+                option.selected = (checklist.assignment_target === 'specific' && checklist.assigned_users && checklist.assigned_users.includes(userId));
             });
+        }
 
-            // Close modal on Escape key
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape') {
-                    closeLogoutModal();
-                }
-            });
+        document.getElementById('form-title').textContent = "Edit Activity";
+        document.getElementById('deleteChecklistBtn').style.display = 'inline-block';
+    }
 
-            // ============================================
-            // EXISTING FUNCTIONS
-            // ============================================
+    // ============================================
+    // SAVE / UPDATE CHECKLIST
+    // ============================================
+    function saveChecklist() {
+        console.log('saveChecklist execution initiated');
+        const name = document.getElementById('checklist-name').value.trim();
+        const tasksText = document.getElementById('checklist-tasks').value.trim();
+        const frequency = document.getElementById('checklist-frequency').value;
+        const assignmentTarget = document.getElementById('checklist-assignment').value;
+        
+        const tasks = tasksText.split('\n')
+            .map(t => t.trim())
+            .filter(t => t.length > 0)
+            .map(t => ({ description: t }));
 
-            let currentChecklistId = null;
+        if (!name) {
+            showToast('Please enter an activity name.', 'error');
+            return;
+        }
+        if (tasks.length === 0) {
+            showToast('Please add at least one task.', 'error');
+            return;
+        }
 
-            function addTaskInput() {
-                const taskList = document.getElementById('task-list');
-                const taskCount = taskList.children.length + 1;
-                const taskGroup = document.createElement('div');
-                taskGroup.className = 'task-input-group';
-                taskGroup.innerHTML = `
-                    <input type="text" class="table-input task-input" placeholder="Task ${taskCount}: Enter task description..." style="margin-bottom: 6px; flex: 1;">
-                    <i class="fas fa-trash-alt remove-task" onclick="removeTask(this)"></i>
-                `;
-                taskList.appendChild(taskGroup);
-                updateTaskPlaceholders();
+        let assignedUsers = [];
+        if (assignmentTarget === 'specific') {
+            const specificUsersSelect = document.getElementById('checklist-specific-users');
+            assignedUsers = Array.from(specificUsersSelect.selectedOptions).map(opt => parseInt(opt.value));
+            
+            if (assignedUsers.length === 0) {
+                showToast('Please select at least one individual user.', 'error');
+                return;
             }
+        }
 
-            function removeTask(element) {
-                const taskGroup = element.closest('.task-input-group');
-                if (taskGroup) {
-                    taskGroup.remove();
-                    updateTaskPlaceholders();
-                }
+        const payload = {
+            name: name,
+            description: '',
+            frequency: frequency,
+            assignment_target: assignmentTarget,
+            assigned_users: assignedUsers,
+            tasks: tasks
+        };
+
+        let url = '/adminboard/api/checklists/create/';
+        let method = 'POST';
+        if (currentChecklistId) {
+            url = `/adminboard/api/checklists/${currentChecklistId}/edit/`;
+            method = 'PUT';
+        }
+
+        const btn = document.getElementById('mainSaveBtn');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+        fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => {
+            if (!response.ok) return response.json().then(data => { throw new Error(data.error); });
+            return response.json();
+        })
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            if (data.success) {
+                showToast(currentChecklistId ? 'Activity updated successfully!' : 'Activity created successfully!');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showToast('Error: ' + data.error, 'error');
             }
+        })
+        .catch(error => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            console.error('Error:', error);
+            showToast('An error occurred while saving', 'error');
+        });
+    }
 
-            function updateTaskPlaceholders() {
-                const taskInputs = document.querySelectorAll('#task-list .task-input, #edit-task-list .task-input');
-                taskInputs.forEach((input, index) => {
-                    if (!input.value || input.placeholder.includes('Task')) {
-                        input.placeholder = `Task ${index + 1}: Enter task description...`;
-                    }
-                });
+    // ============================================
+    // INLINE EDIT BUTTON CLICK TRIGGER
+    // ============================================
+    function editChecklist(checklistId) {
+        fetch(`/adminboard/api/checklists/${checklistId}/`, {
+            method: 'GET',
+            headers: { 'X-CSRFToken': getCsrfToken() }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                populateFormWithData(data.checklist);
+                showToast('Activity loaded for editing!');
+                document.querySelector('.table-container').scrollIntoView({ behavior: 'smooth' });
+            } else {
+                showToast('Error: ' + data.error, 'error');
             }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast('Could not fetch checklist details', 'error');
+        });
+    }
 
-            function toggleUserAssignment() {
-                const assignment = document.getElementById('checklist-assignment').value;
-                const userGroup = document.getElementById('user-assignment-group');
-                if (assignment === 'specific') {
-                    userGroup.style.display = 'block';
-                } else {
-                    userGroup.style.display = 'none';
-                }
+    // ============================================
+    // DELETE CHECKLIST FUNCTIONS
+    // ============================================
+    function deleteChecklist(checklistId) {
+        document.getElementById('deleteChecklistId').value = checklistId;
+        document.getElementById('deleteModal').style.display = 'flex';
+    }
+
+    function deleteFormChecklist() {
+        if (currentChecklistId) deleteChecklist(currentChecklistId);
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').style.display = 'none';
+        document.getElementById('deleteChecklistId').value = '';
+    }
+
+    function confirmDeleteChecklist() {
+        const checklistId = document.getElementById('deleteChecklistId').value;
+        if (!checklistId) return;
+
+        const btn = document.querySelector('#deleteModal .btn-create');
+        btn.disabled = true;
+
+        fetch(`/adminboard/api/checklists/${checklistId}/delete/`, {
+            method: 'DELETE',
+            headers: { 'X-CSRFToken': getCsrfToken() }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Activity deleted successfully!');
+                closeDeleteModal();
+                resetForm();
+                setTimeout(() => window.location.reload(), 1000);
             }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            console.error(err);
+        });
+    }
 
-            function toggleEditUserAssignment() {
-                const assignment = document.getElementById('editChecklistAssignment').value;
-                const userGroup = document.getElementById('edit-user-assignment-group');
-                if (assignment === 'specific') {
-                    userGroup.style.display = 'block';
-                } else {
-                    userGroup.style.display = 'none';
-                }
-            }
+    window.onclick = function(event) {
+        const deleteModal = document.getElementById('deleteModal');
+        if (event.target == deleteModal) closeDeleteModal();
+    }
 
-            function addEditTaskInput() {
-                const taskList = document.getElementById('edit-task-list');
-                const taskCount = taskList.children.length + 1;
-                const taskGroup = document.createElement('div');
-                taskGroup.className = 'task-input-group';
-                taskGroup.innerHTML = `
-                    <input type="text" class="form-control task-input" placeholder="Task ${taskCount}: Enter task description..." style="margin-bottom: 6px; flex: 1;">
-                    <i class="fas fa-trash-alt remove-task" onclick="removeEditTask(this)"></i>
-                `;
-                taskList.appendChild(taskGroup);
-                updateTaskPlaceholders();
-            }
-
-            function removeEditTask(element) {
-                const taskGroup = element.closest('.task-input-group');
-                if (taskGroup) {
-                    taskGroup.remove();
-                    updateTaskPlaceholders();
-                }
-            }
-
-            function saveChecklist() {
-                const name = document.getElementById('checklist-name').value.trim();
-                const frequency = document.getElementById('checklist-frequency').value;
-                const assignmentTarget = document.getElementById('checklist-assignment').value;
-                
-                const taskInputs = document.querySelectorAll('#task-list .task-input');
-                const tasks = [];
-                taskInputs.forEach(input => {
-                    const desc = input.value.trim();
-                    if (desc) {
-                        tasks.push({ description: desc });
-                    }
-                });
-
-                const assignedUsers = [];
-                if (assignmentTarget === 'specific') {
-                    const userSelect = document.getElementById('assigned-users');
-                    Array.from(userSelect.selectedOptions).forEach(option => {
-                        assignedUsers.push(option.value);
-                    });
-                }
-
-                if (!name) {
-                    alert('Please enter an activity name.');
-                    return;
-                }
-
-                if (tasks.length === 0) {
-                    alert('Please add at least one task.');
-                    return;
-                }
-
-                const url = currentChecklistId ? 
-                    "{% url 'control_dashboard:api_edit_checklist' 0 %}".replace('0', currentChecklistId) :
-                    "{% url 'control_dashboard:api_create_checklist' %}";
-                
-                const method = currentChecklistId ? 'PUT' : 'POST';
-
-                fetch(url, {
-                    method: method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        name: name,
-                        description: '',
-                        frequency: frequency,
-                        assignment_target: assignmentTarget,
-                        assigned_users: assignedUsers,
-                        tasks: tasks
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert(currentChecklistId ? 'Activity updated successfully!' : 'Activity created successfully!');
-                        location.reload();
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred. Please try again.');
-                });
-            }
-
-            function loadChecklist() {
-                const checklistId = document.getElementById('checklist-filter').value;
-                if (!checklistId) {
-                    document.getElementById('checklist-name').value = '';
-                    document.getElementById('task-list').innerHTML = `
-                        <div class="task-input-group">
-                            <input type="text" class="table-input task-input" placeholder="Task 1: Enter task description..." style="margin-bottom: 6px;">
-                            <i class="fas fa-trash-alt remove-task" onclick="removeTask(this)"></i>
-                        </div>
-                    `;
-                    document.getElementById('checklist-frequency').value = 'weekly';
-                    document.getElementById('checklist-assignment').value = 'all';
-                    document.getElementById('user-assignment-group').style.display = 'none';
-                    currentChecklistId = null;
-                    return;
-                }
-
-                fetch("{% url 'control_dashboard:api_get_checklist' 0 %}".replace('0', checklistId), {
-                    method: 'GET',
-                    headers: {
-                        'X-CSRFToken': getCsrfToken()
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const checklist = data.checklist;
-                        document.getElementById('checklist-name').value = checklist.name;
-                        document.getElementById('checklist-frequency').value = checklist.frequency;
-                        document.getElementById('checklist-assignment').value = checklist.assignment_target;
-                        currentChecklistId = checklist.id;
-
-                        const taskList = document.getElementById('task-list');
-                        taskList.innerHTML = '';
-                        checklist.tasks.forEach((task, index) => {
-                            const taskGroup = document.createElement('div');
-                            taskGroup.className = 'task-input-group';
-                            taskGroup.innerHTML = `
-                                <input type="text" class="table-input task-input" value="${task.description}" placeholder="Task ${index + 1}: Enter task description..." style="margin-bottom: 6px; flex: 1;">
-                                <i class="fas fa-trash-alt remove-task" onclick="removeTask(this)"></i>
-                            `;
-                            taskList.appendChild(taskGroup);
-                        });
-
-                        const userSelect = document.getElementById('assigned-users');
-                        Array.from(userSelect.options).forEach(option => {
-                            option.selected = checklist.assigned_users.includes(parseInt(option.value));
-                        });
-
-                        if (checklist.assignment_target === 'specific') {
-                            document.getElementById('user-assignment-group').style.display = 'block';
-                        } else {
-                            document.getElementById('user-assignment-group').style.display = 'none';
-                        }
-
-                        updateTaskPlaceholders();
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred. Please try again.');
-                });
-            }
-
-            function editChecklist(checklistId) {
-                fetch("{% url 'control_dashboard:api_get_checklist' 0 %}".replace('0', checklistId), {
-                    method: 'GET',
-                    headers: {
-                        'X-CSRFToken': getCsrfToken()
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const checklist = data.checklist;
-                        document.getElementById('editChecklistId').value = checklistId;
-                        document.getElementById('editChecklistName').value = checklist.name;
-                        document.getElementById('editChecklistFrequency').value = checklist.frequency;
-                        document.getElementById('editChecklistAssignment').value = checklist.assignment_target;
-
-                        const taskList = document.getElementById('edit-task-list');
-                        taskList.innerHTML = '';
-                        checklist.tasks.forEach((task, index) => {
-                            const taskGroup = document.createElement('div');
-                            taskGroup.className = 'task-input-group';
-                            taskGroup.innerHTML = `
-                                <input type="text" class="form-control task-input" value="${task.description}" placeholder="Task ${index + 1}: Enter task description..." style="margin-bottom: 6px; flex: 1;">
-                                <i class="fas fa-trash-alt remove-task" onclick="removeEditTask(this)"></i>
-                            `;
-                            taskList.appendChild(taskGroup);
-                        });
-
-                        const userSelect = document.getElementById('editAssignedUsers');
-                        Array.from(userSelect.options).forEach(option => {
-                            option.selected = checklist.assigned_users.includes(parseInt(option.value));
-                        });
-
-                        if (checklist.assignment_target === 'specific') {
-                            document.getElementById('edit-user-assignment-group').style.display = 'block';
-                        } else {
-                            document.getElementById('edit-user-assignment-group').style.display = 'none';
-                        }
-
-                        document.getElementById('editChecklistModal').style.display = 'block';
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred. Please try again.');
-                });
-            }
-
-            function submitEditChecklist(event) {
-                event.preventDefault();
-                
-                const checklistId = document.getElementById('editChecklistId').value;
-                const name = document.getElementById('editChecklistName').value.trim();
-                const frequency = document.getElementById('editChecklistFrequency').value;
-                const assignmentTarget = document.getElementById('editChecklistAssignment').value;
-                
-                const taskInputs = document.querySelectorAll('#edit-task-list .task-input');
-                const tasks = [];
-                taskInputs.forEach(input => {
-                    const desc = input.value.trim();
-                    if (desc) {
-                        tasks.push({ description: desc });
-                    }
-                });
-
-                const assignedUsers = [];
-                if (assignmentTarget === 'specific') {
-                    const userSelect = document.getElementById('editAssignedUsers');
-                    Array.from(userSelect.selectedOptions).forEach(option => {
-                        assignedUsers.push(option.value);
-                    });
-                }
-
-                if (!name) {
-                    alert('Please enter an activity name.');
-                    return;
-                }
-
-                if (tasks.length === 0) {
-                    alert('Please add at least one task.');
-                    return;
-                }
-
-                fetch("{% url 'control_dashboard:api_edit_checklist' 0 %}".replace('0', checklistId), {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        name: name,
-                        description: '',
-                        frequency: frequency,
-                        assignment_target: assignmentTarget,
-                        assigned_users: assignedUsers,
-                        tasks: tasks
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Activity updated successfully!');
-                        document.getElementById('editChecklistModal').style.display = 'none';
-                        location.reload();
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred. Please try again.');
-                });
-            }
-
-            function deleteChecklist(checklistId) {
-                if (!confirm('Are you sure you want to delete this activity?')) {
-                    return;
-                }
-                
-                fetch("{% url 'control_dashboard:api_delete_checklist' 0 %}".replace('0', checklistId), {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRFToken': getCsrfToken()
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred. Please try again.');
-                });
-            }
-
-            window.onclick = function(event) {
-                const modal = document.getElementById('editChecklistModal');
-                if (event.target == modal) {
-                    modal.style.display = 'none';
-                }
-            }
-
-            document.addEventListener('DOMContentLoaded', function() {
-                updateTaskPlaceholders();
-            });
-        </script>
-    </body>
-</html>
+    document.addEventListener('DOMContentLoaded', function() {
+        const checklistFilter = document.getElementById('checklist-filter');
+        if (checklistFilter && checklistFilter.value) loadChecklist();
+    });
+</script>
+{% endblock %}

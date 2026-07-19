@@ -1,278 +1,110 @@
+{% extends 'control_dashboard/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Report Center</title>
-        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
-        <link rel="stylesheet" href="{% static 'stylesheets/admin.css' %}" type="text/css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-        <meta name="csrf-token" content="{{ csrf_token }}">
-    </head>
-    <body>
-        <div class="page-wrapper">
-            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
-            <div class="nav-bar">
-                <div class="logo">
-                    <a href="{% url 'control_dashboard:admin_page' %}">
-                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
-                    </a>
-                </div>
 
-                <ul class="nav-links">
-                    <li><a href="{% url 'control_dashboard:admin_page' %}">
-                        <span class="nav-icon"><i class="fas fa-user-cog"></i></span>
-                        <span class="nav-text">User Management</span>
-                    </a></li> 
-                    <li class="active"><a href="{% url 'control_dashboard:report_center' %}">
-                        <span class="nav-icon"><i class="fas fa-flag"></i></span>
-                        <span class="nav-text">Report Center</span>
-                    </a></li>   
-                    <li><a href="{% url 'control_dashboard:template_builder' %}">
-                        <span class="nav-icon"><i class="fas fa-cubes"></i></span>
-                        <span class="nav-text">Template Builder</span>
-                    </a></li>         
-                    <li><a href="{% url 'control_dashboard:checklist_builder' %}">
-                        <span class="nav-icon"><i class="fas fa-tools"></i></span>
-                        <span class="nav-text">Checklist Builder</span>
-                    </a></li>
-                    <li><a href="{% url 'control_dashboard:activity_logs' %}">
-                        <span class="nav-icon"><i class="fas fa-key"></i></span>
-                        <span class="nav-text">Activity Logs</span>
-                    </a></li> 
-                </ul>
+{% block title %}Report Center{% endblock %}
 
-                <!-- ==================== PROFILE CARD - LOGOUT BUTTON ==================== -->
-                <div class="nav-footer">
-                    <div class="nav-profile-card" onclick="logoutUser()" style="cursor: pointer;" title="Click to logout">
-                        <div class="nav-profile-img-wrapper">
-                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
-                        </div>
-                        <div class="nav-profile-info">
-                            <h4 class="nav-user-name">{{ request.user.get_full_name|default:"Admin User" }}</h4>
-                            <p class="nav-user-role">
-                                <i class="fas fa-sign-out-alt" style="font-size: 11px; margin-right: 4px;"></i>
-                                Click to logout
-                            </p>
-                        </div>
-                        <div class="nav-profile-logout-icon">
-                            <i class="fas fa-sign-out-alt"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'stylesheets/reportcenter.css' %}" type="text/css">
+{% endblock %}
 
-            <!-- ==================== TOP HEADER ==================== -->
-            <div class="top-header">
-                <div class="top-header-left">
-                    <span class="page-title">Create & Assign Reports</span>
-                </div>
+{% block dashboard_url %}{% url 'control_dashboard:admin_page' %}{% endblock %}
 
-                <div class="top-header-center">
-                    <div class="header-divider"></div>
+{% block nav_links %}
+<li><a href="{% url 'control_dashboard:admin_page' %}">
+    <span class="nav-icon"><i class="fas fa-user-cog"></i></span>
+    <span class="nav-text">User Management</span>
+</a></li> 
+<li class="active"><a href="{% url 'control_dashboard:report_center' %}">
+    <span class="nav-icon"><i class="fas fa-flag"></i></span>
+    <span class="nav-text">Report Center</span>
+</a></li>   
+<li><a href="{% url 'control_dashboard:template_builder' %}">
+    <span class="nav-icon"><i class="fas fa-cubes"></i></span>
+    <span class="nav-text">Template Builder</span>
+</a></li>         
+<li><a href="{% url 'control_dashboard:checklist_builder' %}">
+    <span class="nav-icon"><i class="fas fa-tools"></i></span>
+    <span class="nav-text">Checklist Builder</span>
+</a></li>
+<li><a href="{% url 'control_dashboard:activity_logs' %}">
+    <span class="nav-icon"><i class="fas fa-key"></i></span>
+    <span class="nav-text">Activity Logs</span>
+</a></li> 
+{% endblock %}
 
-                    <div class="header-filter-group">
-                        <label for="user-filter">Assigned To</label>
-                        <select id="user-filter" name="user-filter" class="header-select" onchange="applyFilters()">
-                            <option value="all">All Users</option>
-                            {% for user in users %}
-                            <option value="{{ user.id }}" {% if user_filter == user.id|stringformat:"s" %}selected{% endif %}>{{ user.full_name|default:user.email }}</option>
-                            {% endfor %}
+{% block page_title %}Create & Assign Reports{% endblock %}
+
+{% block top_header_center %}
+<div class="header-divider"></div>
+<div class="header-filter-group">
+    <label for="user-filter">Assigned To</label>
+    <select id="user-filter" name="user-filter" class="header-select" onchange="applyFilters()">
+        <option value="all">All Users</option>
+        {% for user in users %}
+        <option value="{{ user.id }}" {% if user_filter == user.id|stringformat:"s" %}selected{% endif %}>{{ user.full_name|default:user.email }}</option>
+        {% endfor %}
+    </select>
+</div>
+{% endblock %}
+
+{% block top_header_right %}
+<button class="btn-refresh-header" onclick="location.reload()">
+    <i class="fas fa-sync"></i> Refresh
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="table-container">
+    <h4>Create New Report</h4>
+    <form id="createReportForm">
+        {% csrf_token %}
+        <table class="dashboard-table">
+            <thead>
+                <tr>
+                    <th>Report Type</th>
+                    <th>Report Frequency</th>
+                    <th>Deadline Date</th>
+                    <th>Deadline Time</th>
+                    <th>Assign Report To</th>
+                    <th class="text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <select id="reportType" class="table-select" required>
+                            <option value="">Select Type...</option>
+                            <option value="Branch Consolidated Exceptions Report">Branch Consolidated Exceptions Report</option>
+                            <option value="Head Office Consolidated Exceptions Report">Head Office Consolidated Exceptions Report</option>
+                            <option value="Weekly Exceptions Report">Weekly Exceptions Report</option>
+                            <option value="Security Sweep Report">Security Sweep Report</option>
+                            <option value="Cash Count Report">Cash Count Report</option>
+                            <option value="Cash Imbalance Report">Cash Imbalance Report</option>
+                            <option value="Investigation Schedule">Investigation Schedule</option>
+                            <option value="Branch GL Proof Report review Consolidation">Branch GL Proof Report review Consolidation</option>
+                            <option value="E-Business GL Proof review">E-Business GL Proof review</option>
+                            <option value="FINOPs- GL Proof review">FINOPs- GL Proof review</option>
+                            <option value="Finance- GL Proof review">Finance- GL Proof review</option>
+                            <option value="Recovery/Credit GL Proof Review">Recovery/Credit GL Proof Review</option>
+                            <option value="TROPs GL Proof Review">TROPs GL Proof Review</option>
+                            <option value="CMU -Accra GL Proof Review">CMU -Accra GL Proof Review</option>
+                            <option value="CMU- Kumasi GL Proof Review">CMU- Kumasi GL Proof Review</option>
+                            <option value="CMU-Takoradi GL Proof Review">CMU-Takoradi GL Proof Review</option>
+                            <option value="Trade GL Proof Review">Trade GL Proof Review</option>
+                            <option value="Clearing GL Proof Review">Clearing GL Proof Review</option>
+                            <option value="Cost Saved">Cost Saved</option>
+                            <option value="Debit Reversal">Debit Reversal</option>
+                            <option value="Balance Confirmation">Balance Confirmation</option>
+                            <option value="Statement Verification">Statement Verification</option>
+                            <option value="Branch Workplan">Branch Workplan</option>
+                            <option value="Head Office Workplan">Head Office Workplan</option>
+                            <option value="Report on Customer Details wrongly Captured and Details not captured in CBA">Report on Customer Details wrongly Captured and Details not captured in CBA</option>
+                            <option value="EOM Presentation (PPT) on Work Done and Key Findings">EOM Presentation (PPT) on Work Done and Key Findings</option>
+                            <option value="custom">Custom (Type below)</option>
                         </select>
-                    </div>
-                </div>
-
-                <div class="top-header-right">
-                    <button class="btn-refresh-header" onclick="location.reload()">
-                        <i class="fas fa-sync"></i> Refresh
-                    </button>
-                </div>
-            </div>
-
-            <!-- ==================== MESSAGES ==================== -->
-            {% if messages %}
-            <div class="messages-container">
-                {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">
-                    {{ message }}
-                    <button class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-
-            <!-- ==================== MAIN CONTENT ==================== -->
-            <div class="main-content">
-                <div class="table-container">
-                    <h4>Create New Report</h4>
-                    <form id="createReportForm" onsubmit="createReport(event)">
-                        {% csrf_token %}
-                        <table class="dashboard-table">
-                            <thead>
-                                <tr>
-                                    <th>Report Type</th>
-                                    <th>Report Frequency</th>
-                                    <th>Deadline Date</th>
-                                    <th>Deadline Time</th>
-                                    <th>Assign Report To</th>
-                                    <th class="text-center">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>
-                                        <select id="reportType" class="table-select" required>
-                                            <option value="">Select Type...</option>
-                                            <option value="Branch Consolidated Exceptions Report">Branch Consolidated Exceptions Report</option>
-                                            <option value="Head Office Consolidated Exceptions Report">Head Office Consolidated Exceptions Report</option>
-                                            <option value="Weekly Exceptions Report">Weekly Exceptions Report</option>
-                                            <option value="Security Sweep Report">Security Sweep Report</option>
-                                            <option value="Cash Count Report">Cash Count Report</option>
-                                            <option value="Cash Imbalance Report">Cash Imbalance Report</option>
-                                            <option value="Investigation Schedule">Investigation Schedule</option>
-                                            <option value="Branch GL Proof Report review Consolidation">Branch GL Proof Report review Consolidation</option>
-                                            <option value="E-Business GL Proof review">E-Business GL Proof review</option>
-                                            <option value="FINOPs- GL Proof review">FINOPs- GL Proof review</option>
-                                            <option value="Finance- GL Proof review">Finance- GL Proof review</option>
-                                            <option value="Recovery/Credit GL Proof Review">Recovery/Credit GL Proof Review</option>
-                                            <option value="TROPs GL Proof Review">TROPs GL Proof Review</option>
-                                            <option value="CMU -Accra GL Proof Review">CMU -Accra GL Proof Review</option>
-                                            <option value="CMU- Kumasi GL Proof Review">CMU- Kumasi GL Proof Review</option>
-                                            <option value="CMU-Takoradi GL Proof Review">CMU-Takoradi GL Proof Review</option>
-                                            <option value="Trade GL Proof Review">Trade GL Proof Review</option>
-                                            <option value="Clearing GL Proof Review">Clearing GL Proof Review</option>
-                                            <option value="Cost Saved">Cost Saved</option>
-                                            <option value="Debit Reversal">Debit Reversal</option>
-                                            <option value="Balance Confirmation">Balance Confirmation</option>
-                                            <option value="Statement Verification">Statement Verification</option>
-                                            <option value="Branch Workplan">Branch Workplan</option>
-                                            <option value="Head Office Workplan">Head Office Workplan</option>
-                                            <option value="Report on Customer Details wrongly Captured and Details not captured in CBA">Report on Customer Details wrongly Captured and Details not captured in CBA</option>
-                                            <option value="EOM Presentation (PPT) on Work Done and Key Findings">EOM Presentation (PPT) on Work Done and Key Findings</option>
-                                            <option value="custom">Custom (Type below)</option>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <select id="reportFrequency" class="table-select" name="report-frequency">
-                                            <option value="one-off">One Off</option>
-                                            <option value="daily">Daily</option>
-                                            <option value="weekly">Weekly</option>
-                                            <option value="monthly">Monthly</option>
-                                            <option value="quarterly">Quarterly</option>
-                                            <option value="yearly">Yearly</option>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <input type="date" id="deadlineDate" class="table-input" name="report-deadline-date">
-                                    </td>
-                                    <td>
-                                        <input type="time" id="deadlineTime" class="table-input" name="report-deadline-time">
-                                    </td>
-                                    <td>
-                                        <select id="assignedTo" class="table-select" name="assigned-recipient" multiple style="height: 80px;" onchange="handleAllUsersSelection(this)">
-                                            <option value="all">All Users</option>
-                                            {% for user in users %}
-                                            <option value="{{ user.id }}">{{ user.full_name|default:user.email }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <small>Selecting "All Users" overrides individual picks.</small>
-                                    </td>
-                                    <td class="text-center">
-                                        <button type="submit" class="btn-create">
-                                            <i class="fas fa-plus"></i> Create
-                                        </button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </form>
-                </div>
-
-                <div class="table-container">
-                    <div class="table-header">
-                        <h4>Existing Reports ({{ reports|length }})</h4>
-                    </div>
-
-                    <table class="users-table">
-                        <thead>
-                            <tr>
-                                <th>Report Type</th>
-                                <th>Frequency</th>
-                                <th>Deadline</th>
-                                <th>Assigned To</th>
-                                <th class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for report in reports %}
-                            <tr>
-                                <td class="font-bold">{{ report.report_type }}</td>
-                                <td><span class="frequency-tag {{ report.frequency }}">{{ report.get_frequency_display }}</span></td>
-                                <td>
-                                    {% if report.deadline_date %}
-                                        {{ report.deadline_date|date:"M d, Y" }}
-                                        {% if report.deadline_time %}
-                                            at {{ report.deadline_time|time:"h:i A" }}
-                                        {% endif %}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if report.is_assigned_to_all %}
-                                        <span class="assignment-tag-all">All Users</span>
-                                    {% else %}
-                                        <div class="assigned-users-list">
-                                            {% for assigned_user in report.assigned_to.all %}
-                                            <span class="user-tag">{{ assigned_user.full_name|default:assigned_user.email }}</span>
-                                            {% empty %}
-                                            <span style="color: rgba(26,35,50,0.3);">No users assigned</span>
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
-                                </td>
-                                <td class="text-center">
-                                    <div class="table-actions-cluster">
-                                        <button class="btn-edit" onclick="editReport('{{ report.id }}')" title="Edit Report">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="btn-delete" onclick="deleteReport('{{ report.id }}')" title="Delete Report">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center">
-                                    <i class="fas fa-file-alt"></i>
-                                    No reports found. Create your first report!
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- ==================== EDIT REPORT MODAL ==================== -->
-        <div id="editReportModal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <span class="close" onclick="document.getElementById('editReportModal').style.display='none'">&times;</span>
-                <h2>Edit Report</h2>
-                <form id="editReportForm" onsubmit="submitEditReport(event)">
-                    {% csrf_token %}
-                    <input type="hidden" id="editReportId">
-                    
-                    <div class="form-group">
-                        <label>Report Type</label>
-                        <input type="text" id="editReportType" class="form-control" required placeholder="Enter report type...">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Report Frequency</label>
-                        <select id="editReportFrequency" class="form-control">
+                    </td>
+                    <td>
+                        <select id="reportFrequency" class="table-select" name="report-frequency">
                             <option value="one-off">One Off</option>
                             <option value="daily">Daily</option>
                             <option value="weekly">Weekly</option>
@@ -280,781 +112,609 @@
                             <option value="quarterly">Quarterly</option>
                             <option value="yearly">Yearly</option>
                         </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Description</label>
-                        <textarea id="editDescription" class="form-control" rows="3" placeholder="Enter report description..."></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Deadline Date</label>
-                        <input type="date" id="editDeadlineDate" class="form-control">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Deadline Time</label>
-                        <input type="time" id="editDeadlineTime" class="form-control">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Assigned Users</label>
-                        <select id="editAssignedUsers" class="form-control" multiple style="height: 100px;" onchange="handleAllUsersSelection(this)">
-                            <!-- Dynamic Content -->
+                    </td>
+                    <td>
+                        <input type="date" id="deadlineDate" class="table-input" name="report-deadline-date">
+                    </td>
+                    <td>
+                        <input type="time" id="deadlineTime" class="table-input" name="report-deadline-time">
+                    </td>
+                    <td>
+                        <select id="assignedTo" class="table-select" name="assigned-recipient" multiple style="height: 80px;">
+                            <option value="all">All Members</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.full_name|default:user.email }}</option>
+                            {% endfor %}
                         </select>
-                        <small>Selecting "All Users" overrides individual picks.</small>
+                        <small>Selecting "All Members" overrides individual picks.</small>
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn-create" onclick="createReport()">
+                            <i class="fas fa-plus"></i> Create
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </form>
+</div>
+
+<div class="table-container">
+    <div class="table-header">
+        <h4>Existing Reports ({{ reports|length }})</h4>
+    </div>
+
+    <table class="users-table">
+        <thead>
+            <tr>
+                <th>Report Type</th>
+                <th>Frequency</th>
+                <th>Deadline</th>
+                <th>Assigned To</th>
+                <th>Status</th>
+                <th class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for report in reports %}
+            <tr id="row_{{ report.id }}">
+                <td class="font-bold">{{ report.report_type }}</td>
+                <td><span class="frequency-tag {{ report.frequency }}">{{ report.get_frequency_display }}</span></td>
+                <td>
+                    {% if report.deadline_date %}
+                        {{ report.deadline_date|date:"M d, Y" }}
+                        {% if report.deadline_time %}
+                            at {{ report.deadline_time|time:"h:i A" }}
+                        {% endif %}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td>
+                    {% if report.is_assigned_to_all %}
+                        <span class="assignment-tag-all">All Members</span>
+                    {% else %}
+                        <div class="assigned-users-list">
+                            {% for assigned_user in report.assigned_to.all %}
+                            <span class="user-tag">{{ assigned_user.full_name|default:assigned_user.email }}</span>
+                            {% empty %}
+                            <span style="color: rgba(26,35,50,0.3);">No users assigned</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="status-tag {{ report.status }}">
+                        {{ report.get_status_display }}
+                    </span>
+                </td>
+                <td class="text-center">
+                    <div class="table-actions-cluster">
+                        <button class="btn-edit" onclick="editReport('{{ report.id }}')" title="Edit Report">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-delete" onclick="deleteReport('{{ report.id }}')" title="Delete Report">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center">
+                    <i class="fas fa-file-alt"></i>
+                    No reports found. Create your first report!
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
-                    <button type="submit" class="btn-submit">Update Report</button>
-                </form>
+<!-- ==================== EDIT REPORT MODAL ==================== -->
+<div id="editReportModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 600px; margin: auto; position: relative; top: 50%; transform: translateY(-50%);">
+        <span class="close" onclick="closeEditModal()">&times;</span>
+        <h2>Edit Report</h2>
+        <form id="editReportForm">
+            {% csrf_token %}
+            <input type="hidden" id="editReportId">
+            
+            <div class="form-group">
+                <label>Report Type</label>
+                <input type="text" id="editReportType" class="form-control" required placeholder="Enter report type...">
             </div>
-        </div>
 
-        <!-- ==================== LOGOUT CONFIRMATION MODAL ==================== -->
-        <div id="logoutModal" class="modal" style="display: none;">
-            <div class="modal-content" style="max-width: 400px; text-align: center;">
-                <div style="font-size: 48px; color: #ef4444; margin-bottom: 16px;">
-                    <i class="fas fa-sign-out-alt"></i>
-                </div>
-                <h2 style="margin-bottom: 8px;">Confirm Logout</h2>
-                <p style="color: rgba(26,35,50,0.6); margin-bottom: 24px;">
-                    Are you sure you want to logout?
-                </p>
-                <div style="display: flex; gap: 12px; justify-content: center;">
-                    <button onclick="closeLogoutModal()" class="btn-edit" style="padding: 10px 24px; background: #e5e7eb; color: #1a2332; border: none; border-radius: 6px; cursor: pointer;">
-                        Cancel
-                    </button>
-                    <button onclick="confirmLogout()" class="btn-create" style="padding: 10px 24px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
-                </div>
+            <div class="form-group">
+                <label>Report Frequency</label>
+                <select id="editReportFrequency" class="form-control">
+                    <option value="one-off">One Off</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="yearly">Yearly</option>
+                </select>
             </div>
-        </div>
 
-        <!-- Toast Notification -->
-        <div id="toastNotification" class="toast-notification">
-            <div class="toast-icon"><i class="fas fa-check"></i></div>
-            <div class="toast-content">
-                <p class="toast-title">Success!</p>
-                <p class="toast-message" id="toastMessage">Action completed successfully.</p>
+            <div class="form-group">
+                <label>Deadline Date</label>
+                <input type="date" id="editDeadlineDate" class="form-control">
             </div>
-            <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
+
+            <div class="form-group">
+                <label>Deadline Time</label>
+                <input type="time" id="editDeadlineTime" class="form-control">
+            </div>
+
+            <div class="form-group">
+                <label>Status</label>
+                <select id="editStatus" class="form-control">
+                    <option value="assigned">Assigned</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Assigned Users</label>
+                <select id="editAssignedUsers" class="form-control" multiple style="height: 100px;">
+                    <option value="all">All Members</option>
+                    {% for user in users %}
+                    <option value="{{ user.id }}">{{ user.full_name|default:user.email }}</option>
+                    {% endfor %}
+                </select>
+                <small>Selecting "All Members" overrides individual picks.</small>
+            </div>
+
+            <button type="button" class="btn-submit" onclick="submitEditReport()">Update Report</button>
+        </form>
+    </div>
+</div>
+
+<!-- ==================== DELETE CONFIRMATION MODAL ==================== -->
+<div id="deleteModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 400px; margin: auto; position: relative; top: 50%; transform: translateY(-50%); text-align: center;">
+        <div style="font-size: 48px; color: #dc2626; margin-bottom: 16px;">
+            <i class="fas fa-trash"></i>
         </div>
+        <h2 style="margin-bottom: 8px;">Confirm Delete</h2>
+        <p style="color: rgba(26,35,50,0.6); margin-bottom: 24px;">
+            Are you sure you want to delete this report? This action cannot be undone.
+        </p>
+        <input type="hidden" id="deleteReportId">
+        <div style="display: flex; gap: 12px; justify-content: center;">
+            <button onclick="closeDeleteModal()" class="btn-edit" style="padding: 10px 24px; background: #e5e7eb; color: #1a2332; border: none; border-radius: 6px; cursor: pointer;">
+                Cancel
+            </button>
+            <button onclick="confirmDeleteReport()" class="btn-create" style="padding: 10px 24px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                <i class="fas fa-trash"></i> Delete
+            </button>
+        </div>
+    </div>
+</div>
 
-        <style>
-            /* Profile card logout styling */
-            .nav-profile-card {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 12px 16px;
-                border-radius: 8px;
-                background: rgba(255,255,255,0.05);
-                transition: all 0.2s ease;
-                position: relative;
-            }
-
-            .nav-profile-card:hover {
-                background: rgba(255,255,255,0.1);
-                transform: translateX(4px);
-            }
-
-            .nav-profile-card:hover .nav-profile-logout-icon {
-                opacity: 1;
-                transform: translateX(0);
-            }
-
-            .nav-profile-logout-icon {
-                margin-left: auto;
-                color: rgba(255,255,255,0.4);
-                font-size: 14px;
-                transition: all 0.2s ease;
-                opacity: 0;
-                transform: translateX(-8px);
-            }
-
-            .nav-user-role {
-                font-size: 11px;
-                color: rgba(255,255,255,0.5);
-                margin: 0;
-            }
-
-            .nav-user-role i {
-                color: #ef4444;
-            }
-
-            .btn-refresh-header {
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                padding: 8px 16px;
-                background: #6b7280;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 13px;
-                font-weight: 500;
-                transition: all 0.2s ease;
-            }
-
-            .btn-refresh-header:hover {
-                background: #4b5563;
-                transform: translateY(-1px);
-            }
-
-            /* Modal styles */
-            .modal {
-                position: fixed;
-                z-index: 9999;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                background-color: rgba(0, 0, 0, 0.5);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                animation: fadeIn 0.3s ease;
-            }
-
-            .modal-content {
-                background: white;
-                border-radius: 12px;
-                padding: 32px;
-                animation: slideUp 0.3s ease;
-                max-width: 600px;
-                width: 90%;
-                max-height: 90vh;
-                overflow-y: auto;
-            }
-
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
-
-            @keyframes slideUp {
-                from { transform: translateY(30px); opacity: 0; }
-                to { transform: translateY(0); opacity: 1; }
-            }
-
-            .close {
-                float: right;
-                font-size: 28px;
-                font-weight: bold;
-                cursor: pointer;
-                color: #aaa;
-                transition: color 0.2s;
-            }
-
-            .close:hover {
-                color: #000;
-            }
-
-            .form-group {
-                margin-bottom: 16px;
-            }
-
-            .form-group label {
-                display: block;
-                font-weight: 500;
-                margin-bottom: 4px;
-                font-size: 14px;
-                color: #374151;
-            }
-
-            .form-control {
-                width: 100%;
-                padding: 10px 12px;
-                border: 1px solid #d1d5db;
-                border-radius: 6px;
-                font-size: 14px;
-                transition: border-color 0.2s;
-                font-family: inherit;
-            }
-
-            .form-control:focus {
-                outline: none;
-                border-color: #0066cc;
-                box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
-            }
-
-            .btn-submit {
-                width: 100%;
-                padding: 12px;
-                background: #0066cc;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 15px;
-                font-weight: 500;
-                transition: background 0.2s;
-                margin-top: 8px;
-            }
-
-            .btn-submit:hover {
-                background: #004e8c;
-            }
-
-            .btn-submit:disabled {
-                opacity: 0.6;
-                cursor: not-allowed;
-            }
-
-            /* Assigned Users List */
-            .assigned-users-list {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 4px;
-                padding: 0;
-                margin: 0;
-            }
-
-            .user-tag {
-                display: inline-block;
-                padding: 2px 10px;
-                background: #f3f4f6;
-                border-radius: 12px;
-                font-size: 11px;
-                color: #1a2332;
-                font-weight: 500;
-                white-space: nowrap;
-            }
-
-            .assignment-tag-all {
-                display: inline-block;
-                padding: 4px 12px;
-                background: #dbeafe;
-                color: #2563eb;
-                border-radius: 12px;
-                font-size: 12px;
-                font-weight: 600;
-            }
-
-            .table-actions-cluster {
-                display: flex;
-                gap: 4px;
-                justify-content: center;
-                align-items: center;
-            }
-
-            .btn-edit {
-                padding: 4px 10px;
-                background: #fef3c7;
-                color: #d97706;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 12px;
-                display: inline-flex;
-                align-items: center;
-                gap: 4px;
-                transition: all 0.2s ease;
-            }
-
-            .btn-edit:hover {
-                background: #fde68a;
-                transform: scale(1.02);
-            }
-
-            .btn-delete {
-                padding: 4px 10px;
-                background: #fee2e2;
-                color: #dc2626;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 12px;
-                display: inline-flex;
-                align-items: center;
-                gap: 4px;
-                transition: all 0.2s ease;
-            }
-
-            .btn-delete:hover {
-                background: #fecaca;
-                transform: scale(1.02);
-            }
-
-            /* Toast Notification */
-            .toast-notification {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: white;
-                border-radius: 12px;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-                padding: 16px 20px;
-                display: flex;
-                align-items: center;
-                gap: 14px;
-                max-width: 400px;
-                z-index: 10000;
-                transform: translateX(120%);
-                transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-                border-left: 4px solid #0066cc;
-            }
-
-            .toast-notification.show {
-                transform: translateX(0);
-            }
-
-            .toast-icon {
-                width: 40px;
-                height: 40px;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 18px;
-                flex-shrink: 0;
-            }
-
-            .toast-content {
-                flex: 1;
-            }
-
-            .toast-title {
-                margin: 0;
-                font-weight: 600;
-                font-size: 14px;
-                color: #1a2332;
-            }
-
-            .toast-message {
-                margin: 4px 0 0 0;
-                font-size: 13px;
-                color: #6b7280;
-            }
-
-            .toast-close {
-                background: none;
-                border: none;
-                color: #9ca3af;
-                cursor: pointer;
-                font-size: 16px;
-                padding: 4px;
-                transition: color 0.2s;
-            }
-
-            .toast-close:hover {
-                color: #1a2332;
-            }
-
-            /* Responsive */
-            @media (max-width: 768px) {
-                .top-header {
-                    flex-wrap: wrap;
-                    gap: 10px;
-                }
-                .top-header-center {
-                    order: 3;
-                    width: 100%;
-                }
-                .top-header-right {
-                    flex-wrap: wrap;
-                }
-                .assigned-users-list {
-                    flex-direction: column;
-                    gap: 2px;
+<script>
+    console.log('Report Center JS Loaded');
+    
+    // ============================================
+    // CSRF TOKEN HELPER
+    // ============================================
+    function getCsrfToken() {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, 10) === 'csrftoken=') {
+                    cookieValue = decodeURIComponent(cookie.substring(10));
+                    break;
                 }
             }
+        }
+        return cookieValue || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    }
 
-            @media (max-width: 480px) {
-                .modal-content {
-                    margin: 20px;
-                    padding: 24px;
-                }
-                .modal-content h2 {
-                    font-size: 20px;
-                }
-            }
-        </style>
+    // ============================================
+    // TOAST NOTIFICATION
+    // ============================================
+    function showToast(message, type) {
+        type = type || 'success';
+        var toast = document.getElementById('toastNotification');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'toastNotification';
+            toast.style.cssText = 'position:fixed;bottom:20px;right:20px;background:white;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);padding:16px 24px;max-width:400px;z-index:9999;display:none;border-left:4px solid #10b981;font-family:-apple-system,BlinkMacSystemFont,sans-serif;';
+            toast.innerHTML = '<div style="display:flex;align-items:center;gap:12px;"><div style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:rgba(16,185,129,0.1);display:flex;align-items:center;justify-content:center;"><i id="toastIcon" class="fas fa-check" style="color:#10b981;"></i></div><div><div id="toastTitle" style="font-weight:600;font-size:14px;color:#1a2332;">Success!</div><div id="toastMessage" style="font-size:13px;color:#6b7280;margin-top:2px;"></div></div><button onclick="this.parentElement.parentElement.style.display=\'none\'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af;padding:0 4px;">&times;</button></div>';
+            document.body.appendChild(toast);
+        }
+        
+        document.getElementById('toastMessage').textContent = message || 'Action completed successfully.';
+        var icon = document.getElementById('toastIcon');
+        var title = document.getElementById('toastTitle');
+        
+        if (type === 'error') {
+            icon.className = 'fas fa-exclamation-circle';
+            toast.style.borderLeftColor = '#ef4444';
+            icon.style.color = '#ef4444';
+            title.textContent = 'Error!';
+        } else {
+            icon.className = 'fas fa-check';
+            toast.style.borderLeftColor = '#10b981';
+            icon.style.color = '#10b981';
+            title.textContent = 'Success!';
+        }
+        
+        toast.style.display = 'block';
+        
+        if (window.toastTimeout) clearTimeout(window.toastTimeout);
+        window.toastTimeout = setTimeout(function() {
+            toast.style.display = 'none';
+        }, 3000);
+    }
 
-        <script>
-            function getCsrfToken() {
-                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            }
-
-            // ============================================
-            // TOAST NOTIFICATION
-            // ============================================
-
-            function showToast(message, title = 'Success!') {
-                const toast = document.getElementById('toastNotification');
-                const msgEl = document.getElementById('toastMessage');
-                const titleEl = toast.querySelector('.toast-title');
-                const icon = toast.querySelector('.toast-icon i');
-                
-                msgEl.textContent = message || 'Action completed successfully.';
-                titleEl.textContent = title;
-                
-                if (title.toLowerCase().includes('error') || title.toLowerCase().includes('warning')) {
-                    icon.className = 'fas fa-exclamation-circle';
-                    toast.style.borderLeftColor = '#ef4444';
-                    toast.querySelector('.toast-icon').style.color = '#ef4444';
-                    toast.querySelector('.toast-icon').style.background = 'rgba(239, 68, 68, 0.1)';
+    // ============================================
+    // CREATE REPORT
+    // ============================================
+    function createReport() {
+        console.log('createReport called');
+        
+        var reportType = document.getElementById('reportType').value;
+        var customInput = document.getElementById('customReportTypeInput');
+        if (customInput && customInput.style.display !== 'none' && customInput.value) {
+            reportType = customInput.value;
+        }
+        
+        var frequency = document.getElementById('reportFrequency').value;
+        var deadlineDate = document.getElementById('deadlineDate').value || null;
+        var deadlineTime = document.getElementById('deadlineTime').value || null;
+        var assignedTo = document.getElementById('assignedTo');
+        
+        var selectedUsers = [];
+        var isAssignedToAll = false;
+        
+        // Check selections
+        for (var i = 0; i < assignedTo.options.length; i++) {
+            if (assignedTo.options[i].selected) {
+                if (assignedTo.options[i].value === 'all') {
+                    isAssignedToAll = true;
                 } else {
-                    icon.className = 'fas fa-check';
-                    toast.style.borderLeftColor = '#10b981';
-                    toast.querySelector('.toast-icon').style.color = '#10b981';
-                    toast.querySelector('.toast-icon').style.background = 'rgba(16, 185, 129, 0.1)';
+                    selectedUsers.push(assignedTo.options[i].value);
+                }
+            }
+        }
+        
+        // If "All Members" is selected, clear individual selections
+        if (isAssignedToAll) {
+            selectedUsers = [];
+        }
+
+        if (!reportType) {
+            showToast('Please select or enter a report type.', 'error');
+            return;
+        }
+
+        if (selectedUsers.length === 0 && !isAssignedToAll) {
+            showToast('Please select at least one user.', 'error');
+            return;
+        }
+
+        var data = {
+            report_type: reportType,
+            frequency: frequency,
+            deadline_date: deadlineDate,
+            deadline_time: deadlineTime,
+            assigned_users: selectedUsers,
+            is_assigned_to_all: isAssignedToAll
+        };
+
+        console.log('Sending data:', data);
+
+        var btn = document.querySelector('#createReportForm .btn-create');
+        var originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+
+        fetch('/adminboard/api/reports/create/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify(data)
+        })
+        .then(function(response) {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                return response.json().then(function(err) {
+                    throw new Error(err.error || 'Server error');
+                });
+            }
+            return response.json();
+        })
+        .then(function(data) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            
+            if (data.success) {
+                showToast('Report created successfully!');
+                setTimeout(function() {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                showToast('Error: ' + data.error, 'error');
+            }
+        })
+        .catch(function(error) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            console.error('Error:', error);
+            showToast('Error: ' + error.message, 'error');
+        });
+    }
+
+    // ============================================
+    // EDIT REPORT
+    // ============================================
+    function editReport(reportId) {
+        console.log('editReport called for ID:', reportId);
+        
+        fetch('/adminboard/api/reports/' + reportId + '/', {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(function(response) {
+            if (!response.ok) {
+                return response.json().then(function(err) {
+                    throw new Error(err.error || 'Server error');
+                });
+            }
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.success) {
+                var report = data.report;
+                document.getElementById('editReportId').value = reportId;
+                document.getElementById('editReportType').value = report.report_type;
+                document.getElementById('editReportFrequency').value = report.frequency;
+                document.getElementById('editDeadlineDate').value = report.deadline_date || '';
+                document.getElementById('editDeadlineTime').value = report.deadline_time || '';
+                document.getElementById('editStatus').value = report.status || 'assigned';
+                
+                var editSelect = document.getElementById('editAssignedUsers');
+                // Clear selections
+                for (var i = 0; i < editSelect.options.length; i++) {
+                    editSelect.options[i].selected = false;
                 }
                 
-                toast.classList.add('show');
-                
-                if (window.toastTimeout) {
-                    clearTimeout(window.toastTimeout);
-                }
-                
-                window.toastTimeout = setTimeout(() => {
-                    toast.classList.remove('show');
-                }, 3000);
-            }
-
-            window.closeToast = function() {
-                const toast = document.getElementById('toastNotification');
-                toast.classList.remove('show');
-                if (window.toastTimeout) {
-                    clearTimeout(window.toastTimeout);
-                    window.toastTimeout = null;
-                }
-            };
-
-            // ============================================
-            // LOGOUT FUNCTION
-            // ============================================
-
-            function logoutUser() {
-                document.getElementById('logoutModal').style.display = 'flex';
-            }
-
-            function closeLogoutModal() {
-                document.getElementById('logoutModal').style.display = 'none';
-            }
-
-            function confirmLogout() {
-                const btn = document.querySelector('#logoutModal .btn-create');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
-                btn.disabled = true;
-                window.location.href = "{% url 'control_dashboard:logout' %}";
-            }
-
-            document.addEventListener('click', function(event) {
-                const modal = document.getElementById('logoutModal');
-                if (event.target === modal) {
-                    closeLogoutModal();
-                }
-            });
-
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape') {
-                    closeLogoutModal();
-                    closeEditModal();
-                }
-            });
-
-            // ============================================
-            // EXISTING FUNCTIONS
-            // ============================================
-
-            function handleAllUsersSelection(selectElement) {
-                const selectedOptions = Array.from(selectElement.selectedOptions).map(opt => opt.value);
-                if (selectedOptions.includes('all')) {
-                    Array.from(selectElement.options).forEach(option => {
-                        if (option.value !== 'all') {
+                // Set selections based on report data
+                if (report.is_assigned_to_all) {
+                    // Select "All Members"
+                    for (var i = 0; i < editSelect.options.length; i++) {
+                        if (editSelect.options[i].value === 'all') {
+                            editSelect.options[i].selected = true;
+                            break;
+                        }
+                    }
+                } else if (report.assigned_users) {
+                    // Select individual users
+                    for (var i = 0; i < editSelect.options.length; i++) {
+                        var option = editSelect.options[i];
+                        if (option.value !== 'all' && report.assigned_users.indexOf(parseInt(option.value)) !== -1) {
                             option.selected = true;
                         }
-                    });
-                }
-            }
-
-            document.getElementById('reportType').addEventListener('change', function() {
-                const customInput = document.getElementById('customReportTypeInput');
-                if (this.value === 'custom') {
-                    if (!customInput) {
-                        const input = document.createElement('input');
-                        input.type = 'text';
-                        input.id = 'customReportTypeInput';
-                        input.className = 'table-input';
-                        input.placeholder = 'Enter custom report type...';
-                        input.required = true;
-                        this.parentNode.appendChild(input);
-                    } else {
-                        customInput.style.display = 'block';
                     }
-                    this.style.display = 'none';
+                }
+                
+                document.getElementById('editReportModal').style.display = 'block';
+            } else {
+                showToast('Error: ' + data.error, 'error');
+            }
+        })
+        .catch(function(error) {
+            console.error('Error:', error);
+            showToast('Error: ' + error.message, 'error');
+        });
+    }
+
+    function closeEditModal() {
+        document.getElementById('editReportModal').style.display = 'none';
+    }
+
+    // ============================================
+    // SUBMIT EDIT REPORT
+    // ============================================
+    function submitEditReport() {
+        console.log('submitEditReport called');
+        
+        var reportId = document.getElementById('editReportId').value;
+        var reportType = document.getElementById('editReportType').value;
+        var frequency = document.getElementById('editReportFrequency').value;
+        var deadlineDate = document.getElementById('editDeadlineDate').value || null;
+        var deadlineTime = document.getElementById('editDeadlineTime').value || null;
+        var status = document.getElementById('editStatus').value;
+        
+        var editSelect = document.getElementById('editAssignedUsers');
+        var selectedUsers = [];
+        var isAssignedToAll = false;
+        
+        for (var i = 0; i < editSelect.options.length; i++) {
+            if (editSelect.options[i].selected) {
+                if (editSelect.options[i].value === 'all') {
+                    isAssignedToAll = true;
                 } else {
-                    if (customInput) {
-                        customInput.style.display = 'none';
-                    }
-                    this.style.display = 'block';
+                    selectedUsers.push(editSelect.options[i].value);
                 }
-            });
+            }
+        }
+        
+        if (isAssignedToAll) {
+            selectedUsers = [];
+        }
 
-            function createReport(event) {
-                event.preventDefault();
-                
-                let reportType = document.getElementById('reportType').value;
-                const customInput = document.getElementById('customReportTypeInput');
-                if (customInput && customInput.style.display !== 'none' && customInput.value) {
-                    reportType = customInput.value;
-                }
-                
-                const frequency = document.getElementById('reportFrequency').value;
-                const deadlineDate = document.getElementById('deadlineDate').value;
-                const deadlineTime = document.getElementById('deadlineTime').value;
-                const assignedTo = document.getElementById('assignedTo');
-                
-                let selectedUsers = Array.from(assignedTo.selectedOptions).map(option => option.value);
-                let isAssignedToAll = false;
-                
-                if (selectedUsers.includes('all')) {
-                    isAssignedToAll = true;
-                    selectedUsers = [];
-                }
+        var data = {
+            report_type: reportType,
+            frequency: frequency,
+            deadline_date: deadlineDate,
+            deadline_time: deadlineTime,
+            assigned_users: selectedUsers,
+            is_assigned_to_all: isAssignedToAll,
+            status: status
+        };
 
-                if (!reportType) {
-                    showToast('Please select or enter a report type.', 'Error');
-                    return;
-                }
+        console.log('Update data:', data);
 
-                if (selectedUsers.length === 0 && !isAssignedToAll) {
-                    showToast('Please select at least one user to assign the report to.', 'Error');
-                    return;
-                }
+        var btn = document.querySelector('#editReportForm .btn-submit');
+        var originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
 
-                const submitBtn = document.querySelector('#createReportForm .btn-create');
-                const originalText = submitBtn.innerHTML;
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
-
-                fetch("{% url 'control_dashboard:api_create_report' %}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        report_type: reportType,
-                        frequency: frequency,
-                        deadline_date: deadlineDate,
-                        deadline_time: deadlineTime,
-                        assigned_users: selectedUsers,
-                        is_assigned_to_all: isAssignedToAll,
-                        description: '',
-                        status: 'assigned'
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalText;
-                    
-                    if (data.success) {
-                        showToast('Report created successfully!', 'Success');
-                        setTimeout(() => location.reload(), 1500);
-                    } else {
-                        showToast('Error: ' + data.error, 'Error');
-                    }
-                })
-                .catch(error => {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalText;
-                    console.error('Error:', error);
-                    showToast('An error occurred. Please try again.', 'Error');
+        fetch('/adminboard/api/reports/' + reportId + '/edit/', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify(data)
+        })
+        .then(function(response) {
+            if (!response.ok) {
+                return response.json().then(function(err) {
+                    throw new Error(err.error || 'Server error');
                 });
             }
+            return response.json();
+        })
+        .then(function(data) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            
+            if (data.success) {
+                showToast('Report updated successfully!');
+                closeEditModal();
+                setTimeout(function() {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                showToast('Error: ' + data.error, 'error');
+            }
+        })
+        .catch(function(error) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            console.error('Error:', error);
+            showToast('Error: ' + error.message, 'error');
+        });
+    }
 
-            function editReport(reportId) {
-                fetch("{% url 'control_dashboard:api_get_report' 0 %}".replace('0', reportId), {
-                    method: 'GET',
-                    headers: {
-                        'X-CSRFToken': getCsrfToken()
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const report = data.report;
-                        document.getElementById('editReportId').value = reportId;
-                        document.getElementById('editReportType').value = report.report_type;
-                        document.getElementById('editReportFrequency').value = report.frequency;
-                        document.getElementById('editDescription').value = report.description || '';
-                        document.getElementById('editDeadlineDate').value = report.deadline_date || '';
-                        document.getElementById('editDeadlineTime').value = report.deadline_time || '';
-                        
-                        const editSelect = document.getElementById('editAssignedUsers');
-                        editSelect.innerHTML = '';
-                        
-                        const allOption = document.createElement('option');
-                        allOption.value = 'all';
-                        allOption.textContent = 'All Users';
-                        if (report.is_assigned_to_all) {
-                            allOption.selected = true;
-                        }
-                        editSelect.appendChild(allOption);
+    // ============================================
+    // DELETE REPORT
+    // ============================================
+    function deleteReport(reportId) {
+        document.getElementById('deleteReportId').value = reportId;
+        document.getElementById('deleteModal').style.display = 'block';
+    }
 
-                        {% for user in users %}
-                        const option = document.createElement('option');
-                        option.value = {{ user.id }};
-                        option.textContent = "{{ user.full_name|default:user.email|escapejs }}";
-                        if (report.assigned_users && report.assigned_users.includes({{ user.id }})) {
-                            option.selected = true;
-                        }
-                        editSelect.appendChild(option);
-                        {% endfor %}
-                        
-                        document.getElementById('editReportModal').style.display = 'block';
-                    } else {
-                        showToast('Error: ' + data.error, 'Error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('An error occurred. Please try again.', 'Error');
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').style.display = 'none';
+        document.getElementById('deleteReportId').value = '';
+    }
+
+    function confirmDeleteReport() {
+        var reportId = document.getElementById('deleteReportId').value;
+        if (!reportId) return;
+
+        var btn = document.querySelector('#deleteModal .btn-create');
+        var originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+        btn.disabled = true;
+
+        fetch('/adminboard/api/reports/' + reportId + '/delete/', {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(function(response) {
+            if (!response.ok) {
+                return response.json().then(function(err) {
+                    throw new Error(err.error || 'Server error');
                 });
             }
+            return response.json();
+        })
+        .then(function(data) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
 
-            function submitEditReport(event) {
-                event.preventDefault();
-                
-                const reportId = document.getElementById('editReportId').value;
-                const reportType = document.getElementById('editReportType').value;
-                const frequency = document.getElementById('editReportFrequency').value;
-                const description = document.getElementById('editDescription').value;
-                const deadlineDate = document.getElementById('editDeadlineDate').value;
-                const deadlineTime = document.getElementById('editDeadlineTime').value;
-                
-                const editSelect = document.getElementById('editAssignedUsers');
-                let assignedUsers = Array.from(editSelect.selectedOptions).map(option => option.value);
-                let isAssignedToAll = false;
-
-                if (assignedUsers.includes('all')) {
-                    isAssignedToAll = true;
-                    assignedUsers = [];
-                }
-
-                const btn = document.querySelector('#editReportForm .btn-submit');
-                const originalText = btn.innerHTML;
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
-
-                fetch("{% url 'control_dashboard:api_edit_report' 0 %}".replace('0', reportId), {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        report_type: reportType,
-                        frequency: frequency,
-                        description: description,
-                        deadline_date: deadlineDate,
-                        deadline_time: deadlineTime,
-                        assigned_users: assignedUsers,
-                        is_assigned_to_all: isAssignedToAll,
-                        status: 'assigned'
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                    
-                    if (data.success) {
-                        showToast('Report updated successfully!', 'Success');
-                        document.getElementById('editReportModal').style.display = 'none';
-                        setTimeout(() => location.reload(), 1500);
-                    } else {
-                        showToast('Error: ' + data.error, 'Error');
-                    }
-                })
-                .catch(error => {
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                    console.error('Error:', error);
-                    showToast('An error occurred. Please try again.', 'Error');
-                });
+            if (data.success) {
+                showToast('Report deleted successfully!');
+                closeDeleteModal();
+                setTimeout(function() {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                showToast('Error: ' + data.error, 'error');
             }
+        })
+        .catch(function(error) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            console.error('Error:', error);
+            showToast('Error: ' + error.message, 'error');
+        });
+    }
 
-            function closeEditModal() {
-                document.getElementById('editReportModal').style.display = 'none';
+    function applyFilters() {
+        var user = document.getElementById('user-filter').value;
+        var url = window.location.pathname + '?';
+        if (user && user !== 'all') url += 'user=' + user;
+        window.location.href = url;
+    }
+
+    // Close modal on background click
+    window.onclick = function(event) {
+        var editModal = document.getElementById('editReportModal');
+        if (event.target == editModal) closeEditModal();
+        
+        var deleteModal = document.getElementById('deleteModal');
+        if (event.target == deleteModal) closeDeleteModal();
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded - initializing Report Center');
+        
+        // Setup custom report type input
+        var reportTypeSelect = document.getElementById('reportType');
+        var customInput = document.createElement('input');
+        customInput.type = 'text';
+        customInput.id = 'customReportTypeInput';
+        customInput.className = 'table-input';
+        customInput.placeholder = 'Enter custom report type...';
+        customInput.style.display = 'none';
+        customInput.style.marginTop = '8px';
+        reportTypeSelect.parentNode.appendChild(customInput);
+
+        reportTypeSelect.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                customInput.style.display = 'block';
+                customInput.required = true;
+            } else {
+                customInput.style.display = 'none';
+                customInput.required = false;
             }
-
-            function deleteReport(reportId) {
-                if (!confirm('Are you sure you want to delete this report?')) {
-                    return;
-                }
-                
-                const btn = document.querySelector(`#row_${reportId} .btn-delete`) || document.querySelector(`[onclick*="deleteReport('${reportId}')"]`);
-                if (btn) {
-                    const originalText = btn.innerHTML;
-                    btn.disabled = true;
-                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                }
-                
-                fetch("{% url 'control_dashboard:api_delete_report' 0 %}".replace('0', reportId), {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRFToken': getCsrfToken()
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        showToast('Report deleted successfully!', 'Success');
-                        setTimeout(() => location.reload(), 1500);
-                    } else {
-                        showToast('Error: ' + data.error, 'Error');
-                        if (btn) {
-                            btn.disabled = false;
-                            btn.innerHTML = originalText;
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('An error occurred. Please try again.', 'Error');
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.innerHTML = originalText;
-                    }
-                });
-            }
-
-            function applyFilters() {
-                const user = document.getElementById('user-filter').value;
-                let url = "{% url 'control_dashboard:report_center' %}?";
-                if (user && user !== 'all') url += "user=" + user;
-                window.location.href = url;
-            }
-
-            // Close modal on background click
-            window.onclick = function(event) {
-                const editModal = document.getElementById('editReportModal');
-                if (event.target == editModal) {
-                    closeEditModal();
-                }
-            }
-
-            // Handle custom report type input visibility
-            document.addEventListener('DOMContentLoaded', function() {
-                const reportTypeSelect = document.getElementById('reportType');
-                if (reportTypeSelect.value === 'custom') {
-                    const customInput = document.createElement('input');
-                    customInput.type = 'text';
-                    customInput.id = 'customReportTypeInput';
-                    customInput.className = 'table-input';
-                    customInput.placeholder = 'Enter custom report type...';
-                    customInput.required = true;
-                    reportTypeSelect.parentNode.appendChild(customInput);
-                    reportTypeSelect.style.display = 'none';
-                }
-            });
-        </script>
-    </body>
-</html>
+        });
+        
+        // Set user filter from URL
+        var urlParams = new URLSearchParams(window.location.search);
+        var userFilter = urlParams.get('user');
+        if (userFilter) {
+            var select = document.getElementById('user-filter');
+            if (select) select.value = userFilter;
+        }
+    });
+</script>
+{% endblock %}

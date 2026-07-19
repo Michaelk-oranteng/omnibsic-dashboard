@@ -1,519 +1,215 @@
+{% extends 'control_dashboard/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Member Dashboard</title>
-        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
-        <link rel="stylesheet" href="{% static 'stylesheets/member.css' %}" type="text/css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-        <meta name="csrf-token" content="{{ csrf_token }}">
-    </head>
 
-    <body>
-        <div class="page-wrapper">
-            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
-            <div class="nav-bar">
-                <div class="logo">
-                    <a href="{% url 'control_dashboard:member_dashboard' %}">
-                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
-                    </a>
-                </div>
+{% block title %}Member Dashboard{% endblock %}
 
-                <ul class="nav-links">
-                    <li class="active"><a href="{% url 'control_dashboard:member_dashboard' %}">
-                        <span class="nav-icon"><i class="fas fa-chart-pie"></i></span>
-                        <span class="nav-text">Dashboard</span>
-                    </a></li>
-                    <li><a href="{% url 'control_dashboard:drafts_page' %}">
-                        <span class="nav-icon"><i class="fas fa-file-alt"></i></span>
-                        <span class="nav-text">Drafts</span>
-                    </a></li>     
-                    <li><a href="{% url 'control_dashboard:reports_page' %}">
-                        <span class="nav-icon"><i class="fas fa-file-pdf"></i></span>
-                        <span class="nav-text">Reports</span>
-                    </a></li>       
-                    <li><a href="{% url 'control_dashboard:submit_page' %}">
-                        <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
-                        <span class="nav-text">Submit</span>
-                    </a></li>  
-                    <li><a href="{% url 'control_dashboard:member_checklist' %}">
-                        <span class="nav-icon"><i class="fas fa-check-double"></i></span>
-                        <span class="nav-text">Checklist</span>
-                    </a></li> 
-                    <li><a href="{% url 'control_dashboard:member_activity_logs' %}">
-                        <span class="nav-icon"><i class="fas fa-clipboard-list"></i></span>
-                        <span class="nav-text">Activity logs</span>
-                    </a></li> 
-                </ul>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'stylesheets/member.css' %}" type="text/css">
+{% endblock %}
 
-                <!-- ==================== PROFILE CARD - LOGOUT BUTTON ==================== -->
-                <div class="nav-footer">
-                    <div class="nav-profile-card" onclick="logoutUser()" style="cursor: pointer;" title="Click to logout">
-                        <div class="nav-profile-img-wrapper">
-                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
-                        </div>
-                        <div class="nav-profile-info">
-                            <h4 class="nav-user-name">{{ request.user.get_full_name|default:user_profile.full_name|default:"Member User" }}</h4>
-                            <p class="nav-user-role">
-                                <i class="fas fa-sign-out-alt" style="font-size: 11px; margin-right: 4px;"></i>
-                                Click to logout
-                            </p>
-                        </div>
-                        <div class="nav-profile-logout-icon">
-                            <i class="fas fa-sign-out-alt"></i>
-                        </div>
-                    </div>
-                </div>
+{% block dashboard_url %}{% url 'control_dashboard:member_dashboard' %}{% endblock %}
+
+{% block nav_links %}
+<li class="active"><a href="{% url 'control_dashboard:member_dashboard' %}">
+    <span class="nav-icon"><i class="fas fa-chart-pie"></i></span>
+    <span class="nav-text">Dashboard</span>
+</a></li>
+<li><a href="{% url 'control_dashboard:drafts_page' %}">
+    <span class="nav-icon"><i class="fas fa-file-alt"></i></span>
+    <span class="nav-text">Draft Exception</span>
+</a></li>     
+<li><a href="{% url 'control_dashboard:reports_page' %}">
+    <span class="nav-icon"><i class="fas fa-file-pdf"></i></span>
+    <span class="nav-text">Reports</span>
+</a></li>       
+<li><a href="{% url 'control_dashboard:submit_page' %}">
+    <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
+    <span class="nav-text">Submit</span>
+</a></li>  
+<li><a href="{% url 'control_dashboard:member_checklist' %}">
+    <span class="nav-icon"><i class="fas fa-check-double"></i></span>
+    <span class="nav-text">Checklist</span>
+</a></li> 
+<li><a href="{% url 'control_dashboard:member_activity_logs' %}">
+    <span class="nav-icon"><i class="fas fa-clipboard-list"></i></span>
+    <span class="nav-text">Activity logs</span>
+</a></li> 
+{% endblock %}
+
+{% block page_title %}Member Dashboard{% endblock %}
+
+{% block top_header_right %}
+<span style="font-size: 13px; color: rgba(26,35,50,0.5);">
+    <i class="fas fa-calendar-alt"></i> {{ today|date:"F d, Y" }}
+</span>
+{% endblock %}
+
+{% block content %}
+<!-- Metrics Cards -->
+<div class="analytics-metrics-grid">
+    <div class="metric-card border-left-warning">
+        <div class="metric-card-content">
+            <span class="card-metric-label">Assigned This Week</span>
+            <h3 class="card-metric-value text-warning">{{ assigned_this_week|default:0 }}</h3>
+            <span class="card-metric-subtext">Due by close of business</span>
+        </div>
+        <div class="metric-card-icon text-warning-dim"><i class="fas fa-clipboard-list"></i></div>
+    </div>
+
+    <div class="metric-card border-left-danger">
+        <div class="metric-card-content">
+            <span class="card-metric-label">Exceptions Captured</span>
+            <h3 class="card-metric-value text-danger">{{ exceptions_this_week|default:0 }}</h3>
+            <span class="card-metric-subtext">Total drafts saved</span>
+        </div>
+        <div class="metric-card-icon text-danger-dim"><i class="fas fa-bug"></i></div>
+    </div>
+
+    <div class="metric-card border-left-primary">
+        <div class="metric-card-content">
+            <span class="card-metric-label">Pending Submissions</span>
+            <h3 class="card-metric-value text-primary">{{ pending_submissions|default:0 }}</h3>
+            <span class="card-metric-subtext">Awaiting your action</span>
+        </div>
+        <div class="metric-card-icon text-primary-dim"><i class="fas fa-clock"></i></div>
+    </div>
+</div>
+
+<!-- Split Layout: Checklist + Quick Actions -->
+<div class="dashboard-split-layout">
+    <!-- Activity Checklist Panel -->
+    <div class="dashboard-panel-card">
+        <div class="panel-card-header">
+            <h4>Activity Checklist</h4>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span class="badge-count">{{ daily_checklists|length }} Daily Controls</span>
+                <a href="{% url 'control_dashboard:member_checklist' %}" class="btn-view">
+                    <i class="fas fa-arrow-right"></i> View All
+                </a>
             </div>
-
-            <!-- ==================== TOP HEADER ==================== -->
-            <div class="top-header">
-                <div class="top-header-left">
-                    <span class="page-title">Member Dashboard</span>
-                </div>
-                <div class="top-header-center"></div>
-                <div class="top-header-right">
-                    <span style="font-size: 13px; color: rgba(26,35,50,0.5);">
-                        <i class="fas fa-calendar-alt"></i> {{ today|date:"F d, Y" }}
-                    </span>
-                </div>
-            </div>
-
-            <!-- ==================== MESSAGES ==================== -->
-            {% if messages %}
-            <div class="messages-container">
-                {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">
-                    {{ message }}
-                    <button class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-
-            <!-- ==================== MAIN CONTENT ==================== -->
-            <div class="main-content">
-                <div class="analytics-metrics-grid">
-                    <div class="metric-card border-left-warning">
-                        <div class="metric-card-content">
-                            <span class="card-metric-label">Assigned This Week</span>
-                            <h3 class="card-metric-value text-warning">{{ assigned_this_week|default:0 }}</h3>
-                            <span class="card-metric-subtext">Due by close of business</span>
-                        </div>
-                        <div class="metric-card-icon text-warning-dim"><i class="fas fa-clipboard-list"></i></div>
-                    </div>
-
-                    <div class="metric-card border-left-danger">
-                        <div class="metric-card-content">
-                            <span class="card-metric-label">Exceptions Captured</span>
-                            <h3 class="card-metric-value text-danger">{{ exceptions_this_week|default:0 }}</h3>
-                            <span class="card-metric-subtext">Total drafts saved</span>
-                        </div>
-                        <div class="metric-card-icon text-danger-dim"><i class="fas fa-bug"></i></div>
-                    </div>
-
-                    <div class="metric-card border-left-primary">
-                        <div class="metric-card-content">
-                            <span class="card-metric-label">Pending Submissions</span>
-                            <h3 class="card-metric-value text-primary">{{ pending_submissions|default:0 }}</h3>
-                            <span class="card-metric-subtext">Awaiting your action</span>
-                        </div>
-                        <div class="metric-card-icon text-primary-dim"><i class="fas fa-clock"></i></div>
-                    </div>
-                </div>
-
-                <div class="dashboard-split-layout">
-                    <div class="dashboard-panel-card" style="flex: 2;">
-                        <div class="panel-card-header">
-                            <h4>Activity Checklist</h4>
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <span class="badge-count">{{ daily_checklists|length }} Daily Controls</span>
-                                <a href="{% url 'control_dashboard:member_checklist' %}" class="btn-view">
-                                    <i class="fas fa-arrow-right"></i> View All
-                                </a>
-                            </div>
-                        </div>
-                        
-                        <table class="users-table">
-                            <thead>
-                                <tr>
-                                    <th>Activity / Task</th>
-                                    <th>Frequency</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for checklist in daily_checklists %}
-                                <tr>
-                                    <td>
-                                        <span class="font-bold block-element">{{ checklist.name }}</span>
-                                        <span class="sub-table-desc">
-                                            {% for task in checklist.tasks.all|slice:":2" %}
-                                                {{ task.description }}{% if not forloop.last %}; {% endif %}
-                                            {% endfor %}
-                                            {% if checklist.tasks.count > 2 %}
-                                                <span style="color: rgba(26,35,50,0.3);">+{{ checklist.tasks.count|add:"-2" }} more</span>
-                                            {% endif %}
-                                        </span>
-                                    </td>
-                                    <td><span class="frequency-tag {{ checklist.frequency }}">{{ checklist.get_frequency_display }}</span></td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="2" class="text-center">
-                                        <i class="fas fa-check-circle"></i>
-                                        No daily checklists assigned
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="dashboard-panel-card" style="flex: 1;">
-                        <div class="panel-card-header">
-                            <h4>Quick Actions</h4>
-                        </div>
-                        <div class="quick-actions-list-stack">
-                            <a href="{% url 'control_dashboard:drafts_page' %}" class="action-shortcut-item">
-                                <div class="shortcut-icon-box danger-box"><i class="fas fa-exclamation-circle"></i></div>
-                                <div class="shortcut-text-box">
-                                    <h5>New Exception</h5>
-                                    <p class="shortcut-desc">Log a control breach directly</p>
-                                </div>
-                            </a>
-                            <a href="{% url 'control_dashboard:reports_page' %}" class="action-shortcut-item">
-                                <div class="shortcut-icon-box primary-box"><i class="fas fa-file-alt"></i></div>
-                                <div class="shortcut-text-box">
-                                    <h5>Report Logs</h5>
-                                    <p class="shortcut-desc">View all captured exceptions</p>
-                                </div>
-                            </a>
-                            <a href="{% url 'control_dashboard:submit_page' %}" class="action-shortcut-item">
-                                <div class="shortcut-icon-box success-box"><i class="fas fa-file-alt"></i></div>
-                                <div class="shortcut-text-box">
-                                    <h5>Submit Report</h5>
-                                    <p class="shortcut-desc">Send drafted report</p>
-                                </div>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="dashboard-panel-card">
-                    <div class="panel-card-header">
-                        <h4>Recent Submissions</h4>
-                    </div>
-                    
-                    <table class="users-table">
-                        <thead>
-                            <tr>
-                                <th>Report Type</th>
-                                <th>Deadline Date</th>
-                                <th>Submission Time</th>
-                                <th class="text-center">Manual Deduction</th>
-                                <th class="text-center">Final Score</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for submission in recent_submissions %}
-                            <tr>
-                                <td class="font-bold">{{ submission.report_type }}</td>
-                                <td>{{ submission.deadline_date|date:"M d, Y"|default:"-" }}</td>
-                                <td>
-                                    {% if submission.submitted_at %}
-                                        <span class="time-stamp">
-                                            {{ submission.submitted_at|date:"h:i A" }} 
-                                            {% if submission.is_on_time %}
-                                                <span style="color: #10b981;">(On Time)</span>
-                                            {% else %}
-                                                <span style="color: #ef4444;">(Late)</span>
-                                            {% endif %}
-                                        </span>
-                                    {% else %}
-                                        <span class="time-stamp">Not submitted</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-center font-mono">{{ submission.manual_deduction|default:"0" }}</td>
-                                <td class="text-center">
-                                    {% if submission.final_score %}
-                                        <span class="score-badge {% if submission.final_score >= 80 %}badge-success{% else %}badge-warning{% endif %}">
-                                            {{ submission.final_score }}%
-                                        </span>
-                                    {% else %}
-                                        <span class="score-badge badge-warning">Pending</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center">
-                                    <i class="fas fa-file-alt"></i>
-                                    No recent submissions
-                                </td>
-                            </tr>
+        </div>
+        
+        <table class="users-table">
+            <thead>
+                <tr>
+                    <th>Activity / Task</th>
+                    <th>Frequency</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for checklist in daily_checklists %}
+                <tr>
+                    <td>
+                        <span class="font-bold block-element">{{ checklist.name }}</span>
+                        <span class="sub-table-desc">
+                            {% for task in checklist.tasks.all|slice:":2" %}
+                                {{ task.description }}{% if not forloop.last %}; {% endif %}
                             {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                            {% if checklist.tasks.count > 2 %}
+                                <span style="color: rgba(26,35,50,0.3);">+{{ checklist.tasks.count|add:"-2" }} more</span>
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td><span class="frequency-tag {{ checklist.frequency }}">{{ checklist.get_frequency_display }}</span></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="2" class="text-center">
+                        <i class="fas fa-check-circle"></i>
+                        No daily checklists assigned
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Quick Actions Panel -->
+    <div class="dashboard-panel-card">
+        <div class="panel-card-header">
+            <h4>Quick Actions</h4>
         </div>
-
-        <!-- Logout Confirmation Modal -->
-        <div id="logoutModal" class="modal" style="display: none;">
-            <div class="modal-content" style="max-width: 400px; text-align: center;">
-                <div style="font-size: 48px; color: #ef4444; margin-bottom: 16px;">
-                    <i class="fas fa-sign-out-alt"></i>
+        <div class="quick-actions-list-stack">
+            <a href="{% url 'control_dashboard:drafts_page' %}" class="action-shortcut-item">
+                <div class="shortcut-icon-box danger-box"><i class="fas fa-exclamation-circle"></i></div>
+                <div class="shortcut-text-box">
+                    <h5>New Exception</h5>
+                    <p class="shortcut-desc">Log a control breach directly</p>
                 </div>
-                <h2 style="margin-bottom: 8px;">Confirm Logout</h2>
-                <p style="color: rgba(26,35,50,0.6); margin-bottom: 24px;">
-                    Are you sure you want to logout?
-                </p>
-                <div style="display: flex; gap: 12px; justify-content: center;">
-                    <button onclick="closeLogoutModal()" class="btn-edit" style="padding: 10px 24px; background: #e5e7eb; color: #1a2332; border: none; border-radius: 6px; cursor: pointer;">
-                        Cancel
-                    </button>
-                    <button onclick="confirmLogout()" class="btn-create" style="padding: 10px 24px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
+            </a>
+            <a href="{% url 'control_dashboard:reports_page' %}" class="action-shortcut-item">
+                <div class="shortcut-icon-box primary-box"><i class="fas fa-file-alt"></i></div>
+                <div class="shortcut-text-box">
+                    <h5>Report Logs</h5>
+                    <p class="shortcut-desc">View all captured exceptions</p>
                 </div>
-            </div>
+            </a>
+            <a href="{% url 'control_dashboard:submit_page' %}" class="action-shortcut-item">
+                <div class="shortcut-icon-box success-box"><i class="fas fa-file-alt"></i></div>
+                <div class="shortcut-text-box">
+                    <h5>Submit Report</h5>
+                    <p class="shortcut-desc">Send drafted report</p>
+                </div>
+            </a>
         </div>
+    </div>
+</div>
 
-        <style>
-            /* Profile card logout styling */
-            .nav-profile-card {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 12px 16px;
-                border-radius: 8px;
-                background: rgba(255,255,255,0.05);
-                transition: all 0.2s ease;
-                position: relative;
-            }
-
-            .nav-profile-card:hover {
-                background: rgba(255,255,255,0.1);
-                transform: translateX(4px);
-            }
-
-            .nav-profile-card:hover .nav-profile-logout-icon {
-                opacity: 1;
-                transform: translateX(0);
-            }
-
-            .nav-profile-logout-icon {
-                margin-left: auto;
-                color: rgba(255,255,255,0.4);
-                font-size: 14px;
-                transition: all 0.2s ease;
-                opacity: 0;
-                transform: translateX(-8px);
-            }
-
-            .nav-user-role {
-                font-size: 11px;
-                color: rgba(255,255,255,0.5);
-                margin: 0;
-            }
-
-            .nav-user-role i {
-                color: #ef4444;
-            }
-
-            /* Modal styles */
-            .modal {
-                position: fixed;
-                z-index: 9999;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                background-color: rgba(0, 0, 0, 0.5);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                animation: fadeIn 0.3s ease;
-            }
-
-            .modal-content {
-                background: white;
-                border-radius: 12px;
-                padding: 32px;
-                animation: slideUp 0.3s ease;
-            }
-
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
-
-            @keyframes slideUp {
-                from { transform: translateY(30px); opacity: 0; }
-                to { transform: translateY(0); opacity: 1; }
-            }
-
-            /* Responsive modal */
-            @media (max-width: 480px) {
-                .modal-content {
-                    margin: 20px;
-                    padding: 24px;
-                }
-                .modal-content h2 {
-                    font-size: 20px;
-                }
-            }
-
-            /* Dashboard Split Layout - Fixed widths */
-            .dashboard-split-layout {
-                display: flex;
-                gap: 20px;
-                margin-bottom: 20px;
-            }
-
-            .dashboard-split-layout .dashboard-panel-card {
-                flex: 1;
-            }
-
-            .dashboard-split-layout .dashboard-panel-card:first-child {
-                flex: 2;
-            }
-
-            .dashboard-split-layout .dashboard-panel-card:last-child {
-                flex: 1;
-            }
-
-            /* Quick Actions Stack */
-            .quick-actions-list-stack {
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
-                padding: 4px 0;
-            }
-
-            .action-shortcut-item {
-                display: flex;
-                align-items: center;
-                gap: 14px;
-                padding: 14px 16px;
-                background: #f8fafc;
-                border-radius: 8px;
-                text-decoration: none;
-                transition: all 0.2s ease;
-                border: 1px solid #e5e7eb;
-            }
-
-            .action-shortcut-item:hover {
-                background: #f1f5f9;
-                border-color: #0066cc;
-                transform: translateX(4px);
-            }
-
-            .shortcut-icon-box {
-                width: 40px;
-                height: 40px;
-                border-radius: 8px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 18px;
-                flex-shrink: 0;
-            }
-
-            .shortcut-icon-box.danger-box {
-                background: #fee2e2;
-                color: #dc2626;
-            }
-
-            .shortcut-icon-box.primary-box {
-                background: #dbeafe;
-                color: #2563eb;
-            }
-
-            .shortcut-icon-box.success-box {
-                background: #d1fae5;
-                color: #065f46;
-            }
-
-            .shortcut-text-box {
-                flex: 1;
-            }
-
-            .shortcut-text-box h5 {
-                margin: 0;
-                font-size: 14px;
-                font-weight: 600;
-                color: #1a2332;
-            }
-
-            .shortcut-desc {
-                margin: 2px 0 0 0;
-                font-size: 12px;
-                color: #6b7280;
-            }
-
-            /* Style for table without status column */
-            .users-table thead th:last-child,
-            .users-table tbody td:last-child {
-                text-align: left;
-            }
-
-            /* Responsive */
-            @media (max-width: 768px) {
-                .dashboard-split-layout {
-                    flex-direction: column;
-                }
-                
-                .dashboard-split-layout .dashboard-panel-card:first-child,
-                .dashboard-split-layout .dashboard-panel-card:last-child {
-                    flex: 1;
-                }
-            }
-        </style>
-
-        <script>
-            function getCsrfToken() {
-                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            }
-
-            // ============================================
-            // LOGOUT FUNCTION
-            // ============================================
-
-            function logoutUser() {
-                document.getElementById('logoutModal').style.display = 'flex';
-            }
-
-            function closeLogoutModal() {
-                document.getElementById('logoutModal').style.display = 'none';
-            }
-
-            function confirmLogout() {
-                // Show loading state
-                const btn = document.querySelector('#logoutModal .btn-create');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
-                btn.disabled = true;
-
-                // Redirect to logout URL
-                window.location.href = "{% url 'control_dashboard:logout' %}";
-            }
-
-            // Close modal on background click
-            document.addEventListener('click', function(event) {
-                const modal = document.getElementById('logoutModal');
-                if (event.target === modal) {
-                    closeLogoutModal();
-                }
-            });
-
-            // Close modal on Escape key
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape') {
-                    closeLogoutModal();
-                }
-            });
-        </script>
-    </body>
-</html>
+<!-- Recent Submissions Panel -->
+<div class="dashboard-panel-card">
+    <div class="panel-card-header">
+        <h4>Recent Submissions</h4>
+    </div>
+    
+    <table class="users-table">
+        <thead>
+            <tr>
+                <th>Report Type</th>
+                <th>Deadline Date</th>
+                <th>Submission Time</th>
+                <th class="text-center">Manual Deduction</th>
+                <th class="text-center">Final Score</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for submission in recent_submissions %}
+            <tr>
+                <td class="font-bold">{{ submission.report_type }}</td>
+                <td>{{ submission.deadline_date|date:"M d, Y"|default:"-" }}</td>
+                <td>
+                    {% if submission.submitted_at %}
+                        <span class="time-stamp">
+                            {{ submission.submitted_at|date:"h:i A" }} 
+                            {% if submission.is_on_time %}
+                                <span style="color: #10b981;">(On Time)</span>
+                            {% else %}
+                                <span style="color: #ef4444;">(Late)</span>
+                            {% endif %}
+                        </span>
+                    {% else %}
+                        <span class="time-stamp">Not submitted</span>
+                    {% endif %}
+                </td>
+                <td class="text-center font-mono">{{ submission.manual_deduction|default:"0" }}</td>
+                <td class="text-center">
+                    {% if submission.final_score %}
+                        <span class="score-badge {% if submission.final_score >= 80 %}badge-success{% else %}badge-warning{% endif %}">
+                            {{ submission.final_score }}%
+                        </span>
+                    {% else %}
+                        <span class="score-badge badge-warning">Pending</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="text-center">
+                    <i class="fas fa-file-alt"></i>
+                    No recent submissions
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

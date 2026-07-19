@@ -1,652 +1,269 @@
+{% extends 'control_dashboard/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Supervisor Dashboard - Team Performance</title>
-        <link rel="stylesheet" href="{% static 'stylesheets/base.css' %}" type="text/css">
-        <link rel="stylesheet" href="{% static 'stylesheets/member.css' %}" type="text/css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-        <meta name="csrf-token" content="{{ csrf_token }}">
-    </head>
-    <body>
-        <div class="page-wrapper">
-            <!-- ==================== SIDEBAR NAVIGATION ==================== -->
-            <div class="nav-bar">
-                <div class="logo">
-                    <a href="{% url 'control_dashboard:supervisor_dashboard' %}">
-                        <img src="{% static 'images/OmniBSIC_Bank_Logo.svg' %}" alt="Bank Logo">
-                    </a>
-                </div>
 
-                <ul class="nav-links">
-                    <li><a href="{% url 'control_dashboard:supervisor_dashboard' %}">
-                        <span class="nav-icon"><i class="fas fa-chart-line"></i></span>
-                        <span class="nav-text">Dashboard</span>
-                    </a></li>  
-                    <li class="active"><a href="{% url 'control_dashboard:team_performance' %}">
-                        <span class="nav-icon"><i class="fas fa-users"></i></span>
-                        <span class="nav-text">Team Performance</span>
-                    </a></li> 
-                    <li><a href="{% url 'control_dashboard:submitted_reports' %}">
-                        <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
-                        <span class="nav-text">Submitted Reports</span>
-                    </a></li>
-                    <li><a href="{% url 'control_dashboard:ad_hoc_scorecard' %}">
-                        <span class="nav-icon"><i class="fas fa-star"></i></span>
-                        <span class="nav-text">Ad-Hoc Scorecard</span>
-                    </a></li> 
-                    <li><a href="{% url 'control_dashboard:logged_exceptions' %}">
-                        <span class="nav-icon"><i class="fas fa-exclamation-triangle"></i></span>
-                        <span class="nav-text">Logged Exceptions</span>
-                    </a></li>        
-                    <li><a href="{% url 'control_dashboard:supervisor_checklist' %}">
-                        <span class="nav-icon"><i class="fas fa-tasks"></i></span>
-                        <span class="nav-text">Activity Checklist</span>
-                    </a></li>
-                    <li><a href="{% url 'control_dashboard:supervisor_activity_logs' %}">
-                        <span class="nav-icon"><i class="fas fa-search"></i></span>
-                        <span class="nav-text">Activity Logs</span>
-                    </a></li> 
-                </ul>
+{% block title %}Team Performance{% endblock %}
 
-                <!-- ==================== PROFILE CARD - LOGOUT BUTTON ==================== -->
-                <div class="nav-footer">
-                    <div class="nav-profile-card" onclick="logoutUser()" style="cursor: pointer;" title="Click to logout">
-                        <div class="nav-profile-img-wrapper">
-                            <img src="{% static 'images/user-avatar.jpg' %}" alt="User Profile Image">
-                        </div>
-                        <div class="nav-profile-info">
-                            <h4 class="nav-user-name">{{ request.user.get_full_name|default:user_profile.full_name|default:"Supervisor User" }}</h4>
-                            <p class="nav-user-role">
-                                <i class="fas fa-sign-out-alt" style="font-size: 11px; margin-right: 4px;"></i>
-                                Click to logout
-                            </p>
-                        </div>
-                        <div class="nav-profile-logout-icon">
-                            <i class="fas fa-sign-out-alt"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'stylesheets/team-performance.css' %}" type="text/css">
+{% endblock %}
 
-            <!-- ==================== TOP HEADER ==================== -->
-            <div class="top-header">
-                <div class="top-header-left">
-                    <span class="page-title">Team Member Performance</span>
-                </div>
+{% block dashboard_url %}{% url 'control_dashboard:supervisor_dashboard' %}{% endblock %}
 
-                <div class="top-header-center">
-                    <div class="header-filter-group">
-                        <label for="search-member">Search</label>
-                        <input type="text" id="search-member" class="header-search" placeholder="Search team members..." onkeyup="filterTeamMembers()">
-                    </div>
-                </div>
+{% block nav_links %}
+<li><a href="{% url 'control_dashboard:supervisor_dashboard' %}">
+    <span class="nav-icon"><i class="fas fa-chart-line"></i></span>
+    <span class="nav-text">Dashboard</span>
+</a></li>  
+<li class="active"><a href="{% url 'control_dashboard:team_performance' %}">
+    <span class="nav-icon"><i class="fas fa-users"></i></span>
+    <span class="nav-text">Team Performance</span>
+</a></li> 
+<li><a href="{% url 'control_dashboard:submitted_reports' %}">
+    <span class="nav-icon"><i class="fas fa-paper-plane"></i></span>
+    <span class="nav-text">Submitted Reports</span>
+</a></li>
+<li><a href="{% url 'control_dashboard:ad_hoc_scorecard' %}">
+    <span class="nav-icon"><i class="fas fa-star"></i></span>
+    <span class="nav-text">Ad-Hoc Scorecard</span>
+</a></li> 
+<li><a href="{% url 'control_dashboard:logged_exceptions' %}">
+    <span class="nav-icon"><i class="fas fa-exclamation-triangle"></i></span>
+    <span class="nav-text">Logged Exceptions</span>
+</a></li>        
+<li><a href="{% url 'control_dashboard:supervisor_checklist' %}">
+    <span class="nav-icon"><i class="fas fa-tasks"></i></span>
+    <span class="nav-text">Activity Checklist</span>
+</a></li>
+<li><a href="{% url 'control_dashboard:supervisor_activity_logs' %}">
+    <span class="nav-icon"><i class="fas fa-search"></i></span>
+    <span class="nav-text">Activity Logs</span>
+</a></li> 
+{% endblock %}
 
-                <div class="top-header-right">
-                    <button class="btn-export-header" onclick="exportTeamData()">
-                        <i class="fas fa-download"></i> Export Report
-                    </button>
-                </div>
-            </div>
+{% block page_title %}Team Member Performance{% endblock %}
 
-            <!-- ==================== MESSAGES ==================== -->
-            {% if messages %}
-            <div class="messages-container">
-                {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">
-                    {{ message }}
-                    <button class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
+{% block top_header_center %}
+<div class="header-filter-group">
+    <label for="search-member"><i class="fas fa-search"></i></label>
+    <input type="text" id="search-member" class="header-search" placeholder="Search team members..." onkeyup="filterTeamMembers()">
+</div>
+{% endblock %}
 
-            <!-- ==================== MAIN CONTENT ==================== -->
-            <div class="main-content">
-                
-                <!-- Stats Summary Cards -->
-                <div class="analytics-metrics-grid" style="margin-bottom: 20px;">
-                    <div class="metric-card border-left-primary">
-                        <div class="metric-card-content">
-                            <span class="card-metric-label">Total Team Members</span>
-                            <h3 class="card-metric-value text-primary">{{ total_members|default:0 }}</h3>
-                            <span class="card-metric-subtext">Active members</span>
-                        </div>
-                        <div class="metric-card-icon text-primary-dim"><i class="fas fa-users"></i></div>
-                    </div>
+{% block top_header_right %}
+<button class="btn-export-header" onclick="exportTeamData()">
+    <i class="fas fa-download"></i> Export Report
+</button>
+{% endblock %}
 
-                    <div class="metric-card border-left-success">
-                        <div class="metric-card-content">
-                            <span class="card-metric-label">Total Tasks</span>
-                            <h3 class="card-metric-value text-success">{{ total_tasks|default:0 }}</h3>
-                            <span class="card-metric-subtext">Assigned this period</span>
-                        </div>
-                        <div class="metric-card-icon text-success-dim"><i class="fas fa-tasks"></i></div>
-                    </div>
-
-                    <div class="metric-card border-left-warning">
-                        <div class="metric-card-content">
-                            <span class="card-metric-label">Completed Tasks</span>
-                            <h3 class="card-metric-value text-warning">{{ total_completed|default:0 }}</h3>
-                            <span class="card-metric-subtext">Successfully completed</span>
-                        </div>
-                        <div class="metric-card-icon text-warning-dim"><i class="fas fa-check-circle"></i></div>
-                    </div>
-
-                    <div class="metric-card border-left-info">
-                        <div class="metric-card-content">
-                            <span class="card-metric-label">Overall Completion</span>
-                            <h3 class="card-metric-value text-info">{{ overall_completion|default:0 }}%</h3>
-                            <span class="card-metric-subtext">Team performance rate</span>
-                        </div>
-                        <div class="metric-card-icon text-info-dim"><i class="fas fa-chart-pie"></i></div>
-                    </div>
-                </div>
-
-                <!-- Team Performance Table -->
-                <div class="table-container">
-                    <div class="table-header">
-                        <h4>Team Members ({{ team_data|length }})</h4>
-                    </div>
-                    
-                    <table class="users-table" id="teamTable">
-                        <thead>
-                            <tr>
-                                <th>Full Name</th>
-                                <th>Position</th>
-                                <th class="text-center">Total Tasks</th>
-                                <th class="text-center">Completed</th>
-                                <th style="width: 30%;">Performance Score</th>
-                                <th class="text-center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for member in team_data %}
-                            <tr data-name="{{ member.user.full_name|lower }}">
-                                <td class="font-bold">{{ member.user.full_name|default:member.user.email }}</td>
-                                <td>{{ member.user.get_position_display|default:"-" }}</td>
-                                <td class="text-center"><span class="task-count-badge">{{ member.total_tasks }}</span></td>
-                                <td class="text-center"><span class="task-count-badge">{{ member.completed }}</span></td>
-                                <td>
-                                    <div class="performance-metric-wrapper">
-                                        <span class="score-text {% if member.percentage >= 90 %}text-success{% elif member.percentage >= 70 %}text-warning{% else %}text-danger{% endif %}">
-                                            {{ member.percentage }}%
-                                        </span>
-                                        <div class="progress-track">
-                                            <div class="progress-bar {% if member.percentage >= 90 %}bar-success{% elif member.percentage >= 70 %}bar-warning{% else %}bar-danger{% endif %}" 
-                                                 style="width: {{ member.percentage }}%;"></div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="text-center">
-                                    <span class="status-badge {% if member.status == 'success' %}active{% elif member.status == 'warning' %}pending{% else %}inactive{% endif %}">
-                                        {{ member.status_text }}
-                                    </span>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="6" class="text-center">
-                                    <i class="fas fa-users"></i>
-                                    No team members found. Add members to get started.
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-
-            </div>
+{% block content %}
+<!-- Stats Summary Cards -->
+<div class="analytics-metrics-grid">
+    <div class="metric-card border-left-primary">
+        <div class="metric-card-content">
+            <span class="card-metric-label">Total Team Members</span>
+            <h3 class="card-metric-value text-primary">{{ total_members|default:0 }}</h3>
+            <span class="card-metric-subtext">Active members</span>
         </div>
+        <div class="metric-card-icon text-primary-dim"><i class="fas fa-users"></i></div>
+    </div>
 
-        <!-- Logout Confirmation Modal -->
-        <div id="logoutModal" class="modal" style="display: none;">
-            <div class="modal-content" style="max-width: 400px; text-align: center;">
-                <div style="font-size: 48px; color: #ef4444; margin-bottom: 16px;">
-                    <i class="fas fa-sign-out-alt"></i>
-                </div>
-                <h2 style="margin-bottom: 8px;">Confirm Logout</h2>
-                <p style="color: rgba(26,35,50,0.6); margin-bottom: 24px;">
-                    Are you sure you want to logout?
-                </p>
-                <div style="display: flex; gap: 12px; justify-content: center;">
-                    <button onclick="closeLogoutModal()" class="btn-edit" style="padding: 10px 24px; background: #e5e7eb; color: #1a2332; border: none; border-radius: 6px; cursor: pointer;">
-                        Cancel
-                    </button>
-                    <button onclick="confirmLogout()" class="btn-create" style="padding: 10px 24px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
-                </div>
-            </div>
+    <div class="metric-card border-left-success">
+        <div class="metric-card-content">
+            <span class="card-metric-label">Total Tasks</span>
+            <h3 class="card-metric-value text-success">{{ total_tasks|default:0 }}</h3>
+            <span class="card-metric-subtext">Assigned this period</span>
         </div>
+        <div class="metric-card-icon text-success-dim"><i class="fas fa-tasks"></i></div>
+    </div>
 
-        <div id="toastNotification" class="toast-notification">
-            <div class="toast-icon"><i class="fas fa-check"></i></div>
-            <div class="toast-content">
-                <p class="toast-title">Success!</p>
-                <p class="toast-message" id="toastMessage">Action completed successfully.</p>
-            </div>
-            <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
+    <div class="metric-card border-left-warning">
+        <div class="metric-card-content">
+            <span class="card-metric-label">Completed Tasks</span>
+            <h3 class="card-metric-value text-warning">{{ total_completed|default:0 }}</h3>
+            <span class="card-metric-subtext">Successfully completed</span>
         </div>
+        <div class="metric-card-icon text-warning-dim"><i class="fas fa-check-circle"></i></div>
+    </div>
 
-        <style>
-            /* Profile card logout styling */
-            .nav-profile-card {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 12px 16px;
-                border-radius: 8px;
-                background: rgba(255,255,255,0.05);
-                transition: all 0.2s ease;
-                position: relative;
+    <div class="metric-card border-left-info">
+        <div class="metric-card-content">
+            <span class="card-metric-label">Overall Completion</span>
+            <h3 class="card-metric-value text-info">{{ overall_completion|default:0 }}%</h3>
+            <span class="card-metric-subtext">Team performance rate</span>
+        </div>
+        <div class="metric-card-icon text-info-dim"><i class="fas fa-chart-pie"></i></div>
+    </div>
+</div>
+
+<!-- Team Performance Table -->
+<div class="table-container">
+    <div class="table-header">
+        <h4>Team Members ({{ team_data|length }})</h4>
+    </div>
+    
+    <table class="users-table" id="teamTable">
+        <thead>
+            <tr>
+                <th>Full Name</th>
+                <th>Position</th>
+                <th class="text-center">Total Tasks</th>
+                <th class="text-center">Completed</th>
+                <th style="width: 30%;">Performance Score</th>
+                <th class="text-center">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in team_data %}
+            <tr data-name="{{ member.user.full_name|lower }}">
+                <td class="font-bold">{{ member.user.full_name|default:member.user.email }}</td>
+                <td>{{ member.user.get_position_display|default:"-" }}</td>
+                <td class="text-center"><span class="task-count-badge">{{ member.total_tasks }}</span></td>
+                <td class="text-center"><span class="task-count-badge">{{ member.completed }}</span></td>
+                <td>
+                    <div class="performance-metric-wrapper">
+                        <span class="score-text {% if member.percentage >= 90 %}text-success{% elif member.percentage >= 70 %}text-warning{% else %}text-danger{% endif %}">
+                            {{ member.percentage }}%
+                        </span>
+                        <div class="progress-track">
+                            <div class="progress-bar {% if member.percentage >= 90 %}bar-success{% elif member.percentage >= 70 %}bar-warning{% else %}bar-danger{% endif %}" 
+                                 style="width: {{ member.percentage }}%;"></div>
+                        </div>
+                    </div>
+                </td>
+                <td class="text-center">
+                    <span class="status-badge {% if member.status == 'success' %}active{% elif member.status == 'warning' %}pending{% else %}inactive{% endif %}">
+                        {{ member.status_text }}
+                    </span>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center">
+                    <i class="fas fa-users"></i>
+                    No team members found. Add members to get started.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    }
+
+    // ============================================
+    // TOAST NOTIFICATION
+    // ============================================
+
+    function showToast(message, title = 'Success!') {
+        const toast = document.getElementById('toastNotification');
+        const msgEl = document.getElementById('toastMessage');
+        const titleEl = toast.querySelector('.toast-title');
+        msgEl.textContent = message || 'Action completed successfully.';
+        titleEl.textContent = title;
+        toast.classList.add('show');
+        
+        if (window.toastTimeout) {
+            clearTimeout(window.toastTimeout);
+        }
+        
+        window.toastTimeout = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    window.closeToast = function() {
+        const toast = document.getElementById('toastNotification');
+        toast.classList.remove('show');
+        if (window.toastTimeout) {
+            clearTimeout(window.toastTimeout);
+            window.toastTimeout = null;
+        }
+    };
+
+    // ============================================
+    // FILTER TEAM MEMBERS
+    // ============================================
+
+    function filterTeamMembers() {
+        const input = document.getElementById('search-member');
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById('teamTable');
+        const rows = table.getElementsByTagName('tr');
+
+        for (let i = 1; i < rows.length; i++) {
+            const nameCell = rows[i].getElementsByTagName('td')[0];
+            if (nameCell) {
+                const name = nameCell.textContent.toLowerCase();
+                rows[i].style.display = name.includes(filter) ? '' : 'none';
             }
+        }
+    }
 
-            .nav-profile-card:hover {
-                background: rgba(255,255,255,0.1);
-                transform: translateX(4px);
-            }
+    // ============================================
+    // EXPORT TEAM DATA
+    // ============================================
 
-            .nav-profile-card:hover .nav-profile-logout-icon {
-                opacity: 1;
-                transform: translateX(0);
-            }
-
-            .nav-profile-logout-icon {
-                margin-left: auto;
-                color: rgba(255,255,255,0.4);
-                font-size: 14px;
-                transition: all 0.2s ease;
-                opacity: 0;
-                transform: translateX(-8px);
-            }
-
-            .nav-user-role {
-                font-size: 11px;
-                color: rgba(255,255,255,0.5);
-                margin: 0;
-            }
-
-            .nav-user-role i {
-                color: #ef4444;
-            }
-
-            /* Modal styles */
-            .modal {
-                position: fixed;
-                z-index: 9999;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                background-color: rgba(0, 0, 0, 0.5);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                animation: fadeIn 0.3s ease;
-            }
-
-            .modal-content {
-                background: white;
-                border-radius: 12px;
-                padding: 32px;
-                animation: slideUp 0.3s ease;
-                max-height: 90vh;
-                overflow-y: auto;
-            }
-
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
-
-            @keyframes slideUp {
-                from { transform: translateY(30px); opacity: 0; }
-                to { transform: translateY(0); opacity: 1; }
-            }
-
-            /* Performance Metrics */
-            .performance-metric-wrapper {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-            }
-
-            .score-text {
-                font-weight: 600;
-                font-size: 14px;
-                min-width: 45px;
-            }
-
-            .text-success { color: #10b981; }
-            .text-warning { color: #f59e0b; }
-            .text-danger { color: #ef4444; }
-
-            .progress-track {
-                flex: 1;
-                height: 8px;
-                background: #e5e7eb;
-                border-radius: 4px;
-                overflow: hidden;
-            }
-
-            .progress-bar {
-                height: 100%;
-                border-radius: 4px;
-                transition: width 0.6s ease;
-            }
-
-            .bar-success { background: #10b981; }
-            .bar-warning { background: #f59e0b; }
-            .bar-danger { background: #ef4444; }
-
-            .task-count-badge {
-                display: inline-block;
-                padding: 2px 12px;
-                background: #f3f4f6;
-                border-radius: 12px;
-                font-size: 13px;
-                font-weight: 600;
-                color: #1a2332;
-            }
-
-            .btn-export-header {
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                padding: 8px 16px;
-                background: #0066cc;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 13px;
-                font-weight: 500;
-                transition: all 0.2s ease;
-            }
-
-            .btn-export-header:hover {
-                background: #004e8c;
-                transform: translateY(-1px);
-                box-shadow: 0 2px 8px rgba(0, 102, 204, 0.3);
-            }
-
-            .header-search {
-                padding: 8px 14px;
-                border: 1px solid #d1d5db;
-                border-radius: 6px;
-                font-size: 13px;
-                font-family: 'Poppins', sans-serif;
-                width: 250px;
-                transition: border-color 0.2s ease;
-                background: #fafbfc;
-            }
-
-            .header-search:focus {
-                outline: none;
-                border-color: #0066cc;
-                box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
-            }
-
-            /* Toast Notification */
-            .toast-notification {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: white;
-                border-radius: 12px;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-                padding: 16px 20px;
-                display: flex;
-                align-items: center;
-                gap: 14px;
-                max-width: 400px;
-                z-index: 10000;
-                transform: translateX(120%);
-                transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-                border-left: 4px solid #0066cc;
-            }
-
-            .toast-notification.show {
-                transform: translateX(0);
-            }
-
-            .toast-icon {
-                width: 40px;
-                height: 40px;
-                background: #d1fae5;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: #065f46;
-                font-size: 18px;
-                flex-shrink: 0;
-            }
-
-            .toast-content {
-                flex: 1;
-            }
-
-            .toast-title {
-                margin: 0;
-                font-weight: 600;
-                font-size: 14px;
-                color: #1a2332;
-            }
-
-            .toast-message {
-                margin: 4px 0 0 0;
-                font-size: 13px;
-                color: #6b7280;
-            }
-
-            .toast-close {
-                background: none;
-                border: none;
-                color: #9ca3af;
-                cursor: pointer;
-                font-size: 16px;
-                padding: 4px;
-                transition: color 0.2s;
-            }
-
-            .toast-close:hover {
-                color: #1a2332;
-            }
-
-            /* Responsive */
-            @media (max-width: 768px) {
-                .top-header {
-                    flex-wrap: wrap;
-                    gap: 10px;
-                }
-                .top-header-center {
-                    order: 3;
-                    width: 100%;
-                }
-                .header-search {
-                    width: 100%;
-                }
-                .top-header-right {
-                    flex-wrap: wrap;
-                }
-                .modal-content {
-                    margin: 20px;
-                    padding: 24px;
-                }
-                .performance-metric-wrapper {
-                    flex-direction: column;
-                    align-items: flex-start;
-                    gap: 4px;
+    function exportTeamData() {
+        showToast('Exporting team data...', 'Exporting');
+        
+        let csv = 'Full Name,Position,Total Tasks,Completed,Performance Score,Status\n';
+        const rows = document.querySelectorAll('#teamTable tbody tr');
+        
+        rows.forEach(row => {
+            if (row.style.display !== 'none') {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 5) {
+                    const name = cells[0].textContent.trim();
+                    const position = cells[1].textContent.trim();
+                    const tasks = cells[2].textContent.trim();
+                    const completed = cells[3].textContent.trim();
+                    const score = cells[4].querySelector('.score-text')?.textContent?.trim() || '0%';
+                    const status = cells[5]?.textContent?.trim() || '';
+                    csv += `"${name}","${position}","${tasks}","${completed}","${score}","${status}"\n`;
                 }
             }
-        </style>
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'team_performance.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        setTimeout(() => {
+            showToast('Team data exported successfully!', 'Exported');
+        }, 500);
+    }
 
-        <script>
-            function getCsrfToken() {
-                return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    // ============================================
+    // ENTER KEY SUPPORT FOR SEARCH
+    // ============================================
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const target = e.target;
+            if (target.id === 'search-member') {
+                filterTeamMembers();
             }
+        }
+    });
 
-            // ============================================
-            // TOAST NOTIFICATION
-            // ============================================
+    // ============================================
+    // INITIALIZATION
+    // ============================================
 
-            function showToast(message, title = 'Success!') {
-                const toast = document.getElementById('toastNotification');
-                const msgEl = document.getElementById('toastMessage');
-                const titleEl = toast.querySelector('.toast-title');
-                msgEl.textContent = message || 'Action completed successfully.';
-                titleEl.textContent = title;
-                toast.classList.add('show');
-                
-                if (window.toastTimeout) {
-                    clearTimeout(window.toastTimeout);
-                }
-                
-                window.toastTimeout = setTimeout(() => {
-                    toast.classList.remove('show');
-                }, 3000);
-            }
-
-            window.closeToast = function() {
-                const toast = document.getElementById('toastNotification');
-                toast.classList.remove('show');
-                if (window.toastTimeout) {
-                    clearTimeout(window.toastTimeout);
-                    window.toastTimeout = null;
-                }
-            };
-
-            // ============================================
-            // LOGOUT FUNCTION
-            // ============================================
-
-            function logoutUser() {
-                document.getElementById('logoutModal').style.display = 'flex';
-            }
-
-            function closeLogoutModal() {
-                document.getElementById('logoutModal').style.display = 'none';
-            }
-
-            function confirmLogout() {
-                const btn = document.querySelector('#logoutModal .btn-create');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
-                btn.disabled = true;
-                window.location.href = "{% url 'control_dashboard:logout' %}";
-            }
-
-            document.addEventListener('click', function(event) {
-                const modal = document.getElementById('logoutModal');
-                if (event.target === modal) {
-                    closeLogoutModal();
-                }
-            });
-
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape') {
-                    closeLogoutModal();
-                }
-            });
-
-            // ============================================
-            // FILTER TEAM MEMBERS
-            // ============================================
-
-            function filterTeamMembers() {
-                const input = document.getElementById('search-member');
-                const filter = input.value.toLowerCase();
-                const table = document.getElementById('teamTable');
-                const rows = table.getElementsByTagName('tr');
-
-                for (let i = 1; i < rows.length; i++) {
-                    const nameCell = rows[i].getElementsByTagName('td')[0];
-                    if (nameCell) {
-                        const name = nameCell.textContent.toLowerCase();
-                        rows[i].style.display = name.includes(filter) ? '' : 'none';
-                    }
-                }
-            }
-
-            // ============================================
-            // EXPORT TEAM DATA
-            // ============================================
-
-            function exportTeamData() {
-                showToast('Exporting team data...', 'Exporting');
-                
-                let csv = 'Full Name,Position,Total Tasks,Completed,Performance Score,Status\n';
-                const rows = document.querySelectorAll('#teamTable tbody tr');
-                
-                rows.forEach(row => {
-                    if (row.style.display !== 'none') {
-                        const cells = row.querySelectorAll('td');
-                        if (cells.length >= 5) {
-                            const name = cells[0].textContent.trim();
-                            const position = cells[1].textContent.trim();
-                            const tasks = cells[2].textContent.trim();
-                            const completed = cells[3].textContent.trim();
-                            const score = cells[4].querySelector('.score-text')?.textContent?.trim() || '0%';
-                            const status = cells[5]?.textContent?.trim() || '';
-                            csv += `"${name}","${position}","${tasks}","${completed}","${score}","${status}"\n`;
-                        }
-                    }
-                });
-                
-                const blob = new Blob([csv], { type: 'text/csv' });
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'team_performance.csv';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-                
-                setTimeout(() => {
-                    showToast('Team data exported successfully!', 'Exported');
-                }, 500);
-            }
-
-            // ============================================
-            // COMPLETELY REMOVE ANY MODAL POPUPS
-            // ============================================
-
-            // This runs immediately to remove any modals that might exist
-            (function() {
-                // Override the viewMemberDetails function globally
-                window.viewMemberDetails = function() {
-                    console.log('Member details popup blocked');
-                    if (typeof showToast === 'function') {
-                        showToast('This feature is not available.', 'Info');
-                    }
-                    return false;
-                };
-
-                window.closeMemberDetail = function() {
-                    return false;
-                };
-
-                // Remove any member detail modals
-                document.addEventListener('DOMContentLoaded', function() {
-                    // Find and remove any modal that isn't the logout or toast
-                    const allModals = document.querySelectorAll('.modal');
-                    allModals.forEach(modal => {
-                        if (modal.id !== 'logoutModal' && modal.id !== 'toastNotification') {
-                            modal.remove();
-                        }
-                    });
-
-                    // Also check for any overlay divs
-                    const overlays = document.querySelectorAll('.modal-overlay, .popup-overlay, .member-detail-overlay');
-                    overlays.forEach(overlay => overlay.remove());
-
-                    console.log('Modal cleanup complete - only logout and toast modals remain');
-                });
-            })();
-        </script>
-    </body>
-</html>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Team Performance page loaded');
+        console.log('Total team members:', {{ team_data|length }});
+    });
+</script>
+{% endblock %}
