@@ -1,0 +1,623 @@
+/* ==========================================================================
+   SUPERVISOR.CSS - Supervisor Dashboard Styles
+   ========================================================================== */
+
+/* ==========================================================================
+   1. METRIC CARDS
+   ========================================================================== */
+
+.analytics-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.metric-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px var(--glass-shadow);
+    position: relative;
+    overflow: hidden;
+    min-height: 100px;
+}
+
+.metric-card:hover {
+    background: rgba(255, 255, 255, 0.85);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 32px var(--glass-shadow-hover);
+}
+
+.metric-card:active {
+    transform: scale(0.98);
+}
+
+/* Border colors */
+.metric-card.border-left-danger {
+    border-left: 4px solid var(--omni-danger);
+}
+.metric-card.border-left-warning {
+    border-left: 4px solid var(--omni-warning);
+}
+.metric-card.border-left-purple {
+    border-left: 4px solid var(--omni-purple);
+}
+.metric-card.border-left-success {
+    border-left: 4px solid var(--omni-success);
+}
+
+/* Metric Card Hover Effect */
+.metric-card-hover {
+    position: absolute;
+    bottom: -30px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--omni-primary);
+    opacity: 0;
+    transition: all 0.3s ease;
+    padding: 6px 0;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 0 0 16px 16px;
+}
+
+.metric-card:hover .metric-card-hover {
+    bottom: 0;
+    opacity: 1;
+}
+
+/* Metric Card Content */
+.metric-card-content {
+    flex: 1;
+}
+
+.card-metric-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(26, 35, 50, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.card-metric-value {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.card-metric-subtext {
+    display: block;
+    font-size: 12px;
+    color: rgba(26, 35, 50, 0.4);
+    margin-top: 4px;
+}
+
+/* Metric Card Icons */
+.metric-card-icon {
+    font-size: 36px;
+    opacity: 0.15;
+    margin-left: 12px;
+    flex-shrink: 0;
+}
+
+.metric-card-icon.text-danger-dim {
+    color: var(--omni-danger);
+}
+.metric-card-icon.text-warning-dim {
+    color: var(--omni-warning);
+}
+.metric-card-icon.text-purple-dim {
+    color: var(--omni-purple);
+}
+.metric-card-icon.text-success-dim {
+    color: var(--omni-success);
+}
+
+/* Text Colors */
+.text-danger {
+    color: var(--omni-danger);
+}
+.text-warning {
+    color: var(--omni-warning);
+}
+.text-purple {
+    color: var(--omni-purple);
+}
+.text-success {
+    color: var(--omni-success);
+}
+
+/* Badge Colors */
+.badge-danger-dim {
+    background: rgba(239, 68, 68, 0.08);
+    padding: 2px 10px;
+    border-radius: 12px;
+    color: var(--omni-danger);
+    font-size: 11px;
+    font-weight: 500;
+}
+.badge-warning-dim {
+    background: rgba(245, 158, 11, 0.08);
+    padding: 2px 10px;
+    border-radius: 12px;
+    color: var(--omni-warning);
+    font-size: 11px;
+    font-weight: 500;
+}
+.badge-success-dim {
+    background: rgba(16, 185, 129, 0.08);
+    padding: 2px 10px;
+    border-radius: 12px;
+    color: var(--omni-success);
+    font-size: 11px;
+    font-weight: 500;
+}
+.badge-purple-dim {
+    background: rgba(139, 92, 246, 0.08);
+    padding: 2px 10px;
+    border-radius: 12px;
+    color: var(--omni-purple);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* ==========================================================================
+   2. DASHBOARD SPLIT LAYOUT
+   ========================================================================== */
+
+.dashboard-split-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.dashboard-panel-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 20px 24px;
+    box-shadow: 0 4px 20px var(--glass-shadow);
+}
+
+.dashboard-panel-card:hover {
+    background: rgba(255, 255, 255, 0.85);
+}
+
+.panel-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.panel-card-header h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a2332;
+}
+
+.panel-header-link {
+    font-size: 13px;
+    color: var(--omni-primary);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.panel-header-link:hover {
+    gap: 8px;
+}
+
+/* ==========================================================================
+   3. SIMPLE CLICKABLE TABLE
+   ========================================================================== */
+
+.simple-clickable-table tbody tr {
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.simple-clickable-table tbody tr:hover {
+    background: rgba(0, 51, 153, 0.03);
+}
+
+.simple-clickable-table .rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+}
+
+.simple-clickable-table .rank-1 {
+    background: #FFD700;
+    color: #1a1a2e;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+}
+
+.simple-clickable-table .rank-2 {
+    background: #C0C0C0;
+    color: #1a1a2e;
+    box-shadow: 0 2px 8px rgba(192, 192, 192, 0.3);
+}
+
+.simple-clickable-table .rank-3 {
+    background: #CD7F32;
+    color: white;
+    box-shadow: 0 2px 8px rgba(205, 127, 50, 0.3);
+}
+
+.simple-clickable-table .rank-4,
+.simple-clickable-table .rank-5 {
+    background: #e5e7eb;
+    color: #6b7280;
+}
+
+.simple-percentage {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.simple-percentage.text-success {
+    color: var(--omni-success);
+}
+.simple-percentage.text-warning {
+    color: var(--omni-warning);
+}
+.simple-percentage.text-danger {
+    color: var(--omni-danger);
+}
+
+/* Status Badge */
+.status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-badge.active {
+    background: rgba(16, 185, 129, 0.12);
+    color: #065f46;
+}
+
+.status-badge.pending {
+    background: rgba(245, 158, 11, 0.12);
+    color: #d97706;
+}
+
+.status-badge.inactive {
+    background: rgba(239, 68, 68, 0.12);
+    color: #dc2626;
+}
+
+/* ==========================================================================
+   4. QUICK ACTIONS
+   ========================================================================== */
+
+.quick-actions-list-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.action-shortcut-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: 1px solid var(--glass-border-dark);
+    position: relative;
+}
+
+.action-shortcut-item:hover {
+    background: rgba(255, 255, 255, 0.8);
+    border-color: var(--omni-primary);
+    transform: translateX(4px);
+    box-shadow: 0 4px 16px var(--glass-shadow);
+}
+
+.action-shortcut-item .shortcut-arrow {
+    margin-left: auto;
+    color: rgba(26, 35, 50, 0.2);
+    transition: all 0.3s ease;
+}
+
+.action-shortcut-item:hover .shortcut-arrow {
+    color: var(--omni-primary);
+    transform: translateX(4px);
+}
+
+.shortcut-icon-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.shortcut-icon-box.danger-box {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--omni-danger);
+}
+
+.shortcut-icon-box.primary-box {
+    background: rgba(0, 51, 153, 0.08);
+    color: var(--omni-primary);
+}
+
+.shortcut-icon-box.warning-box {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--omni-warning);
+}
+
+.shortcut-icon-box.success-box {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--omni-success);
+}
+
+.shortcut-text-box {
+    flex: 1;
+}
+
+.shortcut-text-box h5 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a2332;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.shortcut-desc {
+    margin: 2px 0 0 0;
+    font-size: 12px;
+    color: rgba(26, 35, 50, 0.5);
+}
+
+/* ==========================================================================
+   5. SYNC BUTTON
+   ========================================================================== */
+
+.btn-sync-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    background: rgba(0, 51, 153, 0.06);
+    color: var(--omni-primary);
+    border: 1px solid rgba(0, 51, 153, 0.08);
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Poppins', sans-serif;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.btn-sync-header:hover {
+    background: var(--omni-primary);
+    color: #ffffff;
+    border-color: var(--omni-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 51, 153, 0.15);
+}
+
+.btn-sync-header:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-sync-header i {
+    font-size: 14px;
+}
+
+/* ==========================================================================
+   6. TOAST NOTIFICATION
+   ========================================================================== */
+
+.toast-notification {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    max-width: 420px;
+    z-index: 10001;
+    transform: translateX(120%);
+    transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    border-left: 4px solid var(--omni-success);
+}
+
+.toast-notification.show {
+    transform: translateX(0);
+}
+
+.toast-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(16, 185, 129, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #065f46;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-title {
+    margin: 0;
+    font-weight: 600;
+    font-size: 14px;
+    color: #1a2332;
+}
+
+.toast-message {
+    margin: 2px 0 0 0;
+    font-size: 13px;
+    color: rgba(26, 35, 50, 0.6);
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: rgba(26, 35, 50, 0.2);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+    transition: color 0.2s;
+}
+
+.toast-close:hover {
+    color: #1a2332;
+}
+
+/* ==========================================================================
+   7. RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 1200px) {
+    .analytics-metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 1024px) {
+    .dashboard-split-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .analytics-metrics-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+    
+    .metric-card {
+        padding: 14px 16px;
+        min-height: 80px;
+    }
+    
+    .card-metric-value {
+        font-size: 24px;
+    }
+    
+    .metric-card-icon {
+        font-size: 28px;
+    }
+    
+    .dashboard-panel-card {
+        padding: 14px 16px;
+    }
+    
+    .action-shortcut-item {
+        padding: 10px 12px;
+    }
+    
+    .shortcut-icon-box {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+    
+    .shortcut-text-box h5 {
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 480px) {
+    .analytics-metrics-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .metric-card {
+        padding: 12px 14px;
+        min-height: 70px;
+    }
+    
+    .card-metric-value {
+        font-size: 20px;
+    }
+    
+    .metric-card-icon {
+        font-size: 22px;
+    }
+    
+    .panel-card-header h4 {
+        font-size: 14px;
+    }
+    
+    .simple-clickable-table thead th,
+    .simple-clickable-table tbody td {
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+    
+    .rank-badge {
+        width: 22px;
+        height: 22px;
+        font-size: 10px;
+    }
+    
+    .simple-percentage {
+        font-size: 12px;
+    }
+    
+    .toast-notification {
+        top: 12px;
+        right: 12px;
+        left: 12px;
+        max-width: none;
+        padding: 12px 14px;
+    }
+}
