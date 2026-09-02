@@ -5,6 +5,112 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'stylesheets/submit.css' %}" type="text/css">
+<style>
+    /* Override grid to be 1fr 1fr - half and half */
+    .email-builder-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-top: 20px;
+        align-items: start;
+    }
+    
+    /* Make both cards equal height and full width */
+    .builder-card {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Email form box - left column */
+    .email-form-box {
+        min-height: 500px;
+    }
+    
+    /* Exception selector box - right column */
+    .exception-selector-box {
+        min-height: 500px;
+    }
+    
+    /* Make the exception stack fill remaining space */
+    .exception-checklist-stack {
+        flex: 1;
+        max-height: 420px;
+        overflow-y: auto;
+    }
+    
+    /* Ensure form rows are properly spaced */
+    .form-row {
+        margin-bottom: 14px;
+    }
+    
+    .form-row:last-of-type {
+        margin-bottom: 16px;
+    }
+    
+    /* Make send button full width */
+    .btn-send-mail {
+        width: 100%;
+        margin-top: auto;
+    }
+    
+    /* Selected summary */
+    .selected-summary {
+        margin: 12px 0 16px;
+    }
+    
+    /* Responsive - stack on smaller screens */
+    @media (max-width: 1024px) {
+        .email-builder-grid {
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        
+        .builder-card {
+            min-height: auto;
+        }
+        
+        .email-form-box {
+            min-height: auto;
+        }
+        
+        .exception-selector-box {
+            min-height: 400px;
+        }
+        
+        .exception-checklist-stack {
+            max-height: 350px;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .email-builder-grid {
+            gap: 16px;
+            margin-top: 16px;
+        }
+        
+        .builder-card {
+            padding: 16px;
+            border-radius: 16px;
+        }
+        
+        .exception-selector-box {
+            min-height: 350px;
+        }
+        
+        .exception-checklist-stack {
+            max-height: 300px;
+        }
+        
+        .form-row {
+            margin-bottom: 12px;
+        }
+        
+        .template-textarea {
+            min-height: 80px;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block dashboard_url %}{% url 'control_dashboard:member_dashboard' %}{% endblock %}
@@ -16,7 +122,7 @@
 </a></li>
 <li><a href="{% url 'control_dashboard:drafts_page' %}">
     <span class="nav-icon"><i class="fas fa-file-alt"></i></span>
-    <span class="nav-text">Drafts</span>
+    <span class="nav-text">Submit Report</span>
 </a></li>     
 <li><a href="{% url 'control_dashboard:reports_page' %}">
     <span class="nav-icon"><i class="fas fa-file-pdf"></i></span>
@@ -30,24 +136,12 @@
     <span class="nav-icon"><i class="fas fa-check-double"></i></span>
     <span class="nav-text">Checklist</span>
 </a></li> 
-<li><a href="{% url 'control_dashboard:member_activity_logs' %}">
-    <span class="nav-icon"><i class="fas fa-clipboard-list"></i></span>
-    <span class="nav-text">Activity logs</span>
-</a></li> 
 {% endblock %}
 
 {% block page_title %}Submit Exception Report{% endblock %}
 
 {% block top_header_center %}
-<div class="header-filter-group">
-    <label for="report-type-filter"><i class="fas fa-file-alt"></i> Report Type</label>
-    <select id="report-type-filter" class="header-select" onchange="filterByReportType()">
-        <option value="all">All Report Types ({{ assigned_report_types|length }})</option>
-        {% for report_type in assigned_report_types %}
-        <option value="{{ report_type }}">{{ report_type }}</option>
-        {% endfor %}
-    </select>
-</div>
+<!-- Empty -->
 {% endblock %}
 
 {% block top_header_right %}
@@ -58,6 +152,7 @@
 
 {% block content %}
 <div class="email-builder-grid">
+    <!-- LEFT COLUMN - Email Form -->
     <div class="builder-card email-form-box">
         <div class="form-row">
             <label for="email-to">To <span class="required">*</span></label>
@@ -81,7 +176,7 @@
 
         <div class="form-row">
             <label for="email-subject">Email Subject Line <span class="required">*</span></label>
-            <input type="text" id="email-subject" class="table-input" placeholder="Enter email subject...">
+            <input type="text" id="email-subject" class="table-input" placeholder="Select exceptions to auto-generate subject...">
         </div>
 
         <div class="form-row">
@@ -104,6 +199,7 @@
         </button>
     </div>
 
+    <!-- RIGHT COLUMN - Exception Selector -->
     <div class="builder-card exception-selector-box">
         <div class="selector-header">
             <div class="selector-header-left">
@@ -117,7 +213,7 @@
             </div>
         </div>
 
-        <!-- Debug info - will show current state -->
+        <!-- Debug info -->
         <div class="debug-info" id="debugInfo">
             <i class="fas fa-info-circle"></i> 
             Total: <span id="debugTotal">0</span> | 
@@ -210,7 +306,6 @@
         console.log('Sample exception:', exceptionsData.length > 0 ? exceptionsData[0] : 'No exceptions');
     } catch (e) {
         console.error('Exception payload error:', e);
-        // Fallback using direct template variables - FIXED to avoid branch lookup error
         {% if exceptions %}
             exceptionsData = [
             {% for exception in exceptions %}
@@ -245,7 +340,6 @@
     // Filter exceptions to only show those assigned to the current user
     const userEmail = '{{ user_data.email }}';
     exceptionsData = exceptionsData.filter(ex => {
-        // Check if the exception is assigned to the current user or created by them
         return ex.assigned_to === userEmail || ex.created_by === userEmail;
     });
 
@@ -268,7 +362,6 @@
         updateSubjectLine();
         updateDebugInfo();
         
-        // Log the current state
         console.log('Current report types in dropdown:', assignedReportTypes);
         console.log('Categories available:', document.querySelectorAll('.category-btn').length);
     });
@@ -281,7 +374,6 @@
         document.getElementById('debugTotal').textContent = exceptionsData.length;
         document.getElementById('debugSelected').textContent = selectedExceptions.size;
         
-        // Count filtered
         let filtered = getFilteredExceptions();
         document.getElementById('debugFiltered').textContent = filtered.length;
     }
@@ -289,17 +381,14 @@
     function getFilteredExceptions() {
         let filtered = exceptionsData;
 
-        // Filter by report type
         if (currentReportType !== 'all') {
             filtered = filtered.filter(ex => ex.report_type === currentReportType);
         }
 
-        // Filter by category
         if (currentCategory !== 'all') {
             filtered = filtered.filter(ex => ex.category === currentCategory);
         }
 
-        // Show ALL exceptions regardless of status
         return filtered;
     }
 
@@ -330,7 +419,6 @@
                 subMsg = 'Try selecting a different report type or "All Report Types"';
             }
             
-            // Check if there are any exceptions at all
             if (exceptionsData.length > 0) {
                 const statuses = [...new Set(exceptionsData.map(e => e.status))];
                 subMsg = `You have ${exceptionsData.length} exceptions with status: ${statuses.join(', ')}. Select a report type to view exceptions.`;
@@ -354,52 +442,30 @@
             card.className = `exception-select-card ${isChecked ? 'active' : ''}`;
             card.dataset.id = exception.id;
 
-            // Safely get values with fallbacks
             const header = exception.data?.header || exception.report_type || 'Untitled';
             const unit = exception.unit || 'N/A';
             const statusClass = exception.status || 'draft';
             const statusDisplay = exception.status_display || (exception.status ? exception.status.charAt(0).toUpperCase() + exception.status.slice(1) : 'Draft');
             
-            // ============================================
-            // FIX: Get the observation/description from form_data
-            // ============================================
+            // Get the observation/description from form_data
             let details = 'No details provided';
             
-            // Check if we have form_data
             const formData = exception.data?.form_data || exception.data;
             
             if (formData) {
-                // If form_data is an array, get the first item
                 let dataObj = formData;
                 if (Array.isArray(formData) && formData.length > 0) {
                     dataObj = formData[0];
                 }
                 
-                // Try to find observation/description fields
                 if (dataObj && typeof dataObj === 'object') {
-                    // List of possible field names for observation/description
                     const observationFields = [
-                        'OBSERVATION', 
-                        'observation', 
-                        'Details', 
-                        'details', 
-                        'DESCRIPTION', 
-                        'description',
-                        'KEY FINDINGS',
-                        'key_findings',
-                        'FINDINGS',
-                        'findings',
-                        'COMMENT',
-                        'comment',
-                        'REMARKS',
-                        'remarks',
-                        'NOTES',
-                        'notes',
-                        'OBSERVATIONS',
-                        'observations'
+                        'OBSERVATION', 'observation', 'Details', 'details', 
+                        'DESCRIPTION', 'description', 'KEY FINDINGS', 'key_findings',
+                        'FINDINGS', 'findings', 'COMMENT', 'comment',
+                        'REMARKS', 'remarks', 'NOTES', 'notes', 'OBSERVATIONS', 'observations'
                     ];
                     
-                    // Find the first matching field
                     for (const field of observationFields) {
                         if (dataObj[field] && dataObj[field] !== '' && dataObj[field] !== 'N/A') {
                             details = dataObj[field];
@@ -407,7 +473,6 @@
                         }
                     }
                     
-                    // If still no details, try to get any text field that's not a system field
                     if (details === 'No details provided') {
                         const excludeFields = ['header', 'unit', 'branch', 'status', 'BRANCH/UNIT', 'DATE', 'date', 'created_at', 'id'];
                         for (const [key, value] of Object.entries(dataObj)) {
@@ -601,7 +666,6 @@
             </span>`;
         }).join('');
         
-        // Add class to summary when selections exist
         const summary = document.getElementById('selectedSummary');
         if (summary) {
             summary.classList.toggle('has-selections', count > 0);
@@ -613,7 +677,6 @@
         const subjectInput = document.getElementById('email-subject');
         if (!subjectInput) return;
         
-        // Only auto-generate if subject is empty or was auto-generated
         if (count === 0) {
             if (!subjectInput.value || subjectInput.value.startsWith('EXCEPTION REPORT')) {
                 subjectInput.placeholder = 'Select exceptions to auto-generate subject...';
@@ -638,7 +701,6 @@
         }
         subject += ` (${selectedItems.length} exceptions) for ${date}`;
         
-        // Only update if subject is empty or was auto-generated
         if (!subjectInput.value || subjectInput.value.startsWith('EXCEPTION REPORT') || subjectInput.value.includes('exceptions) for')) {
             subjectInput.value = subject;
         }
@@ -733,17 +795,14 @@
             return;
         }
         
-        // Get selected exception details
         const selectedExList = exceptionsData.filter(ex => selectedExceptions.has(ex.id));
         
-        // Show loading overlay
         const overlay = document.getElementById('loadingOverlay');
         const sendBtn = document.getElementById('sendMailBtn');
         overlay.style.display = 'flex';
         sendBtn.disabled = true;
         sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
         
-        // Prepare email data with full exception details for attachment
         const emailData = {
             to: to,
             cc: cc,
@@ -764,7 +823,6 @@
             }))
         };
         
-        // Send to server
         fetch("/adminboard/api/send-email/", {
             method: 'POST',
             headers: {
@@ -781,7 +839,6 @@
             
             if (data.success) {
                 showToast(data.message || 'Email sent successfully!', 'Success');
-                // Clear selection after sending
                 selectedExceptions.clear();
                 renderExceptions();
                 updateSelectedSummary();

@@ -52,10 +52,10 @@
                         <div class="ms-input-wrapper">
                             <i class="fas fa-envelope ms-input-icon"></i>
                             <input 
-                                type="email" 
+                                type="text" 
                                 id="msEmailInput" 
-                                placeholder="Enter your email and press Enter" 
-                                autocomplete="email"
+                                placeholder="Enter your username or email and press Enter" 
+                                autocomplete="username"
                                 onkeydown="handleMsInputKeydown(event)"
                             />
                         </div>
@@ -156,24 +156,34 @@
         // ============================================
 
         function processMicrosoftLogin() {
-            const email = document.getElementById('msEmailInput').value.trim();
+            const input = document.getElementById('msEmailInput');
+            const loginInput = input.value.trim();
             const btn = document.getElementById('msLoginBtn');
             
-            if (!email) {
-                showError('Please enter your email address.');
-                document.getElementById('msEmailInput').focus();
+            if (!loginInput) {
+                showError('Please enter your username or email.');
+                input.focus();
                 return;
             }
 
-            if (!email.includes('@') || !email.includes('.')) {
-                showError('Please enter a valid email address.');
-                document.getElementById('msEmailInput').focus();
-                return;
+            // Auto-complete email domain if only username is entered
+            let emailToSend = loginInput;
+            
+            // Check if it's a username (no @ symbol)
+            if (!loginInput.includes('@')) {
+                // Auto-complete with the domain
+                emailToSend = loginInput + '@omnisbic.com.gh';
+                
+                // Also try alternative domain
+                // You can add logic here to try multiple domains if needed
             }
 
             btn.classList.add('loading');
             hideError();
             hideSuccess();
+
+            // Show a message indicating what we're doing
+            showSuccess(`Logging in as ${emailToSend}...`);
 
             fetch('/adminboard/api/email-login/', {
                 method: 'POST',
@@ -181,7 +191,10 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrftoken
                 },
-                body: JSON.stringify({ email: email })
+                body: JSON.stringify({ 
+                    email: emailToSend,
+                    raw_input: loginInput  // Send the raw input for reference
+                })
             })
             .then(response => response.json())
             .then(data => {
@@ -191,16 +204,58 @@
                         window.location.href = data.redirect_url;
                     }, 1500);
                 } else {
+                    // If login failed with the auto-completed email, try alternative domains
+                    if (!loginInput.includes('@')) {
+                        // Try alternative domain if the user doesn't have @
+                        tryAlternativeDomain(loginInput, btn);
+                        return;
+                    }
                     showError(data.error || 'Login failed. Please try again.');
                     btn.classList.remove('loading');
-                    document.getElementById('msEmailInput').focus();
+                    input.focus();
                 }
             })
             .catch(error => {
                 console.error('Login error:', error);
                 showError('An error occurred during login. Please try again.');
                 btn.classList.remove('loading');
-                document.getElementById('msEmailInput').focus();
+                input.focus();
+            });
+        }
+
+        function tryAlternativeDomain(username, btn) {
+            // Try alternative domain (e.g., @omnisbic.com instead of @omnisbic.com.gh)
+            const alternativeEmail = username + '@omnisbic.com';
+            
+            showSuccess(`Trying ${alternativeEmail}...`);
+            
+            fetch('/adminboard/api/email-login/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ 
+                    email: alternativeEmail,
+                    raw_input: username
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccess(data.message);
+                    setTimeout(() => {
+                        window.location.href = data.redirect_url;
+                    }, 1500);
+                } else {
+                    showError('No account found. Please check your username or email.');
+                    btn.classList.remove('loading');
+                    document.getElementById('msEmailInput').focus();
+                }
+            })
+            .catch(error => {
+                showError('An error occurred during login. Please try again.');
+                btn.classList.remove('loading');
             });
         }
 
@@ -269,6 +324,11 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             checkSession();
+            
+            // Auto-focus on the input field
+            setTimeout(() => {
+                document.getElementById('msEmailInput').focus();
+            }, 500);
         });
 
         window.expandMicrosoftLogin = expandMicrosoftLogin;

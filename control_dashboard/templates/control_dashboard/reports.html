@@ -1,6 +1,5 @@
 {% extends 'control_dashboard/base.html' %}
 {% load static %}
-{% load control_dashboard_extras %}
 
 {% block title %}My Reports{% endblock %}
 
@@ -17,7 +16,7 @@
 </a></li>
 <li><a href="{% url 'control_dashboard:drafts_page' %}">
     <span class="nav-icon"><i class="fas fa-file-alt"></i></span>
-    <span class="nav-text">Drafts</span>
+    <span class="nav-text">Submit Report</span>
 </a></li>     
 <li class="active"><a href="{% url 'control_dashboard:reports_page' %}">
     <span class="nav-icon"><i class="fas fa-file-pdf"></i></span>
@@ -30,10 +29,6 @@
 <li><a href="{% url 'control_dashboard:member_checklist' %}">
     <span class="nav-icon"><i class="fas fa-check-double"></i></span>
     <span class="nav-text">Checklist</span>
-</a></li> 
-<li><a href="{% url 'control_dashboard:member_activity_logs' %}">
-    <span class="nav-icon"><i class="fas fa-clipboard-list"></i></span>
-    <span class="nav-text">Activity logs</span>
 </a></li> 
 {% endblock %}
 
@@ -64,7 +59,7 @@
 {% endblock %}
 
 {% block top_header_right %}
-<button class="btn-reset-header">
+<button class="btn-reset-header" onclick="resetFilters()">
     <i class="fas fa-undo"></i> Reset
 </button>
 {% endblock %}
@@ -80,7 +75,7 @@
         
         {% for type_group in report_type_groups %}
             <div class="report-type-group">
-                <div class="report-type-header">
+                <div class="report-type-header" onclick="toggleGroup(this)">
                     <div class="report-type-left">
                         <i class="fas fa-file-alt report-type-icon"></i>
                         <h3 class="report-type-title">{{ type_group.grouper|default:"Uncategorized" }}</h3>
@@ -92,150 +87,87 @@
                 </div>
                 
                 <div class="report-type-body">
-                    {% with report_type=type_group.grouper %}
-                        {% get_report_template_fields report_type as template_fields %}
-                        
-                        {% if template_fields %}
-                            <table class="report-details-table">
-                                <thead>
-                                    <tr>
-                                        {% for field in template_fields %}
-                                            <th>{{ field.label }}</th>
-                                        {% endfor %}
-                                        <th class="text-center">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for report in type_group.list %}
-                                        <tr data-type="{{ report.report_type }}" data-id="{{ report.id }}" data-branch="{{ report.data.branch|default:'' }}" data-status="{{ report.data.status|default:'Open' }}">
-                                            {% for field in template_fields %}
-                                                <td>
-                                                    {% with field_label=field.label %}
-                                                        {% if report.data and report.data.form_data %}
-                                                            {% with form_data=report.data.form_data.0 %}
-                                                                {% with value=form_data|get_item:field_label %}
-                                                                    {% if field.field_type == 'date' %}
-                                                                        {{ value|default:"-" }}
-                                                                    {% elif field.field_type == 'checkbox' %}
-                                                                        {% if value %}
-                                                                            <span class="badge-success">Yes</span>
-                                                                        {% else %}
-                                                                            <span class="badge-secondary">No</span>
-                                                                        {% endif %}
-                                                                    {% elif field.field_type == 'number' %}
-                                                                        {{ value|default:"-" }}
-                                                                    {% elif field.field_type == 'dropdown' %}
-                                                                        {{ value|default:"-" }}
-                                                                    {% else %}
-                                                                        {{ value|default:"-" }}
-                                                                    {% endif %}
-                                                                {% endwith %}
-                                                            {% endwith %}
-                                                        {% else %}
-                                                            {% with value=report.data|get_item:field_label %}
-                                                                {% if field.field_type == 'date' %}
-                                                                    {{ value|default:"-" }}
-                                                                {% elif field.field_type == 'checkbox' %}
-                                                                    {% if value %}
-                                                                        <span class="badge-success">Yes</span>
-                                                                    {% else %}
-                                                                        <span class="badge-secondary">No</span>
-                                                                    {% endif %}
-                                                                {% elif field.field_type == 'number' %}
-                                                                    {{ value|default:"-" }}
-                                                                {% elif field.field_type == 'dropdown' %}
-                                                                    {{ value|default:"-" }}
-                                                                {% else %}
-                                                                    {{ value|default:"-" }}
-                                                                {% endif %}
-                                                            {% endwith %}
-                                                        {% endif %}
-                                                    {% endwith %}
-                                                </td>
-                                            {% endfor %}
-                                            <td class="text-center">
-                                                <div class="table-actions-cluster">
-                                                    <button class="btn-edit-modal" onclick="openEditModal('{{ report.id }}')">
-                                                        <i class="fas fa-edit"></i> Edit
-                                                    </button>
-                                                    <button class="btn-delete" onclick="deleteReport('{{ report.id }}')">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        {% else %}
-                            <!-- Fallback: Show default columns -->
-                            <table class="report-details-table">
-                                <thead>
-                                    <tr>
-                                        <th>Branch/Unit</th>
-                                        <th>Date</th>
-                                        <th>Observation</th>
-                                        <th>Responsible Staff</th>
-                                        <th>Status</th>
-                                        <th class="text-center">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for report in type_group.list %}
-                                        <tr data-type="{{ report.report_type }}" data-id="{{ report.id }}" data-branch="{{ report.data.branch|default:'' }}" data-status="{{ report.data.status|default:'Open' }}">
-                                            <td>
-                                                {% if report.data and report.data.form_data %}
-                                                    {{ report.data.form_data.0.BRANCH_UNIT|default:report.data.form_data.0.BRANCH|default:"-" }}
-                                                {% else %}
-                                                    -
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                {% if report.data and report.data.form_data %}
-                                                    {{ report.data.form_data.0.DATE|default:report.data.form_data.0.date|default:"-" }}
-                                                {% else %}
-                                                    -
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                {% if report.data and report.data.form_data %}
-                                                    {{ report.data.form_data.0.OBSERVATION|default:report.data.form_data.0.details|default:"-" }}
-                                                {% else %}
-                                                    -
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                {% if report.data and report.data.form_data %}
-                                                    {{ report.data.form_data.0.RESPONSIBLE_STAFF|default:report.data.form_data.0.responsible_staff|default:"-" }}
-                                                {% else %}
-                                                    -
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                {% if report.data and report.data.form_data and report.data.form_data.0.STATUS %}
-                                                    <span class="badge-{% if report.data.form_data.0.STATUS == 'Open' %}success{% else %}secondary{% endif %}">
-                                                        {{ report.data.form_data.0.STATUS }}
-                                                    </span>
-                                                {% else %}
-                                                    <span class="badge-secondary">Open</span>
-                                                {% endif %}
-                                            </td>
-                                            <td class="text-center">
-                                                <div class="table-actions-cluster">
-                                                    <button class="btn-edit-modal" onclick="openEditModal('{{ report.id }}')">
-                                                        <i class="fas fa-edit"></i> Edit
-                                                    </button>
-                                                    <button class="btn-delete" onclick="deleteReport('{{ report.id }}')">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        {% endif %}
-                    {% endwith %}
+                    <table class="report-details-table">
+                        <thead>
+                            <tr>
+                                <th>Branch/Unit</th>
+                                <th>Date</th>
+                                <th>Observation</th>
+                                <th>Responsible Staff</th>
+                                <th>Status</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for report in type_group.list %}
+                                <tr data-type="{{ report.report_type }}" data-id="{{ report.id }}">
+                                    <td>
+                                        {% if report.data and report.data.form_data %}
+                                            {{ report.data.form_data.0.BRANCH_UNIT|default:report.data.form_data.0.BRANCH|default:"-" }}
+                                        {% elif report.data and report.data.BRANCH %}
+                                            {{ report.data.BRANCH }}
+                                        {% elif report.data and report.data.branch %}
+                                            {{ report.data.branch }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if report.data and report.data.form_data %}
+                                            {{ report.data.form_data.0.DATE|default:report.data.form_data.0.date|default:"-" }}
+                                        {% elif report.data and report.data.DATE %}
+                                            {{ report.data.DATE }}
+                                        {% elif report.data and report.data.date %}
+                                            {{ report.data.date }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if report.data and report.data.form_data %}
+                                            {{ report.data.form_data.0.OBSERVATION|default:report.data.form_data.0.details|default:"-" }}
+                                        {% elif report.data and report.data.OBSERVATION %}
+                                            {{ report.data.OBSERVATION }}
+                                        {% elif report.data and report.data.details %}
+                                            {{ report.data.details }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if report.data and report.data.form_data %}
+                                            {{ report.data.form_data.0.RESPONSIBLE_STAFF|default:report.data.form_data.0.responsible_staff|default:"-" }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if report.data and report.data.form_data and report.data.form_data.0.STATUS %}
+                                            <span class="badge-{% if report.data.form_data.0.STATUS == 'Open' or report.data.form_data.0.STATUS == 'open' %}success{% else %}secondary{% endif %}">
+                                                {{ report.data.form_data.0.STATUS }}
+                                            </span>
+                                        {% elif report.data and report.data.STATUS %}
+                                            <span class="badge-{% if report.data.STATUS == 'Open' or report.data.STATUS == 'open' %}success{% else %}secondary{% endif %}">
+                                                {{ report.data.STATUS }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge-secondary">Open</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="table-actions-cluster">
+                                            <button class="btn-edit-modal" onclick="openEditModal('{{ report.id }}')">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </button>
+                                            <button class="btn-delete" onclick="deleteReport('{{ report.id }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         {% endfor %}
@@ -296,37 +228,379 @@
         <i class="fas fa-times"></i>
     </button>
 </div>
+
+<style>
+    .report-type-group {
+        margin-bottom: 20px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .report-type-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: #f8fafc;
+        cursor: pointer;
+        border-bottom: 1px solid #e5e7eb;
+        transition: background 0.2s;
+    }
+    .report-type-header:hover {
+        background: #f1f5f9;
+    }
+    .report-type-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .report-type-icon {
+        color: #0066cc;
+        font-size: 18px;
+    }
+    .report-type-title {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+        color: #1a2332;
+    }
+    .report-type-count {
+        font-size: 12px;
+        color: #6b7280;
+        background: #e5e7eb;
+        padding: 2px 10px;
+        border-radius: 12px;
+    }
+    .report-type-toggle {
+        color: #6b7280;
+        transition: transform 0.3s;
+    }
+    .report-type-toggle.open {
+        transform: rotate(180deg);
+    }
+    .report-type-body {
+        padding: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+    .report-type-body.hidden {
+        display: none;
+    }
+    .report-details-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .report-details-table thead th {
+        background: rgba(0, 51, 102, 0.03);
+        color: rgba(26, 35, 50, 0.5);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        text-align: left;
+        padding: 10px 14px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    .report-details-table tbody td {
+        padding: 10px 14px;
+        font-size: 13px;
+        color: #1a2332;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .report-details-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .report-details-table tbody tr:hover {
+        background: rgba(0, 51, 102, 0.02);
+    }
+    .badge-success {
+        display: inline-block;
+        padding: 3px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .badge-secondary {
+        display: inline-block;
+        padding: 3px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+    .table-actions-cluster {
+        display: flex;
+        gap: 6px;
+        justify-content: center;
+    }
+    .btn-edit-modal {
+        padding: 4px 12px;
+        background: #fef3c7;
+        color: #d97706;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.3s;
+    }
+    .btn-edit-modal:hover {
+        background: #fde68a;
+    }
+    .btn-delete {
+        padding: 4px 10px;
+        background: #fee2e2;
+        color: #dc2626;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.3s;
+    }
+    .btn-delete:hover {
+        background: #fecaca;
+    }
+    .btn-cancel {
+        padding: 8px 20px;
+        background: #f3f4f6;
+        color: #374151;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    .btn-cancel:hover {
+        background: #e5e7eb;
+    }
+    .btn-create {
+        padding: 8px 20px;
+        background: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    .btn-create:hover {
+        background: #004e8c;
+    }
+    .btn-danger {
+        background: #dc2626;
+    }
+    .btn-danger:hover {
+        background: #b91c1c;
+    }
+    .modal-wrapper {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(4px);
+    }
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 550px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    .modal-header h3 {
+        margin: 0;
+        font-size: 18px;
+    }
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #9ca3af;
+    }
+    .modal-close:hover {
+        color: #1a2332;
+    }
+    .modal-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid #f0f0f0;
+    }
+    .form-group {
+        margin-bottom: 14px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 4px;
+        font-weight: 500;
+        font-size: 13px;
+        color: #1a2332;
+    }
+    .form-control {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 13px;
+        font-family: 'Poppins', sans-serif;
+        transition: border-color 0.3s;
+    }
+    .form-control:focus {
+        border-color: #0066cc;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.08);
+    }
+    .toast-notification {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        padding: 16px 20px;
+        max-width: 400px;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-left: 4px solid #10b981;
+        transform: translateX(120%);
+        transition: transform 0.3s ease;
+    }
+    .toast-notification.show {
+        transform: translateX(0);
+    }
+    .toast-notification.error {
+        border-left-color: #ef4444;
+    }
+    .toast-notification .toast-icon {
+        flex-shrink: 0;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+    .toast-notification.error .toast-icon {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+    .toast-notification .toast-content {
+        flex: 1;
+    }
+    .toast-notification .toast-title {
+        font-weight: 600;
+        font-size: 14px;
+        color: #1a2332;
+        margin: 0;
+    }
+    .toast-notification .toast-message {
+        font-size: 13px;
+        color: #6b7280;
+        margin: 2px 0 0 0;
+    }
+    .toast-notification .toast-close {
+        background: none;
+        border: none;
+        font-size: 18px;
+        cursor: pointer;
+        color: #9ca3af;
+        padding: 0 4px;
+    }
+    .toast-notification .toast-close:hover {
+        color: #1a2332;
+    }
+    .text-center {
+        text-align: center;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+    .empty-state i {
+        font-size: 48px;
+        color: #d1d5db;
+        margin-bottom: 16px;
+        display: block;
+    }
+    .empty-state p {
+        font-size: 15px;
+        color: #6b7280;
+        margin: 0;
+    }
+    @media (max-width: 768px) {
+        .report-details-table {
+            min-width: 600px;
+            font-size: 12px;
+        }
+        .report-details-table thead th,
+        .report-details-table tbody td {
+            padding: 8px 10px;
+            font-size: 12px;
+        }
+        .modal-content {
+            padding: 16px;
+            margin: 16px;
+        }
+    }
+</style>
+
 <script>
     // ============================================
-    // MODAL STATE MANAGEMENT
+    // TOGGLE GROUP
     // ============================================
-    function deleteReport(reportId) {
-        var modal = document.getElementById('deleteModal');
-        var inputId = document.getElementById('deleteReportId');
-        
-        if (modal && inputId) {
-            inputId.value = reportId;
-            modal.style.display = 'flex'; // Triggers display overlay window
-        } else {
-            console.error('Core DOM structural element missing for deletion UI initialization.');
+    function toggleGroup(header) {
+        var body = header.nextElementSibling;
+        var toggle = header.querySelector('.report-type-toggle');
+        if (body) {
+            body.classList.toggle('hidden');
+            if (toggle) {
+                toggle.classList.toggle('open');
+            }
         }
     }
 
-    function closeDeleteModal() {
-        var modal = document.getElementById('deleteModal');
-        if (modal) {
-            modal.style.display = 'none';
-        }
+    // ============================================
+    // RESET FILTERS
+    // ============================================
+    function resetFilters() {
+        document.getElementById('type-filter').value = 'all';
+        document.getElementById('start-date').value = '';
+        document.getElementById('end-date').value = '';
+        location.reload();
     }
 
-    // Helper function to extract Django CSRF protection key from active document scope
+    // ============================================
+    // CSRF TOKEN HELPER
+    // ============================================
     function getCsrfToken() {
         var tokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
         return tokenInput ? tokenInput.value : '';
     }
 
     // ============================================
-    // TOAST NOTIFICATION UTILITY
+    // TOAST NOTIFICATION
     // ============================================
     function showToast(message, type) {
         var toast = document.getElementById('toastNotification');
@@ -338,11 +612,11 @@
         title.textContent = type === 'success' ? 'Success' : 'Error';
         msg.textContent = message;
         
-        // Reset class designations cleanly
         toast.className = 'toast-notification show ' + (type === 'success' ? 'success' : 'error');
         
-        // Automatically close toast after 4 seconds
-        setTimeout(closeToast, 4000);
+        setTimeout(function() {
+            toast.classList.remove('show');
+        }, 4000);
     }
 
     function closeToast() {
@@ -353,348 +627,7 @@
     }
 
     // ============================================
-    // DELETE REPORT / DRAFT PAYLOAD PURGE
-    // ============================================
-    function confirmDelete() {
-        var reportId = document.getElementById('deleteReportId').value;
-        if (!reportId) return;
-
-        var btn = document.querySelector('#deleteModal .btn-danger');
-        var originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
-        btn.disabled = true;
-
-        // Construct targeted URL route to match Django string pattern config
-        var url = "/adminboard/api/drafts/" + reportId + "/delete/";
-        
-        fetch(url, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRFToken': getCsrfToken(),
-                'Accept': 'application/json'
-            },
-            credentials: 'same-origin'
-        })
-        .then(function(response) {
-            if (!response.ok) {
-                return response.json().then(function(data) {
-                    throw new Error(data.error || 'Server error ' + response.status);
-                });
-            }
-            return response.json();
-        })
-        .then(function(data) {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-
-            if (data.success) {
-                showToast('Draft entry permanently removed!', 'success');
-                closeDeleteModal();
-                
-                // Animate and drop the target DOM row elements visually
-                var row = document.querySelector('tr[data-id="' + reportId + '"]');
-                if (row) {
-                    row.remove();
-                }
-                
-                // Recalculate operational dashboard counts
-                var countElement = document.querySelector('.table-header h4');
-                if (countElement) {
-                    var currentText = countElement.textContent;
-                    var match = currentText.match(/\((\d+)\)/);
-                    if (match) {
-                        var newCount = parseInt(match[1]) - 1;
-                        countElement.textContent = 'Saved Reports (' + newCount + ')';
-                    }
-                }
-                
-                // If the section is now empty, execute a workspace visual refresh
-                var remainingRows = document.querySelectorAll('.report-details-table tbody tr');
-                if (remainingRows.length === 0) {
-                    location.reload();
-                }
-            } else {
-                showToast(data.error || 'Failed to remove entry from database.', 'error');
-            }
-        })
-        .catch(function(error) {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-            console.error('Delete integration error:', error);
-            showToast(error.message || 'An unexpected error occurred during database modification.', 'error');
-        });
-    }
-
-    // Close modal windows automatically if the backing layout container mask is clicked directly
-    window.onclick = function(event) {
-        var deleteModal = document.getElementById('deleteModal');
-        if (event.target === deleteModal) {
-            closeDeleteModal();
-        }
-    }
-</script>
-{% endblock %}
-{% block extra_js %}
-<script>
-    // Initialize branches data for dropdowns
-    window.branchesData = [
-        {% for branch in branches %}
-            {id: {{ branch.id }}, name: "{{ branch.name|escapejs }}"},
-        {% endfor %}
-    ];
-
-    function getCsrfToken() {
-        var tokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
-        return tokenInput ? tokenInput.value : '';
-    }
-
-    // ============================================
-    // TOAST NOTIFICATION SYSTEM
-    // ============================================
-    let toastTimeout = null;
-
-    function showToast(message, type) {
-        var toast = document.getElementById('toastNotification');
-        var title = document.getElementById('toastTitle');
-        var msg = document.getElementById('toastMessage');
-        
-        if (!toast) return;
-
-        if (toastTimeout) clearTimeout(toastTimeout);
-
-        title.textContent = type === 'success' ? 'Success' : 'Error';
-        msg.textContent = message;
-        
-        toast.className = 'toast-notification show ' + (type === 'success' ? 'success' : 'error');
-        
-        toastTimeout = setTimeout(function() {
-            toast.classList.remove('show');
-        }, 4000);
-    }
-
-    function closeToast() {
-        var toast = document.getElementById('toastNotification');
-        if (toast) toast.classList.remove('show');
-    }
-
-    // ============================================
-    // OPEN EDIT MODAL & FETCH DATA
-    // ============================================
-    function openEditModal(reportId) {
-        document.getElementById('editFormFields').innerHTML = '<p style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> Loading report data...</p>';
-        document.getElementById('editReportId').value = reportId;
-        document.getElementById('editReportModal').style.display = 'flex';
-
-        // Prefixed URL route targeting api_get_draft view
-        var url = "/adminboard/api/drafts/" + reportId + "/";
-        
-        fetch(url, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json'
-            },
-            credentials: 'same-origin'
-        })
-        .then(function(response) {
-            var contentType = response.headers.get("content-type");
-            if (!response.ok || !contentType || contentType.indexOf("application/json") === -1) {
-                throw new Error('Failed to retrieve draft payload from server.');
-            }
-            return response.json();
-        })
-        .then(function(data) {
-            if (data.success) {
-                var report = data.report;
-                var formData = {};
-                
-                // Extract historical form data from report or report data array layout
-                if (report.data && report.data.form_data && report.data.form_data.length > 0) {
-                    formData = report.data.form_data[0];
-                } else if (report.data && typeof report.data === 'object') {
-                    formData = report.data;
-                }
-                
-                var templateName = report.report_type;
-                
-                // Fetch dynamic layout template field mapping definitions
-                fetch("/adminboard/api/template-fields/?report_type=" + encodeURIComponent(templateName), {
-                    method: 'GET',
-                    headers: { 'Accept': 'application/json' },
-                    credentials: 'same-origin'
-                })
-                .then(function(res) { return res.json(); })
-                .then(function(templateData) {
-                    var templateFields = [];
-                    if (templateData.success) {
-                        templateFields = templateData.template.fields || [];
-                    }
-                    buildEditForm(formData, templateFields);
-                })
-                .catch(function() {
-                    buildEditForm(formData, []);
-                    showToast('Could not load layout fields template, showing fallback variables.', 'error');
-                });
-                
-            } else {
-                showToast(data.error || 'Error loading report details.', 'error');
-                closeEditModal();
-            }
-        })
-        .catch(function(error) {
-            showToast(error.message, 'error');
-            closeEditModal();
-        });
-    }
-
-    function closeEditModal() {
-        document.getElementById('editReportModal').style.display = 'none';
-        document.getElementById('editReportId').value = '';
-        document.getElementById('editFormFields').innerHTML = '';
-    }
-
-    // ============================================
-    // BUILD DYNAMIC MODAL FORM FIELDS
-    // ============================================
-    function buildEditForm(formData, templateFields) {
-        var container = document.getElementById('editFormFields');
-        var html = '';
-        var branches = window.branchesData || [];
-        
-        if (templateFields && templateFields.length > 0) {
-            templateFields.forEach(function(field) {
-                var fieldLabel = field.label;
-                var value = formData[fieldLabel] !== undefined ? formData[fieldLabel] : (formData[fieldLabel.toLowerCase()] || '');
-                var isRequired = field.is_required ? 'required' : '';
-                
-                html += '<div class="form-group" style="margin-bottom: 15px;">';
-                html += '<label style="display:block; margin-bottom:5px; font-weight:600;">' + fieldLabel + (field.is_required ? ' <span style="color:red;">*</span>' : '') + '</label>';
-                
-                if (field.field_type === 'dropdown') {
-                    html += '<select class="form-control" data-key="' + fieldLabel + '" ' + isRequired + '>';
-                    html += '<option value="">Select...</option>';
-                    var isBranch = fieldLabel.toLowerCase().indexOf('branch') !== -1 || fieldLabel.toLowerCase().indexOf('unit') !== -1;
-                    
-                    if (isBranch && branches.length > 0) {
-                        branches.forEach(function(branch) {
-                            var selected = branch.name === value ? 'selected' : '';
-                            html += '<option value="' + branch.name + '" ' + selected + '>' + branch.name + '</option>';
-                        });
-                    } else if (field.options && field.options.length > 0) {
-                        var parsedOptions = typeof field.options === 'string' ? field.options.split(',') : field.options;
-                        parsedOptions.forEach(function(opt) {
-                            var cleanOpt = opt.trim();
-                            var selected = cleanOpt === value ? 'selected' : '';
-                            html += '<option value="' + cleanOpt + '" ' + selected + '>' + cleanOpt + '</option>';
-                        });
-                    }
-                    html += '</select>';
-                } else if (field.field_type === 'textarea') {
-                    html += '<textarea class="form-control" data-key="' + fieldLabel + '" rows="3" ' + isRequired + '>' + (value || '') + '</textarea>';
-                } else if (field.field_type === 'date') {
-                    html += '<input type="date" class="form-control" data-key="' + fieldLabel + '" value="' + (value || '') + '" ' + isRequired + '>';
-                } else if (field.field_type === 'checkbox') {
-                    var checked = value === 'Yes' || value === true || value === 'true' ? 'checked' : '';
-                    html += '<input type="checkbox" data-key="' + fieldLabel + '" ' + checked + '>';
-                } else if (field.field_type === 'number') {
-                    html += '<input type="number" class="form-control" data-key="' + fieldLabel + '" value="' + (value || '') + '" step="any" ' + isRequired + '>';
-                } else {
-                    html += '<input type="text" class="form-control" data-key="' + fieldLabel + '" value="' + (value || '') + '" ' + isRequired + '>';
-                }
-                html += '</div>';
-            });
-        } else {
-            // Fallback rendering structure if template tracking definitions fail
-            var index = 0;
-            for (var key in formData) {
-                if (formData.hasOwnProperty(key) && key !== 'submission_id') {
-                    var value = formData[key];
-                    var uniqueId = 'fallback_' + index++;
-                    html += '<div class="form-group" style="margin-bottom: 15px;">';
-                    html += '<label style="display:block; margin-bottom:5px; font-weight:600;">' + key + '</label>';
-                    html += '<input type="text" class="form-control" data-key="' + key + '" value="' + (value || '') + '">';
-                    html += '</div>';
-                }
-            }
-        }
-        container.innerHTML = html;
-    }
-
-    // ============================================
-    // SAVE AND COMMIT MODIFICATIONS TO DB
-    // ============================================
-    function submitEditReport(event) {
-        event.preventDefault();
-        
-        var reportId = document.getElementById('editReportId').value;
-        var formContainer = document.getElementById('editFormFields');
-        var submitBtn = event.target.querySelector('button[type="submit"]');
-        var originalBtnText = submitBtn.innerHTML;
-        
-        var formFieldsPayload = {};
-        var inputs = formContainer.querySelectorAll('input, select, textarea');
-        
-        inputs.forEach(function(input) {
-            var key = input.getAttribute('data-key');
-            if (!key) return;
-            
-            if (input.type === 'checkbox') {
-                formFieldsPayload[key] = input.checked ? 'Yes' : 'No';
-            } else {
-                formFieldsPayload[key] = input.value;
-            }
-        });
-        
-        var requestBody = {
-            form_data: formFieldsPayload
-        };
-        
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-        submitBtn.disabled = true;
-        
-        // Prefixed URL route targeting api_edit_draft view updates
-        var url = "/adminboard/api/drafts/" + reportId + "/edit/";
-        
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCsrfToken(),
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(requestBody),
-            credentials: 'same-origin'
-        })
-        .then(function(response) {
-            if (!response.ok) {
-                return response.json().then(function(data) {
-                    throw new Error(data.error || 'Server rejected changes update request.');
-                });
-            }
-            return response.json();
-        })
-        .then(function(data) {
-            submitBtn.innerHTML = originalBtnText;
-            submitBtn.disabled = false;
-            
-            if (data.success) {
-                showToast('Report updated successfully!', 'success');
-                closeEditModal();
-                setTimeout(function() {
-                    location.reload();
-                }, 1000);
-            } else {
-                showToast(data.error || 'Failed to update report data.', 'error');
-            }
-        })
-        .catch(function(error) {
-            submitBtn.innerHTML = originalBtnText;
-            submitBtn.disabled = false;
-            showToast(error.message, 'error');
-        });
-    }
-
-    // ============================================
-    // DELETE DRAFT CONTEXT 
+    // DELETE REPORT
     // ============================================
     function deleteReport(reportId) {
         document.getElementById('deleteReportId').value = reportId;
@@ -727,7 +660,9 @@
         })
         .then(function(response) {
             if (!response.ok) {
-                return response.json().then(function(data) { throw new Error(data.error); });
+                return response.json().then(function(data) {
+                    throw new Error(data.error || 'Server error');
+                });
             }
             return response.json();
         })
@@ -736,30 +671,247 @@
             btn.disabled = false;
 
             if (data.success) {
-                showToast('Draft entry permanently removed!', 'success');
+                showToast('Report deleted successfully!', 'success');
                 closeDeleteModal();
-                var row = document.querySelector('tr[data-id="' + reportId + '"]');
-                if (row) row.remove();
-                
-                var remainingRows = document.querySelectorAll('.report-details-table tbody tr');
-                if (remainingRows.length === 0) location.reload();
+                location.reload();
             } else {
-                showToast(data.error || 'Failed to delete row.', 'error');
+                showToast(data.error || 'Failed to delete report.', 'error');
             }
         })
         .catch(function(error) {
             btn.innerHTML = originalText;
             btn.disabled = false;
-            showToast(error.message || 'Error executing deletion request.', 'error');
+            showToast(error.message || 'An error occurred.', 'error');
         });
     }
 
-    // Close overlays automatically when masking container fields are clicked
+    // ============================================
+    // OPEN EDIT MODAL
+    // ============================================
+    function openEditModal(reportId) {
+        document.getElementById('editReportId').value = reportId;
+        document.getElementById('editFormFields').innerHTML = '<p style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> Loading...</p>';
+        document.getElementById('editReportModal').style.display = 'flex';
+
+        var url = "/adminboard/api/drafts/" + reportId + "/";
+        
+        fetch(url, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin'
+        })
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.success) {
+                var report = data.report;
+                var formData = {};
+                
+                if (report.data && report.data.form_data && report.data.form_data.length > 0) {
+                    formData = report.data.form_data[0];
+                } else if (report.data && typeof report.data === 'object') {
+                    formData = report.data;
+                }
+                
+                buildEditForm(formData);
+            } else {
+                showToast('Error loading report details.', 'error');
+                closeEditModal();
+            }
+        })
+        .catch(function(error) {
+            showToast('Error loading report details.', 'error');
+            closeEditModal();
+        });
+    }
+
+    function closeEditModal() {
+        document.getElementById('editReportModal').style.display = 'none';
+        document.getElementById('editReportId').value = '';
+        document.getElementById('editFormFields').innerHTML = '';
+    }
+
+    // ============================================
+    // BUILD EDIT FORM
+    // ============================================
+    function buildEditForm(formData) {
+        var container = document.getElementById('editFormFields');
+        var html = '';
+        
+        var fields = [
+            { label: 'Branch/Unit', field_type: 'text' },
+            { label: 'Date', field_type: 'date' },
+            { label: 'Observation', field_type: 'textarea' },
+            { label: 'Responsible Staff', field_type: 'text' },
+            { label: 'Status', field_type: 'dropdown' }
+        ];
+
+        var statusOptions = ['Open', 'In Progress', 'Resolved', 'Closed', 'Pending Review'];
+
+        fields.forEach(function(field) {
+            var fieldLabel = field.label;
+            var value = formData[fieldLabel] !== undefined ? formData[fieldLabel] : 
+                       (formData[fieldLabel.toUpperCase()] !== undefined ? formData[fieldLabel.toUpperCase()] : 
+                       (formData[fieldLabel.toLowerCase()] || ''));
+            
+            html += '<div class="form-group">';
+            html += '<label>' + fieldLabel + '</label>';
+            
+            if (field.field_type === 'dropdown') {
+                html += '<select class="form-control" data-key="' + fieldLabel + '">';
+                statusOptions.forEach(function(opt) {
+                    var selected = opt === value ? 'selected' : '';
+                    html += '<option value="' + opt + '" ' + selected + '>' + opt + '</option>';
+                });
+                html += '</select>';
+            } else if (field.field_type === 'textarea') {
+                html += '<textarea class="form-control" data-key="' + fieldLabel + '" rows="3">' + (value || '') + '</textarea>';
+            } else if (field.field_type === 'date') {
+                html += '<input type="date" class="form-control" data-key="' + fieldLabel + '" value="' + (value || '') + '">';
+            } else {
+                html += '<input type="text" class="form-control" data-key="' + fieldLabel + '" value="' + (value || '') + '">';
+            }
+            html += '</div>';
+        });
+
+        container.innerHTML = html;
+    }
+
+    // ============================================
+    // SUBMIT EDIT REPORT
+    // ============================================
+    function submitEditReport(event) {
+        event.preventDefault();
+        
+        var reportId = document.getElementById('editReportId').value;
+        var formContainer = document.getElementById('editFormFields');
+        var submitBtn = event.target.querySelector('button[type="submit"]');
+        var originalText = submitBtn.innerHTML;
+        
+        var formData = {};
+        var inputs = formContainer.querySelectorAll('input, select, textarea');
+        
+        inputs.forEach(function(input) {
+            var key = input.getAttribute('data-key');
+            if (key) {
+                formData[key] = input.value;
+            }
+        });
+        
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        submitBtn.disabled = true;
+
+        var url = "/adminboard/api/drafts/" + reportId + "/edit/";
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken(),
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ form_data: formData }),
+            credentials: 'same-origin'
+        })
+        .then(function(response) {
+            if (!response.ok) {
+                return response.json().then(function(data) {
+                    throw new Error(data.error || 'Server error');
+                });
+            }
+            return response.json();
+        })
+        .then(function(data) {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            
+            if (data.success) {
+                showToast('Report updated successfully!', 'success');
+                closeEditModal();
+                setTimeout(function() {
+                    location.reload();
+                }, 1000);
+            } else {
+                showToast(data.error || 'Failed to update report.', 'error');
+            }
+        })
+        .catch(function(error) {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            showToast(error.message || 'An error occurred.', 'error');
+        });
+    }
+
+    // ============================================
+    // CLOSE MODAL ON CLICK OUTSIDE
+    // ============================================
     window.onclick = function(event) {
         var editModal = document.getElementById('editReportModal');
         var deleteModal = document.getElementById('deleteModal');
         if (event.target === editModal) closeEditModal();
         if (event.target === deleteModal) closeDeleteModal();
     }
+
+    // ============================================
+    // FILTER REPORTS
+    // ============================================
+    document.getElementById('type-filter').addEventListener('change', function() {
+        var selectedType = this.value;
+        var rows = document.querySelectorAll('.report-details-table tbody tr');
+        
+        rows.forEach(function(row) {
+            var reportType = row.getAttribute('data-type');
+            if (selectedType === 'all' || reportType === selectedType) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    document.getElementById('start-date').addEventListener('change', applyDateFilter);
+    document.getElementById('end-date').addEventListener('change', applyDateFilter);
+
+    function applyDateFilter() {
+        var startDate = document.getElementById('start-date').value;
+        var endDate = document.getElementById('end-date').value;
+        var rows = document.querySelectorAll('.report-details-table tbody tr');
+        
+        rows.forEach(function(row) {
+            var dateCell = row.querySelector('td:nth-child(2)');
+            if (!dateCell) return;
+            var rowDate = dateCell.textContent.trim();
+            
+            if (rowDate === '-') {
+                row.style.display = '';
+                return;
+            }
+            
+            var show = true;
+            
+            if (startDate && rowDate < startDate) {
+                show = false;
+            }
+            if (endDate && rowDate > endDate) {
+                show = false;
+            }
+            
+            row.style.display = show ? '' : 'none';
+        });
+    }
+
+    // ============================================
+    // INITIALIZE
+    // ============================================
+    document.addEventListener('DOMContentLoaded', function() {
+        // Open all groups by default
+        document.querySelectorAll('.report-type-body').forEach(function(body) {
+            body.classList.remove('hidden');
+        });
+        document.querySelectorAll('.report-type-toggle').forEach(function(toggle) {
+            toggle.classList.add('open');
+        });
+    });
 </script>
 {% endblock %}

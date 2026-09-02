@@ -1,235 +1,18 @@
 /* ============================================
-   REPORT CENTER & CREATION STYLES
+   CHECKLIST LIST STYLES - ENHANCED DESIGN
    ============================================ */
 
 /* ==========================================================================
    1. CONTAINER
    ========================================================================== */
 
-.report-builder-container {
-    max-width: 1200px;
-    margin: 0 auto 24px;
-}
-
-.report-list-container {
+.checklist-list-container {
     max-width: 1400px;
     margin: 0 auto;
 }
 
 /* ==========================================================================
-   2. BUILDER CARDS
-   ========================================================================== */
-
-.builder-card {
-    background: var(--glass-bg, rgba(255, 255, 255, 0.8));
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-radius: 16px;
-    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.3));
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-    overflow: hidden;
-    transition: all 0.3s ease;
-}
-
-.builder-card:hover {
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10);
-}
-
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 24px;
-    border-bottom: 1px solid #f0f0f0;
-    background: rgba(255, 255, 255, 0.4);
-}
-
-.card-header-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.card-header-left i {
-    font-size: 20px;
-    color: #0066cc;
-}
-
-.card-header-left h4 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #1a2332;
-    margin: 0;
-}
-
-.card-header-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.status-badge {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 4px 14px;
-    border-radius: 20px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.status-badge.new {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.status-badge.editing {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-/* ==========================================================================
-   3. FORM GRID
-   ========================================================================== */
-
-.form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    padding: 24px;
-}
-
-.form-column {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-/* ==========================================================================
-   4. FORM GROUPS
-   ========================================================================== */
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.form-group label {
-    font-size: 13px;
-    font-weight: 500;
-    color: #1a2332;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.form-group label i {
-    color: #6b7280;
-    font-size: 14px;
-}
-
-.form-group label .required {
-    color: #dc2626;
-    font-weight: 700;
-}
-
-.form-control {
-    width: 100%;
-    padding: 10px 14px;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 8px;
-    font-size: 14px;
-    font-family: 'Poppins', sans-serif;
-    transition: all 0.3s ease;
-    background: white;
-    color: #1a2332;
-}
-
-.form-control:focus {
-    border-color: #0066cc;
-    outline: none;
-    box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.08);
-}
-
-.form-control::placeholder {
-    color: #9ca3af;
-}
-
-.form-control[multiple] {
-    min-height: 100px;
-    height: auto;
-}
-
-.help-text {
-    font-size: 12px;
-    color: #6b7280;
-    margin-top: 2px;
-}
-
-/* ==========================================================================
-   5. FORM ACTIONS
-   ========================================================================== */
-
-.form-actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 8px;
-    padding-top: 16px;
-    border-top: 1px solid #f0f0f0;
-}
-
-.btn-clear {
-    padding: 10px 20px;
-    background: #f3f4f6;
-    color: #374151;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    font-family: 'Poppins', sans-serif;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.btn-clear:hover {
-    background: #e5e7eb;
-}
-
-.btn-submit {
-    flex: 1;
-    padding: 10px 24px;
-    background: #0066cc;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    font-family: 'Poppins', sans-serif;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.btn-submit:hover {
-    background: #004e8c;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 102, 204, 0.25);
-}
-
-.btn-submit:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-}
-
-/* ==========================================================================
-   6. TABLE CONTAINER
+   2. TABLE CONTAINER
    ========================================================================== */
 
 .table-container {
@@ -238,7 +21,7 @@
     -webkit-backdrop-filter: blur(16px);
     border-radius: 16px;
     border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.3));
-    padding: 24px;
+    padding: var(--space-lg, 24px);
     overflow: hidden;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
     transition: all 0.3s ease;
@@ -249,7 +32,7 @@
 }
 
 /* ==========================================================================
-   7. TABLE HEADER
+   3. TABLE HEADER
    ========================================================================== */
 
 .table-header {
@@ -325,16 +108,16 @@
 }
 
 /* ==========================================================================
-   8. TABLE STYLES
+   4. TABLE STYLES
    ========================================================================== */
 
-.report-table {
+.checklist-table {
     width: 100%;
     border-collapse: collapse;
     background: transparent;
 }
 
-.report-table thead th {
+.checklist-table thead th {
     background: rgba(0, 51, 102, 0.03);
     color: rgba(26, 35, 50, 0.5);
     font-size: 11px;
@@ -346,7 +129,7 @@
     border-bottom: 2px solid #f0f0f0;
 }
 
-.report-table tbody td {
+.checklist-table tbody td {
     padding: 16px;
     color: #1a2332;
     font-size: 13px;
@@ -354,30 +137,30 @@
     vertical-align: middle;
 }
 
-.report-table tbody tr {
+.checklist-table tbody tr {
     transition: all 0.2s ease;
 }
 
-.report-table tbody tr:hover {
+.checklist-table tbody tr:hover {
     background: rgba(0, 51, 102, 0.02);
 }
 
-.report-table tbody tr:last-child td {
+.checklist-table tbody tr:last-child td {
     border-bottom: none;
 }
 
-.report-table .font-bold {
+.checklist-table .font-bold {
     font-weight: 600;
     color: #1a2332;
 }
 
-.report-table .font-bold i {
+.checklist-table .font-bold i {
     color: #0066cc;
     font-size: 14px;
 }
 
 /* ==========================================================================
-   9. FREQUENCY TAGS
+   5. FREQUENCY TAGS
    ========================================================================== */
 
 .frequency-tag {
@@ -414,61 +197,8 @@
     color: #374151;
 }
 
-.frequency-tag.yearly {
-    background: #ede9fe;
-    color: #5b21b6;
-}
-
 /* ==========================================================================
-   10. STATUS TAGS
-   ========================================================================== */
-
-.status-tag {
-    display: inline-block;
-    padding: 4px 14px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-}
-
-.status-tag.assigned {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.status-tag.in_progress {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-.status-tag.completed {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-.status-tag.submitted {
-    background: #ede9fe;
-    color: #5b21b6;
-}
-
-.status-tag.draft {
-    background: #f3f4f6;
-    color: #6b7280;
-}
-
-.status-tag.rejected {
-    background: #fee2e2;
-    color: #dc2626;
-}
-
-.status-tag.approved {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-/* ==========================================================================
-   11. ASSIGNMENT TAGS
+   6. ASSIGNMENT TAGS
    ========================================================================== */
 
 .assignment-tag {
@@ -501,13 +231,14 @@
 }
 
 /* ==========================================================================
-   12. USER TAGS
+   7. USER TAGS
    ========================================================================== */
 
 .assigned-users-list {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
+    margin-top: 6px;
 }
 
 .user-tag {
@@ -528,7 +259,37 @@
 }
 
 /* ==========================================================================
-   13. ACTION BUTTONS
+   8. TASK LIST
+   ========================================================================== */
+
+.task-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.task-list li {
+    padding: 3px 0;
+    font-size: 13px;
+    color: #1a2332;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.task-list li i {
+    color: #10b981;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.task-list .text-muted {
+    color: #9ca3af;
+    font-style: italic;
+}
+
+/* ==========================================================================
+   9. ACTION BUTTONS
    ========================================================================== */
 
 .action-buttons {
@@ -584,7 +345,7 @@
 }
 
 /* ==========================================================================
-   14. MODAL STYLES
+   10. MODAL STYLES
    ========================================================================== */
 
 .modal {
@@ -620,7 +381,7 @@
     background: white;
     border-radius: 16px;
     padding: 32px;
-    max-width: 550px;
+    max-width: 500px;
     width: 90%;
     animation: slideUp 0.3s ease;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
@@ -630,7 +391,7 @@
     font-size: 20px;
     font-weight: 600;
     color: #1a2332;
-    margin: 0;
+    margin: 0 0 8px 0;
 }
 
 .modal-content p {
@@ -668,7 +429,7 @@
 .modal-actions {
     display: flex;
     gap: 12px;
-    justify-content: flex-end;
+    justify-content: center;
 }
 
 .modal-header {
@@ -745,10 +506,10 @@
 }
 
 /* ==========================================================================
-   15. VIEW REPORT DETAILS
+   11. VIEW MODAL DETAILS
    ========================================================================== */
 
-.view-report-details {
+.view-checklist-details {
     padding: 8px 0;
 }
 
@@ -765,17 +526,25 @@
 }
 
 .detail-row strong {
-    min-width: 110px;
+    min-width: 100px;
     font-size: 13px;
     color: #6b7280;
     font-weight: 500;
 }
 
 .detail-row .frequency-tag,
-.detail-row .status-tag,
 .detail-row .assignment-tag {
     font-size: 12px;
     padding: 3px 14px;
+}
+
+.detail-row .task-list {
+    margin-top: 4px;
+}
+
+.detail-row .task-list li {
+    padding: 3px 0;
+    font-size: 13px;
 }
 
 .detail-row .assigned-users-list {
@@ -783,7 +552,7 @@
 }
 
 /* ==========================================================================
-   16. EMPTY STATE
+   12. EMPTY STATE
    ========================================================================== */
 
 .empty-state {
@@ -822,7 +591,7 @@
 }
 
 /* ==========================================================================
-   17. TOAST NOTIFICATION
+   13. TOAST NOTIFICATION
    ========================================================================== */
 
 .toast {
@@ -900,96 +669,29 @@
 }
 
 /* ==========================================================================
-   18. HEADER STYLES
-   ========================================================================== */
-
-.header-divider {
-    width: 1px;
-    height: 28px;
-    background: #e5e7eb;
-    margin: 0 12px;
-}
-
-.header-filter-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.header-filter-group label {
-    font-size: 12px;
-    font-weight: 500;
-    color: #6b7280;
-    white-space: nowrap;
-}
-
-.header-select {
-    padding: 6px 12px;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 8px;
-    font-size: 13px;
-    background: white;
-    font-family: 'Poppins', sans-serif;
-    color: #1a2332;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.header-select:focus {
-    border-color: #0066cc;
-    outline: none;
-    box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.08);
-}
-
-.btn-create-header {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 20px;
-    background: #0066cc;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    font-family: 'Poppins', sans-serif;
-    text-decoration: none;
-}
-
-.btn-create-header:hover {
-    background: #004e8c;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 102, 204, 0.25);
-    color: white;
-}
-
-/* ==========================================================================
-   19. RESPONSIVE DESIGN
+   14. RESPONSIVE DESIGN
    ========================================================================== */
 
 /* Tablet */
 @media (max-width: 1024px) {
-    .form-grid {
-        grid-template-columns: 1fr;
-        gap: 16px;
-    }
-    
     .table-container {
         padding: 16px;
     }
     
-    .report-table {
+    .checklist-table {
         font-size: 12px;
     }
     
-    .report-table thead th,
-    .report-table tbody td {
+    .checklist-table thead th,
+    .checklist-table tbody td {
         padding: 12px;
     }
     
-    .report-table tbody td {
+    .checklist-table tbody td {
+        font-size: 12px;
+    }
+    
+    .task-list li {
         font-size: 12px;
     }
     
@@ -1000,46 +702,8 @@
 
 /* Mobile */
 @media (max-width: 768px) {
-    .report-builder-container,
-    .report-list-container {
+    .checklist-list-container {
         padding: 0;
-    }
-    
-    .card-header {
-        padding: 16px;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-    
-    .card-header-left h4 {
-        font-size: 14px;
-    }
-    
-    .form-grid {
-        padding: 16px;
-    }
-    
-    .form-column {
-        gap: 14px;
-    }
-    
-    .form-control {
-        font-size: 13px;
-        padding: 8px 12px;
-    }
-    
-    .form-actions {
-        flex-direction: column;
-    }
-    
-    .btn-submit {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .btn-clear {
-        width: 100%;
-        justify-content: center;
     }
     
     .table-container {
@@ -1076,13 +740,13 @@
         overflow-x: auto;
     }
     
-    .report-table {
-        min-width: 700px;
+    .checklist-table {
+        min-width: 600px;
         font-size: 11px;
     }
     
-    .report-table thead th,
-    .report-table tbody td {
+    .checklist-table thead th,
+    .checklist-table tbody td {
         padding: 10px;
         font-size: 11px;
     }
@@ -1098,10 +762,13 @@
     }
     
     .frequency-tag,
-    .status-tag,
     .assignment-tag {
         font-size: 10px;
         padding: 3px 10px;
+    }
+    
+    .task-list li {
+        font-size: 11px;
     }
     
     .modal-content {
@@ -1136,44 +803,15 @@
         min-width: auto;
     }
     
-    .header-divider {
-        display: none;
-    }
-    
-    .header-filter-group {
-        flex-wrap: wrap;
-    }
-    
-    .header-filter-group label {
+    .view-checklist-details .frequency-tag,
+    .view-checklist-details .assignment-tag {
         font-size: 11px;
-    }
-    
-    .header-select {
-        font-size: 12px;
-        padding: 4px 10px;
-        flex: 1;
+        padding: 2px 12px;
     }
 }
 
 /* Small Mobile */
 @media (max-width: 480px) {
-    .card-header-left h4 {
-        font-size: 13px;
-    }
-    
-    .form-grid {
-        padding: 12px;
-    }
-    
-    .form-group label {
-        font-size: 12px;
-    }
-    
-    .form-control {
-        font-size: 12px;
-        padding: 6px 10px;
-    }
-    
     .table-container {
         padding: 8px;
     }
@@ -1182,19 +820,18 @@
         font-size: 13px;
     }
     
-    .report-table thead th,
-    .report-table tbody td {
+    .checklist-table thead th,
+    .checklist-table tbody td {
         padding: 8px;
         font-size: 10px;
     }
     
-    .report-table {
-        min-width: 600px;
+    .checklist-table {
+        min-width: 500px;
         font-size: 10px;
     }
     
     .frequency-tag,
-    .status-tag,
     .assignment-tag {
         font-size: 9px;
         padding: 2px 8px;
@@ -1251,27 +888,23 @@
 }
 
 /* ==========================================================================
-   20. PRINT STYLES
+   15. PRINT STYLES
    ========================================================================== */
 
 @media print {
-    .form-actions,
-    .btn-create-header,
-    .btn-refresh-header,
-    .btn-refresh,
     .table-actions,
+    .btn-refresh,
     .action-buttons,
-    .card-header-right {
+    .btn-create-header {
         display: none !important;
     }
     
-    .table-container,
-    .builder-card {
+    .table-container {
         box-shadow: none !important;
         border: 1px solid #e5e7eb;
     }
     
-    .report-table tbody tr:hover {
+    .checklist-table tbody tr:hover {
         background: transparent !important;
     }
 }

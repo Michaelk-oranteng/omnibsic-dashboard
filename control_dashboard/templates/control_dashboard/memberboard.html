@@ -16,7 +16,7 @@
 </a></li>
 <li><a href="{% url 'control_dashboard:drafts_page' %}">
     <span class="nav-icon"><i class="fas fa-file-alt"></i></span>
-    <span class="nav-text">Draft Exception</span>
+    <span class="nav-text">Submit Report</span>
 </a></li>     
 <li><a href="{% url 'control_dashboard:reports_page' %}">
     <span class="nav-icon"><i class="fas fa-file-pdf"></i></span>
@@ -30,19 +30,10 @@
     <span class="nav-icon"><i class="fas fa-check-double"></i></span>
     <span class="nav-text">Checklist</span>
 </a></li> 
-<li><a href="{% url 'control_dashboard:member_activity_logs' %}">
-    <span class="nav-icon"><i class="fas fa-clipboard-list"></i></span>
-    <span class="nav-text">Activity logs</span>
-</a></li> 
 {% endblock %}
 
 {% block page_title %}Member Dashboard{% endblock %}
 
-{% block top_header_right %}
-<span style="font-size: 13px; color: rgba(26,35,50,0.5);">
-    <i class="fas fa-calendar-alt"></i> {{ today|date:"F d, Y" }}
-</span>
-{% endblock %}
 
 {% block content %}
 <!-- Metrics Cards -->

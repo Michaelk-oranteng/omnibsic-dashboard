@@ -30,10 +30,6 @@
     <span class="nav-icon"><i class="fas fa-check-double"></i></span>
     <span class="nav-text">Checklist</span>
 </a></li> 
-<li><a href="{% url 'control_dashboard:member_activity_logs' %}">
-    <span class="nav-icon"><i class="fas fa-clipboard-list"></i></span>
-    <span class="nav-text">Activity logs</span>
-</a></li> 
 {% endblock %}
 
 {% block page_title %}My Checklist{% endblock %}
@@ -50,9 +46,6 @@
 {% block content %}
 <div class="checklist-container">
     <div class="glass-card">
-        <h2>Hello, {{ user_profile.full_name|default:"Member" }}!</h2>
-        <p>Welcome to your checklist dashboard. Click on any date in the calendar to mark it as completed.</p>
-
         <div class="table-container">
             <table class="dashboard-table">
                 <thead>

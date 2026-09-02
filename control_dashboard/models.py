@@ -1,7 +1,9 @@
-# control_dashboard/models.py
-
 from django.db import models
 from django.utils import timezone
+from django.contrib.auth.models import User
+from django.db.models.signals import pre_save, post_save
+from django.dispatch import receiver
+import re
 
 
 class UserProfile(models.Model):
@@ -24,8 +26,18 @@ class UserProfile(models.Model):
         ('inactive', 'Inactive'),
     ]
     
+    # Link to Django's built-in User model
+    user = models.OneToOneField(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='profile',
+        null=True,
+        blank=True
+    )
+    
     email = models.EmailField(unique=True)
     full_name = models.CharField(max_length=200)
+    username = models.CharField(max_length=150, unique=True, blank=True, null=True)
     position = models.CharField(max_length=50, choices=POSITION_CHOICES, default='member')
     role = models.CharField(max_length=50, choices=ROLE_CHOICES, default='member')
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='active')
@@ -35,12 +47,93 @@ class UserProfile(models.Model):
     def __str__(self):
         return self.full_name or self.email
     
+    def generate_username_from_email(self):
+        """
+        Generate username from email address.
+        Example: john.doe@company.com -> john.doe
+        """
+        if not self.email:
+            return None
+        
+        # Remove everything after @
+        username = self.email.split('@')[0]
+        
+        # Remove any special characters except dot and underscore
+        username = re.sub(r'[^a-zA-Z0-9._]', '', username)
+        
+        # Convert to lowercase
+        username = username.lower()
+        
+        # Handle edge cases
+        if not username:
+            username = f"user_{self.id}" if self.id else "user_temp"
+        
+        # Make it unique if it already exists
+        original_username = username
+        counter = 1
+        while UserProfile.objects.filter(username=username).exclude(id=self.id).exists():
+            username = f"{original_username}{counter}"
+            counter += 1
+        
+        return username
+    
+    def create_django_user(self, password=None):
+        """
+        Create a Django User from this profile.
+        """
+        if self.user:
+            return self.user
+        
+        # Generate username if not set
+        if not self.username:
+            self.username = self.generate_username_from_email()
+        
+        # Create Django user
+        user = User.objects.create_user(
+            username=self.username,
+            email=self.email,
+            password=password or 'defaultpassword123'
+        )
+        
+        # Set full name
+        name_parts = self.full_name.split(' ', 1)
+        user.first_name = name_parts[0]
+        user.last_name = name_parts[1] if len(name_parts) > 1 else ''
+        user.save()
+        
+        self.user = user
+        self.save()
+        
+        return user
+    
     class Meta:
         db_table = 'user_profiles'
         ordering = ['full_name']
 
 
-# control_dashboard/models.py - Add this after UserProfile
+# ============================================
+# SIGNALS: Auto-generate username and create user
+# ============================================
+
+@receiver(pre_save, sender=UserProfile)
+def auto_generate_username(sender, instance, **kwargs):
+    """
+    Automatically generate username before saving.
+    """
+    if not instance.username and instance.email:
+        instance.username = instance.generate_username_from_email()
+
+
+@receiver(post_save, sender=UserProfile)
+def create_user_for_profile(sender, instance, created, **kwargs):
+    """
+    Automatically create Django User when UserProfile is created.
+    """
+    if created and not instance.user:
+        try:
+            instance.create_django_user()
+        except Exception as e:
+            print(f"Error creating user for {instance.email}: {e}")
 
 class Report(models.Model):
     """
@@ -86,67 +179,6 @@ class Report(models.Model):
     class Meta:
         db_table = 'reports'
         ordering = ['-created_at']
-
-
-class ReportTemplate(models.Model):
-    """
-    Model for storing report templates.
-    """
-    FIELD_TYPES = [
-        ('text', 'Text'),
-        ('number', 'Number'),
-        ('date', 'Date'),
-        ('checkbox', 'Checkbox'),
-        ('dropdown', 'Dropdown'),
-        ('textarea', 'Text Area'),
-    ]
-    
-    DATA_SOURCES = [
-        ('manual', 'Manual Input'),
-        ('branches', 'Branches'),
-        ('categories', 'Exception Categories'),
-        ('users', 'Users'),
-        ('database', 'Database'),
-    ]
-    
-    name = models.CharField(max_length=100, unique=True)
-    description = models.TextField(blank=True)
-    is_active = models.BooleanField(default=True)
-    created_by = models.ForeignKey('UserProfile', on_delete=models.SET_NULL, null=True, related_name='created_templates')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    def __str__(self):
-        return self.name
-    
-    class Meta:
-        db_table = 'report_templates'
-        ordering = ['name']
-
-
-class TemplateField(models.Model):
-    """
-    Model for storing template fields.
-    """
-    template = models.ForeignKey(ReportTemplate, on_delete=models.CASCADE, related_name='fields')
-    label = models.CharField(max_length=200)
-    field_type = models.CharField(max_length=50, choices=ReportTemplate.FIELD_TYPES, default='text')
-    data_source = models.CharField(max_length=50, choices=ReportTemplate.DATA_SOURCES, default='manual')
-    is_required = models.BooleanField(default=False)
-    options = models.TextField(blank=True, help_text='Comma-separated options for dropdown fields')
-    order = models.IntegerField(default=0)
-    
-    def get_options_list(self):
-        if self.options:
-            return [opt.strip() for opt in self.options.split(',') if opt.strip()]
-        return []
-    
-    def __str__(self):
-        return f"{self.template.name} - {self.label}"
-    
-    class Meta:
-        db_table = 'template_fields'
-        ordering = ['order']
 
 
 class Checklist(models.Model):
@@ -252,7 +284,6 @@ class ReportSubmission(models.Model):
     ]
     
     report_type = models.CharField(max_length=200)
-    template_name = models.CharField(max_length=200, blank=True)
     submitted_by = models.ForeignKey('UserProfile', on_delete=models.CASCADE, related_name='report_submissions')
     submission_date = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -314,9 +345,6 @@ class ActivityLog(models.Model):
         ('report_approved', 'Report Approved'),
         ('report_rejected', 'Report Rejected'),
         ('checklist_completed', 'Checklist Completed'),
-        ('template_created', 'Template Created'),
-        ('template_updated', 'Template Updated'),
-        ('template_deleted', 'Template Deleted'),
         ('user_created', 'User Created'),
         ('user_updated', 'User Updated'),
         ('user_deleted', 'User Deleted'),
@@ -339,9 +367,6 @@ class ActivityLog(models.Model):
         'report_approved': 'fa-check-circle',
         'report_rejected': 'fa-times-circle',
         'checklist_completed': 'fa-check-double',
-        'template_created': 'fa-cog',
-        'template_updated': 'fa-cog',
-        'template_deleted': 'fa-cog',
         'user_created': 'fa-user-plus',
         'user_updated': 'fa-user-edit',
         'user_deleted': 'fa-user-minus',

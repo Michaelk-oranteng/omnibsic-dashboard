@@ -206,12 +206,29 @@ class ChecklistLogAdmin(admin.ModelAdmin):
     search_fields = ['checklist__name', 'user__full_name']
 
 
-# ==================== USER PROFILE ADMIN ====================
+# control_dashboard/admin.py
+
+from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.models import User
+from .models import UserProfile
+
+class UserProfileInline(admin.StackedInline):
+    model = UserProfile
+    can_delete = False
+    verbose_name_plural = 'Profile'
+
+class CustomUserAdmin(UserAdmin):
+    inlines = (UserProfileInline,)
+    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff')
+    search_fields = ('username', 'email', 'first_name', 'last_name')
+
+admin.site.unregister(User)
+admin.site.register(User, CustomUserAdmin)
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ['email', 'full_name', 'position', 'role', 'status', 'created_at']
-    list_filter = ['role', 'position', 'status']
-    search_fields = ['email', 'full_name']
-    readonly_fields = ['created_at', 'updated_at']
-    fields = ['email', 'full_name', 'position', 'role', 'status']
+    list_display = ('full_name', 'email', 'username', 'position', 'role', 'status')
+    search_fields = ('full_name', 'email', 'username')
+    list_filter = ('position', 'role', 'status')
+    readonly_fields = ('username', 'created_at', 'updated_at')

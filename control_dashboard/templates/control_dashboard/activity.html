@@ -14,17 +14,21 @@
     <span class="nav-icon"><i class="fas fa-user-cog"></i></span>
     <span class="nav-text">User Management</span>
 </a></li> 
+<li><a href="{% url 'control_dashboard:report_creation' %}">
+    <span class="nav-icon"><i class="fas fa-flag"></i></span>
+    <span class="nav-text">Report Creation</span>
+</a></li>  
 <li><a href="{% url 'control_dashboard:report_center' %}">
     <span class="nav-icon"><i class="fas fa-flag"></i></span>
     <span class="nav-text">Report Center</span>
-</a></li>  
-<li><a href="{% url 'control_dashboard:template_builder' %}">
-    <span class="nav-icon"><i class="fas fa-cubes"></i></span>
-    <span class="nav-text">Template Builder</span>
-</a></li>          
+</a></li>   
 <li><a href="{% url 'control_dashboard:checklist_builder' %}">
-    <span class="nav-icon"><i class="fas fa-tools"></i></span>
+    <span class="nav-icon"><i class="fas fa-cubes"></i></span>
     <span class="nav-text">Checklist Builder</span>
+</a></li>   
+<li><a href="{% url 'control_dashboard:checklist_list' %}">
+    <span class="nav-icon"><i class="fas fa-tools"></i></span>
+    <span class="nav-text">Checklist Activities</span>
 </a></li>
 <li class="active"><a href="{% url 'control_dashboard:activity_logs' %}">
     <span class="nav-icon"><i class="fas fa-key"></i></span>

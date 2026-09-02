@@ -6,6 +6,380 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'stylesheets/member.css' %}" type="text/css">
 <link rel="stylesheet" href="{% static 'stylesheets/drafts.css' %}" type="text/css">
+<style>
+    /* Additional centering styles */
+    .submit-header-section {
+        text-align: center;
+        padding: 20px 0 10px 0;
+    }
+    .submit-header-section h2 {
+        margin-bottom: 8px;
+        font-size: 22px;
+        font-weight: 600;
+        color: #1a2332;
+    }
+    .submit-header-section .subtitle {
+        color: #6b7280;
+        font-size: 14px;
+        margin-bottom: 4px;
+    }
+    .submit-header-section .excel-hint {
+        color: #217346;
+        font-size: 14px;
+        margin-top: 4px;
+    }
+    .submit-controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        margin-top: 16px;
+        flex-wrap: wrap;
+    }
+    .submit-controls .header-filter-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .submit-controls .header-filter-group label {
+        font-size: 13px;
+        font-weight: 500;
+        color: #1a2332;
+        white-space: nowrap;
+    }
+    .submit-controls .header-select {
+        padding: 8px 14px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 13px;
+        background: white;
+        font-family: 'Poppins', sans-serif;
+        color: #1a2332;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        min-width: 220px;
+    }
+    .submit-controls .header-select:focus {
+        border-color: #0066cc;
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.08);
+    }
+    .btn-upload-header {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 20px;
+        background: #217346;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        font-family: 'Poppins', sans-serif;
+        text-decoration: none;
+    }
+    .btn-upload-header:hover {
+        background: #1a5c38;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(33, 115, 70, 0.25);
+        color: white;
+    }
+    .btn-upload-header.loading {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
+    .btn-clear-upload-sm {
+        margin-left: 12px;
+        padding: 4px 12px;
+        background: #fee2e2;
+        color: #dc2626;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.2s ease;
+    }
+    .btn-clear-upload-sm:hover {
+        background: #fecaca;
+    }
+    .header-divider {
+        display: none;
+    }
+    .btn-submit-draft-header {
+        display: none;
+    }
+    .glass-card .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+    }
+    .glass-card .empty-state i {
+        font-size: 48px;
+        color: #d1d5db;
+        margin-bottom: 12px;
+        display: block;
+    }
+    .glass-card .empty-state span {
+        font-size: 15px;
+        color: #6b7280;
+    }
+    /* Template container styling */
+    #template-container {
+        margin-top: 20px;
+    }
+    .template-header {
+        margin-bottom: 16px;
+    }
+    .template-header h4 {
+        font-size: 15px;
+        font-weight: 600;
+        color: #1a2332;
+        margin: 0;
+    }
+    .table-container {
+        overflow-x: auto;
+    }
+    .template-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: transparent;
+    }
+    .template-table thead th {
+        background: rgba(0, 51, 102, 0.03);
+        color: rgba(26, 35, 50, 0.5);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        text-align: left;
+        padding: 12px 14px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    .template-table tbody td {
+        padding: 10px 14px;
+        color: #1a2332;
+        font-size: 13px;
+        border-bottom: 1px solid #f3f4f6;
+        vertical-align: middle;
+    }
+    .template-table tbody tr:hover {
+        background: rgba(0, 51, 102, 0.02);
+    }
+    .template-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .template-table input,
+    .template-table select,
+    .template-table textarea {
+        width: 100%;
+        padding: 6px 10px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 13px;
+        font-family: 'Poppins', sans-serif;
+        transition: all 0.3s ease;
+        background: white;
+        color: #1a2332;
+        box-sizing: border-box;
+    }
+    .template-table input:focus,
+    .template-table select:focus,
+    .template-table textarea:focus {
+        border-color: #0066cc;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.08);
+    }
+    .template-table textarea {
+        min-height: 40px;
+        resize: vertical;
+    }
+    .template-table input[type="checkbox"] {
+        width: auto;
+        height: 18px;
+        width: 18px;
+        cursor: pointer;
+    }
+    .row-actions {
+        display: flex;
+        justify-content: center;
+        gap: 4px;
+    }
+    .btn-remove-row {
+        width: 30px;
+        height: 30px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    .btn-remove-row:hover:not(:disabled) {
+        background: #fecaca;
+        transform: scale(1.05);
+    }
+    .btn-remove-row:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        transform: none;
+    }
+    .btn-add-field {
+        padding: 10px 24px;
+        background: #f3f4f6;
+        color: #374151;
+        border: 1.5px dashed #d1d5db;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        font-family: 'Poppins', sans-serif;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btn-add-field:hover {
+        background: #e5e7eb;
+        border-color: #9ca3af;
+    }
+    .required {
+        color: #dc2626;
+        font-weight: 700;
+    }
+    /* Upload progress */
+    #uploadProgress {
+        margin-bottom: 15px;
+        padding: 12px 16px;
+        background: #f8fafc;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+    }
+    .progress-track {
+        flex: 1;
+        height: 8px;
+        background: #e5e7eb;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .progress-bar {
+        height: 100%;
+        background: #10b981;
+        transition: width 0.3s ease;
+    }
+    #uploadStats {
+        margin-bottom: 15px;
+        padding: 12px 16px;
+        background: #f0fdf4;
+        border-radius: 8px;
+        border-left: 4px solid #10b981;
+    }
+    #uploadStats #uploadResult {
+        font-size: 14px;
+        color: #065f46;
+    }
+    .toast-notification {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        padding: 16px 20px;
+        max-width: 400px;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-left: 4px solid #10b981;
+        transform: translateX(120%);
+        transition: transform 0.3s ease;
+    }
+    .toast-notification.show {
+        transform: translateX(0);
+    }
+    .toast-notification .toast-icon {
+        flex-shrink: 0;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+    .toast-notification .toast-content {
+        flex: 1;
+    }
+    .toast-notification .toast-title {
+        font-weight: 600;
+        font-size: 14px;
+        color: #1a2332;
+        margin: 0;
+    }
+    .toast-notification .toast-message {
+        font-size: 13px;
+        color: #6b7280;
+        margin: 2px 0 0 0;
+    }
+    .toast-notification .toast-close {
+        background: none;
+        border: none;
+        font-size: 18px;
+        cursor: pointer;
+        color: #9ca3af;
+        padding: 0 4px;
+    }
+    .toast-notification .toast-close:hover {
+        color: #1a2332;
+    }
+    /* Responsive */
+    @media (max-width: 768px) {
+        .submit-controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .submit-controls .header-filter-group {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .submit-controls .header-select {
+            width: 100%;
+            min-width: unset;
+        }
+        .btn-upload-header {
+            justify-content: center;
+        }
+        .template-table {
+            min-width: 600px;
+            font-size: 12px;
+        }
+        .template-table thead th,
+        .template-table tbody td {
+            padding: 8px 10px;
+            font-size: 12px;
+        }
+        .template-table input,
+        .template-table select,
+        .template-table textarea {
+            font-size: 12px;
+            padding: 4px 8px;
+        }
+        .toast-notification {
+            left: 16px;
+            right: 16px;
+            bottom: 16px;
+            max-width: none;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block dashboard_url %}{% url 'control_dashboard:member_dashboard' %}{% endblock %}
@@ -17,7 +391,7 @@
 </a></li>
 <li class="active"><a href="{% url 'control_dashboard:drafts_page' %}">
     <span class="nav-icon"><i class="fas fa-file-alt"></i></span>
-    <span class="nav-text">Draft Exception</span>
+    <span class="nav-text">Submit Report</span>
 </a></li>     
 <li><a href="{% url 'control_dashboard:reports_page' %}">
     <span class="nav-icon"><i class="fas fa-file-pdf"></i></span>
@@ -31,35 +405,16 @@
     <span class="nav-icon"><i class="fas fa-check-double"></i></span>
     <span class="nav-text">Checklist</span>
 </a></li> 
-<li><a href="{% url 'control_dashboard:member_activity_logs' %}">
-    <span class="nav-icon"><i class="fas fa-clipboard-list"></i></span>
-    <span class="nav-text">Activity logs</span>
-</a></li> 
 {% endblock %}
 
 {% block page_title %}Submit Control Report{% endblock %}
 
 {% block top_header_center %}
-<div class="header-divider"></div>
-<div class="header-filter-group">
-    <label for="report-type-filter">Report Type</label>
-    <select id="report-type-filter" class="header-select" onchange="loadTemplate()">
-        <option value="">Select Report Type...</option>
-        {% for report_type in report_types %}
-        <option value="{{ report_type }}">{{ report_type }}</option>
-        {% endfor %}
-    </select>
-</div>
+<!-- Empty - moved controls to content area -->
 {% endblock %}
 
 {% block top_header_right %}
-<button class="btn-upload-header" onclick="document.getElementById('excelFileInputHeader').click()" title="Import Excel Data">
-    <i class="fas fa-file-excel"></i> Import Excel
-</button>
-<input type="file" id="excelFileInputHeader" accept=".xlsx,.xls,.csv" style="display: none;" onchange="handleExcelFile(this.files[0])">
-<button class="btn-submit-draft-header" id="saveReportBtn">
-    <i class="fas fa-save"></i> Save Report
-</button>
+<!-- Empty - moved buttons to content area -->
 {% endblock %}
 
 {% block content %}
@@ -84,12 +439,30 @@
 
 <div class="checklist-container">
     <div class="glass-card">
-        <h2>New Submission</h2>
-        <p>Select a report type from the dropdown to load its template, fill in the details, and save directly to the database.</p>
-        <p style="color: #217346; margin-top: 4px;">
-            <i class="fas fa-file-excel"></i> Or click "Import Excel" in the top header to bulk upload exceptions.
-        </p>
+        <!-- Centered Header Section -->
+        <div class="submit-header-section">
+            <h2>New Submission</h2>
+            <p class="subtitle">Select a report type from the dropdown and click upload your excel</p>
+        </div>
 
+        <!-- Controls: Report Type Dropdown + Import Excel Button -->
+        <div class="submit-controls">
+            <div class="header-filter-group">
+                <label for="report-type-filter">Report Type</label>
+                <select id="report-type-filter" class="header-select" onchange="loadTemplate()">
+                    <option value="">Select Report Type...</option>
+                    {% for report_type in report_types %}
+                    <option value="{{ report_type }}">{{ report_type }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button class="btn-upload-header" onclick="document.getElementById('excelFileInputHeader').click()" title="Import Excel Data">
+                <i class="fas fa-file-excel"></i> Upload Excel
+            </button>
+            <input type="file" id="excelFileInputHeader" accept=".xlsx,.xls,.csv" style="display: none;" onchange="handleExcelFile(this.files[0])">
+        </div>
+
+        <!-- Template Container -->
         <div id="template-container" style="margin-top: 20px; display: none;">
             <div class="template-header">
                 <h4><span id="template-name-display">Template</span></h4>
@@ -107,11 +480,6 @@
                     </div>
                 </form>
             </div>
-        </div>
-
-        <div id="no-template-message" class="empty-state">
-            <i class="fas fa-file-alt"></i>
-            <span>Select a report type from the dropdown above to load its template form.</span>
         </div>
     </div>
 </div>
