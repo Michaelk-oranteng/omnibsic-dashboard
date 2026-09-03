@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 import re
+from datetime import date, timedelta
 
 
 class UserProfile(models.Model):
@@ -135,6 +136,7 @@ def create_user_for_profile(sender, instance, created, **kwargs):
         except Exception as e:
             print(f"Error creating user for {instance.email}: {e}")
 
+
 class Report(models.Model):
     """
     Model for storing reports created by admin.
@@ -179,6 +181,62 @@ class Report(models.Model):
     class Meta:
         db_table = 'reports'
         ordering = ['-created_at']
+    
+    def get_display_data(self):
+        """
+        Get display data for the report, handling both Excel imports and regular reports.
+        """
+        report_data = self.data or {}
+        
+        # Check if this is an Excel import
+        if report_data.get('import_type') == 'excel':
+            headers = report_data.get('headers', [])
+            rows_data = report_data.get('data', [])
+            
+            # Normalize rows - they should already be dictionaries with proper headers
+            normalized_rows = []
+            for row in rows_data:
+                if isinstance(row, dict):
+                    normalized_rows.append(row)
+                elif isinstance(row, list):
+                    # Convert list to dict using headers
+                    row_dict = {}
+                    for i, header in enumerate(headers):
+                        if i < len(row):
+                            row_dict[header] = row[i] if row[i] is not None else ''
+                        else:
+                            row_dict[header] = ''
+                    normalized_rows.append(row_dict)
+            
+            return {
+                'is_excel': True,
+                'headers': headers,
+                'rows': normalized_rows,
+                'row_count': len(normalized_rows),
+            }
+        else:
+            # Regular report (non-Excel)
+            result = {
+                'is_excel': False,
+                'rows': [],
+                'row_count': 0
+            }
+            
+            # Try to extract from form_data
+            if 'form_data' in report_data and report_data['form_data']:
+                form = report_data['form_data'][0] if isinstance(report_data['form_data'], list) else report_data['form_data']
+                if isinstance(form, dict):
+                    row = {
+                        'Branch': form.get('BRANCH_UNIT', form.get('BRANCH', form.get('branch', '-'))),
+                        'Date': form.get('DATE', form.get('date', '-')),
+                        'Observation': form.get('OBSERVATION', form.get('details', form.get('OBSERVATION', '-'))),
+                        'Responsible_Staff': form.get('RESPONSIBLE_STAFF', form.get('responsible_staff', '-')),
+                        'Status': form.get('STATUS', form.get('status', 'Open'))
+                    }
+                    result['rows'] = [row]
+                    result['row_count'] = 1
+            
+            return result
 
 
 class Checklist(models.Model):
@@ -190,6 +248,7 @@ class Checklist(models.Model):
         ('weekly', 'Weekly'),
         ('monthly', 'Monthly'),
         ('quarterly', 'Quarterly'),
+        ('bi-annual', 'Bi-Annual'),
         ('one-off', 'One-off'),
     ]
     
@@ -233,9 +292,329 @@ class Checklist(models.Model):
                 return ', '.join([user.full_name for user in users])
             return 'No users assigned'
     
+    def get_frequency_days(self):
+        """Return the number of days between each occurrence based on frequency."""
+        frequency_map = {
+            'daily': 1,
+            'weekly': 7,
+            'monthly': 30,
+            'quarterly': 91,
+            'bi-annual': 182,
+            'one-off': 365,  # One-off doesn't repeat
+        }
+        return frequency_map.get(self.frequency, 7)
+    
+    def get_expected_occurrences(self, start_date=None, end_date=None):
+        """
+        Calculate expected occurrences for a date range based on frequency.
+        For daily frequency, only counts weekdays (Monday-Friday).
+        For monthly frequency, counts months.
+        For weekly frequency, counts weeks.
+        """
+        from datetime import timedelta
+        
+        if not start_date:
+            start_date = timezone.now().date().replace(month=1, day=1)
+        if not end_date:
+            end_date = timezone.now().date()
+        
+        # If end_date is before start_date, swap them
+        if end_date < start_date:
+            start_date, end_date = end_date, start_date
+        
+        # For one-off, return 1 if the date range includes any date
+        if self.frequency == 'one-off':
+            return 1
+        
+        # For daily frequency, count only weekdays (Monday to Friday)
+        if self.frequency == 'daily':
+            current = start_date
+            count = 0
+            while current <= end_date:
+                # Monday = 0, Sunday = 6, so weekdays are 0-4
+                if current.weekday() < 5:  # Monday to Friday
+                    count += 1
+                current += timedelta(days=1)
+            return count
+        
+        # For monthly frequency, count the number of months in the range
+        if self.frequency == 'monthly':
+            months = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month) + 1
+            return months
+        
+        # For weekly frequency, count the number of weeks in the range
+        if self.frequency == 'weekly':
+            days_diff = (end_date - start_date).days + 1
+            weeks = days_diff // 7
+            return max(1, weeks)
+        
+        # For quarterly frequency, count the number of quarters
+        if self.frequency == 'quarterly':
+            days_diff = (end_date - start_date).days + 1
+            quarters = days_diff // 91
+            return max(1, quarters)
+        
+        # For bi-annual frequency, count the number of half-years
+        if self.frequency == 'bi-annual':
+            days_diff = (end_date - start_date).days + 1
+            half_years = days_diff // 182
+            return max(1, half_years)
+        
+        # For other frequencies, calculate based on days difference
+        days_diff = (end_date - start_date).days + 1
+        frequency_days = self.get_frequency_days()
+        return max(1, days_diff // frequency_days)
+    
+    def get_completion_percentage(self, user_profile, start_date=None, end_date=None):
+        """
+        Calculate completion percentage for a user based on frequency.
+        Capped at 100%.
+        """
+        if not start_date:
+            start_date = timezone.now().date().replace(month=1, day=1)
+        if not end_date:
+            end_date = timezone.now().date()
+        
+        # If end_date is before start_date, swap them
+        if end_date < start_date:
+            start_date, end_date = end_date, start_date
+        
+        expected = self.get_expected_occurrences(start_date, end_date)
+        if expected == 0:
+            return 0
+        
+        # Get actual logs
+        actual = ChecklistLog.objects.filter(
+            checklist=self,
+            user=user_profile,
+            log_date__gte=start_date,
+            log_date__lte=end_date
+        ).count()
+        
+        # Calculate percentage and cap at 100%
+        percentage = int((actual / expected) * 100)
+        return min(percentage, 100)
+    
+    def get_monthly_completion(self, user_profile, month=None, year=None):
+        """Calculate completion percentage for a specific month."""
+        today = timezone.now().date()
+        if month is None:
+            month = today.month
+        if year is None:
+            year = today.year
+        
+        start_date = date(year, month, 1)
+        if month == 12:
+            end_date = date(year + 1, 1, 1) - timedelta(days=1)
+        else:
+            end_date = date(year, month + 1, 1) - timedelta(days=1)
+        
+        return self.get_completion_percentage(user_profile, start_date, end_date)
+    
+    def get_year_to_date_completion(self, user_profile):
+        """Calculate year-to-date completion percentage."""
+        today = timezone.now().date()
+        start_date = date(today.year, 1, 1)
+        return self.get_completion_percentage(user_profile, start_date, today)
+    
+    def get_monthly_expected(self, user_profile, month=None, year=None):
+        """Get the expected number of occurrences for a specific month."""
+        today = timezone.now().date()
+        if month is None:
+            month = today.month
+        if year is None:
+            year = today.year
+        
+        start_date = date(year, month, 1)
+        if month == 12:
+            end_date = date(year + 1, 1, 1) - timedelta(days=1)
+        else:
+            end_date = date(year, month + 1, 1) - timedelta(days=1)
+        
+        return self.get_expected_occurrences(start_date, end_date)
+    
+    def get_monthly_actual(self, user_profile, month=None, year=None):
+        """Get the actual number of completions for a specific month."""
+        today = timezone.now().date()
+        if month is None:
+            month = today.month
+        if year is None:
+            year = today.year
+        
+        start_date = date(year, month, 1)
+        if month == 12:
+            end_date = date(year + 1, 1, 1) - timedelta(days=1)
+        else:
+            end_date = date(year, month + 1, 1) - timedelta(days=1)
+        
+        return ChecklistLog.objects.filter(
+            checklist=self,
+            user=user_profile,
+            log_date__gte=start_date,
+            log_date__lte=end_date
+        ).count()
+    
+    def get_year_to_date_expected(self, user_profile):
+        """Get the expected number of occurrences for year-to-date."""
+        today = timezone.now().date()
+        start_date = date(today.year, 1, 1)
+        return self.get_expected_occurrences(start_date, today)
+    
+    def get_year_to_date_actual(self, user_profile):
+        """Get the actual number of completions for year-to-date."""
+        today = timezone.now().date()
+        start_date = date(today.year, 1, 1)
+        return ChecklistLog.objects.filter(
+            checklist=self,
+            user=user_profile,
+            log_date__gte=start_date,
+            log_date__lte=today
+        ).count()
+    
+    def get_next_due_date(self, user_profile):
+        """
+        Calculate the next due date based on frequency and last completion.
+        For daily, skips weekends.
+        """
+        from datetime import timedelta
+        
+        if self.frequency == 'one-off':
+            return None
+        
+        # Get the last log for this checklist and user
+        last_log = ChecklistLog.objects.filter(
+            checklist=self,
+            user=user_profile
+        ).order_by('-log_date').first()
+        
+        if not last_log:
+            # If no logs, next due is today (or next weekday for daily)
+            today = timezone.now().date()
+            next_date = today
+            if self.frequency == 'daily':
+                while next_date.weekday() >= 5:  # Skip weekends
+                    next_date += timedelta(days=1)
+            return next_date
+        
+        # Calculate next due date based on frequency
+        if self.frequency == 'daily':
+            next_date = last_log.log_date + timedelta(days=1)
+            # Skip weekends
+            while next_date.weekday() >= 5:
+                next_date += timedelta(days=1)
+        elif self.frequency == 'weekly':
+            next_date = last_log.log_date + timedelta(days=7)
+        elif self.frequency == 'monthly':
+            # Add one month
+            if last_log.log_date.month == 12:
+                next_date = date(last_log.log_date.year + 1, 1, last_log.log_date.day)
+            else:
+                next_date = date(last_log.log_date.year, last_log.log_date.month + 1, last_log.log_date.day)
+        elif self.frequency == 'quarterly':
+            next_date = last_log.log_date + timedelta(days=91)
+        elif self.frequency == 'bi-annual':
+            next_date = last_log.log_date + timedelta(days=182)
+        else:
+            days = self.get_frequency_days()
+            next_date = last_log.log_date + timedelta(days=days)
+        
+        # If next date is in the past, set to today (or next weekday)
+        if next_date < timezone.now().date():
+            next_date = timezone.now().date()
+            if self.frequency == 'daily':
+                while next_date.weekday() >= 5:
+                    next_date += timedelta(days=1)
+        
+        return next_date
+    
+    def get_actual_completion_count(self, user_profile, start_date=None, end_date=None):
+        """Get the actual number of completed occurrences."""
+        if not start_date:
+            start_date = timezone.now().date().replace(month=1, day=1)
+        if not end_date:
+            end_date = timezone.now().date()
+        
+        if end_date < start_date:
+            start_date, end_date = end_date, start_date
+        
+        return ChecklistLog.objects.filter(
+            checklist=self,
+            user=user_profile,
+            log_date__gte=start_date,
+            log_date__lte=end_date
+        ).count()
+    
     class Meta:
         db_table = 'checklists'
         ordering = ['name']
+
+
+class ReportSchedule(models.Model):
+    """Model for storing report schedules and predicting next due dates."""
+    
+    FREQUENCY_CHOICES = [
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+        ('quarterly', 'Quarterly'),
+        ('yearly', 'Yearly'),
+        ('one-off', 'One-off'),
+    ]
+    
+    report = models.ForeignKey('Report', on_delete=models.CASCADE, related_name='schedules')
+    frequency = models.CharField(max_length=50, choices=FREQUENCY_CHOICES, default='weekly')
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    due_time = models.TimeField(null=True, blank=True)
+    last_submitted = models.DateTimeField(null=True, blank=True)
+    next_due_date = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'report_schedules'
+        ordering = ['next_due_date']
+    
+    def calculate_next_due_date(self):
+        """Calculate the next due date based on frequency."""
+        if not self.last_submitted:
+            return self.start_date
+        
+        last_date = self.last_submitted.date()
+        
+        frequency_map = {
+            'daily': 1,
+            'weekly': 7,
+            'monthly': 30,
+            'quarterly': 91,
+            'yearly': 365,
+            'one-off': None,
+        }
+        
+        days = frequency_map.get(self.frequency)
+        if not days:
+            return None
+        
+        next_date = last_date + timedelta(days=days)
+        
+        # For daily, skip weekends if needed
+        if self.frequency == 'daily':
+            while next_date.weekday() >= 5:  # Saturday or Sunday
+                next_date += timedelta(days=1)
+        
+        if self.end_date and next_date > self.end_date:
+            return None
+        
+        return next_date
+    
+    def save(self, *args, **kwargs):
+        if not self.next_due_date:
+            self.next_due_date = self.calculate_next_due_date()
+        super().save(*args, **kwargs)
+    
+    def get_frequency_display(self):
+        return dict(self.FREQUENCY_CHOICES).get(self.frequency, self.frequency)
 
 
 class ChecklistTask(models.Model):
@@ -255,6 +634,7 @@ class ChecklistTask(models.Model):
     class Meta:
         db_table = 'checklist_tasks'
         ordering = ['order']
+
 
 class ChecklistLog(models.Model):
     """
@@ -298,7 +678,6 @@ class ReportSubmission(models.Model):
         db_table = 'report_submissions'
         ordering = ['-submission_date']
 
-# control_dashboard/models.py
 
 class Branch(models.Model):
     """Model for storing branch/department names."""
@@ -329,7 +708,6 @@ class ExceptionCategory(models.Model):
         db_table = 'exception_categories'
         ordering = ['name']
 
-# models.py
 
 class ActivityLog(models.Model):
     """
@@ -423,28 +801,6 @@ class ActivityLog(models.Model):
         """Get the FontAwesome icon class for this activity type."""
         return self.ACTIVITY_ICONS.get(self.activity_type, 'fa-circle')
 
-# views.py - Update the log_activity function
-
-def log_activity(user, activity_type, details, request=None):
-    """
-    Helper function to log user activities.
-    """
-    try:
-        ip_address = request.META.get('REMOTE_ADDR') if request else None
-        user_agent = request.META.get('HTTP_USER_AGENT', '') if request else ''
-        
-        ActivityLog.objects.create(
-            user=user,
-            activity_type=activity_type,
-            details=details,
-            ip_address=ip_address,
-            user_agent=user_agent
-        )
-    except Exception as e:
-        # Log error but don't break the application
-        print(f"Error logging activity: {e}")
-
-# models.py
 
 class AdHocDeduction(models.Model):
     """

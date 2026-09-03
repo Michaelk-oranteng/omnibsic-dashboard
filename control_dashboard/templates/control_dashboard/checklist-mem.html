@@ -47,18 +47,81 @@
 <div class="checklist-container">
     <div class="glass-card">
         <div class="table-container">
+            <div class="table-header">
+                <h4><i class="fas fa-clipboard-list"></i> My Activities ({{ checklists|length }})</h4>
+                <div class="table-actions">
+                    <input type="text" id="searchChecklist" class="table-input" placeholder="Search activities..." style="width: 150px;" onkeyup="filterChecklists()">
+                    
+                    <!-- Month Filter -->
+                    <select id="monthFilter" class="table-input" style="width: 120px;" onchange="applyFilters()">
+                        <option value="all">All Months</option>
+                        <option value="0">January</option>
+                        <option value="1">February</option>
+                        <option value="2">March</option>
+                        <option value="3">April</option>
+                        <option value="4">May</option>
+                        <option value="5">June</option>
+                        <option value="6">July</option>
+                        <option value="7">August</option>
+                        <option value="8">September</option>
+                        <option value="9">October</option>
+                        <option value="10">November</option>
+                        <option value="11">December</option>
+                    </select>
+                    
+                    <!-- Year Filter -->
+                    <select id="yearFilter" class="table-input" style="width: 100px;" onchange="applyFilters()">
+                        <option value="all">All Years</option>
+                        {% for year in years %}
+                        <option value="{{ year }}">{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                    
+                    <button class="btn-refresh" onclick="location.reload()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
             <table class="dashboard-table">
                 <thead>
                     <tr>
-                        <th>Activity</th>
-                        <th>Task</th>
-                        <th>Frequency</th>
-                        <th class="text-center">Calendar</th>
-                        <th class="text-center">Actions</th>
+                        <th style="width: 20%;">Activity Name</th>
+                        <th style="width: 12%;">Frequency</th>
+                        <th style="width: 30%;">Checklist Items</th>
+                        <th style="width: 38%;">Calendar</th>
                     </tr>
                 </thead>
                 <tbody id="taskTableBody">
-                    <!-- rows injected by JS from Django data -->
+                    {% for checklist in checklists %}
+                    <tr data-id="{{ checklist.id }}" class="checklist-row">
+                        <td class="font-bold">
+                            <i class="fas fa-clipboard-check" style="color: #0066cc; margin-right: 8px;"></i>
+                            {{ checklist.name }}
+                        </td>
+                        <td>
+                            <span class="frequency-tag {{ checklist.frequency }}">
+                                {{ checklist.get_frequency_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <ul class="task-list">
+                                {% for task in checklist.tasks.all|slice:":3" %}
+                                <li><i class="fas fa-check-circle"></i> {{ task.description }}</li>
+                                {% empty %}
+                                <li class="text-muted">No tasks defined</li>
+                                {% endfor %}
+                                {% if checklist.tasks.count > 3 %}
+                                <li class="text-muted more-tasks">+{{ checklist.tasks.count|add:"-3" }} more</li>
+                                {% endif %}
+                            </ul>
+                        </td>
+                        <td>
+                            <div class="mini-calendar-container" data-checklist-id="{{ checklist.id }}" data-index="{{ forloop.counter0 }}">
+                                <!-- Calendar will be rendered by JavaScript -->
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
@@ -128,6 +191,109 @@
     };
 
     // ============================================
+    // FILTER CHECKLISTS
+    // ============================================
+    function filterChecklists() {
+        const search = document.getElementById('searchChecklist').value.toLowerCase();
+        const rows = document.querySelectorAll('.checklist-row');
+        
+        rows.forEach(row => {
+            const name = row.querySelector('td:first-child').textContent.toLowerCase();
+            if (name.includes(search)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // ============================================
+    // MONTH & YEAR FILTERS - CONTROL CALENDARS
+    // ============================================
+    function applyFilters() {
+        const monthFilter = document.getElementById('monthFilter').value;
+        const yearFilter = document.getElementById('yearFilter').value;
+        
+        // Update all calendars to the selected month/year
+        const containers = document.querySelectorAll('.mini-calendar-container');
+        containers.forEach((container) => {
+            const index = parseInt(container.dataset.index);
+            const task = tasksData[index];
+            
+            if (task) {
+                // Update calendar state based on filters
+                if (monthFilter !== 'all') {
+                    calendarStates[index].month = parseInt(monthFilter);
+                }
+                if (yearFilter !== 'all') {
+                    calendarStates[index].year = parseInt(yearFilter);
+                }
+                
+                // Re-render the calendar
+                const newCalendar = createMiniCalendar(index, task.frequency_value);
+                container.innerHTML = '';
+                container.appendChild(newCalendar);
+            }
+        });
+        
+        // Show/hide rows based on filters (if specific month/year selected)
+        const rows = document.querySelectorAll('.checklist-row');
+        rows.forEach((row, index) => {
+            const calendarContainer = row.querySelector('.mini-calendar-container');
+            if (!calendarContainer) return;
+            
+            const calendarState = calendarStates[index];
+            if (!calendarState) {
+                row.style.display = '';
+                return;
+            }
+            
+            let showRow = true;
+            
+            // Show only rows that match the filter
+            if (monthFilter !== 'all') {
+                const month = parseInt(monthFilter);
+                if (calendarState.month !== month) {
+                    showRow = false;
+                }
+            }
+            
+            if (yearFilter !== 'all' && showRow) {
+                const year = parseInt(yearFilter);
+                if (calendarState.year !== year) {
+                    showRow = false;
+                }
+            }
+            
+            row.style.display = showRow ? '' : 'none';
+        });
+    }
+
+    function resetFilters() {
+        document.getElementById('monthFilter').value = 'all';
+        document.getElementById('yearFilter').value = 'all';
+        document.getElementById('searchChecklist').value = '';
+        
+        // Show all rows
+        document.querySelectorAll('.checklist-row').forEach(row => {
+            row.style.display = '';
+        });
+        
+        // Reset all calendars to current month
+        const today = new Date();
+        Object.keys(calendarStates).forEach(key => {
+            calendarStates[key] = {
+                month: today.getMonth(),
+                year: today.getFullYear()
+            };
+        });
+        
+        // Re-render all calendars
+        renderAllCalendars();
+        showToast('Filters reset', 'Reset');
+    }
+
+    // ============================================
     // CHECKLIST DATA - From Django
     // ============================================
 
@@ -155,83 +321,27 @@
         completionLogs[index] = task.logs || [];
     });
 
-    let editingRow = null;
-    let toastTimeout = null;
     let calendarStates = {};
 
     // ============================================
-    // RENDER TABLE
+    // RENDER CALENDARS
     // ============================================
 
-    function renderTable() {
-        const tbody = document.getElementById('taskTableBody');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-
-        tasksData.forEach((task, index) => {
-            const tr = document.createElement('tr');
-            const isEditing = (editingRow === index);
-
-            const tdAct = document.createElement('td');
-            tdAct.style.fontWeight = '500';
-            tdAct.style.color = 'rgba(26,35,50,0.7)';
-            const actCell = createEditableCell('activity', task.activity, index, isEditing);
-            tdAct.appendChild(actCell);
-
-            const tdTask = document.createElement('td');
-            tdTask.style.fontWeight = '600';
-            tdTask.style.color = '#1a2332';
-            const taskCell = createEditableCell('task', task.task, index, isEditing);
-            tdTask.appendChild(taskCell);
-
-            const tdFreq = document.createElement('td');
-            const freqCell = createFrequencyCell(task.frequency, index, isEditing);
-            tdFreq.appendChild(freqCell);
-
-            const tdCalendar = document.createElement('td');
-            tdCalendar.className = 'log-column text-center';
-            const calendar = createMiniCalendar(index, task.frequency_value);
-            tdCalendar.appendChild(calendar);
-
-            const tdActions = document.createElement('td');
-            tdActions.className = 'actions-column text-center';
-            const actionContainer = document.createElement('div');
-            actionContainer.className = 'table-actions-cluster';
-
-            if (isEditing) {
-                const saveBtn = document.createElement('button');
-                saveBtn.className = 'btn-save';
-                saveBtn.innerHTML = `<i class="fas fa-save"></i> <span>Save</span>`;
-                saveBtn.addEventListener('click', () => saveRow(index));
-
-                const cancelBtn = document.createElement('button');
-                cancelBtn.className = 'btn-cancel-row';
-                cancelBtn.innerHTML = `<i class="fas fa-times"></i> <span>Cancel</span>`;
-                cancelBtn.addEventListener('click', () => cancelEdit(index));
-
-                actionContainer.appendChild(saveBtn);
-                actionContainer.appendChild(cancelBtn);
-            } else {
-                const editBtn = document.createElement('button');
-                editBtn.className = 'btn-edit-row';
-                editBtn.innerHTML = `<i class="fas fa-edit"></i> <span>Edit</span>`;
-                editBtn.addEventListener('click', () => startEdit(index));
-                actionContainer.appendChild(editBtn);
+    function renderAllCalendars() {
+        const containers = document.querySelectorAll('.mini-calendar-container');
+        containers.forEach((container) => {
+            const index = parseInt(container.dataset.index);
+            const task = tasksData[index];
+            if (task) {
+                const calendar = createMiniCalendar(index, task.frequency_value);
+                container.innerHTML = '';
+                container.appendChild(calendar);
             }
-
-            tdActions.appendChild(actionContainer);
-
-            tr.appendChild(tdAct);
-            tr.appendChild(tdTask);
-            tr.appendChild(tdFreq);
-            tr.appendChild(tdCalendar);
-            tr.appendChild(tdActions);
-            tbody.appendChild(tr);
         });
     }
 
     // ============================================
-    // CREATE MINI CALENDAR
+    // CREATE MINI CALENDAR WITH MONTH NUMBERS
     // ============================================
 
     function createMiniCalendar(index, frequency) {
@@ -255,10 +365,13 @@
             const loggedDates = completionLogs[index] || [];
             const todayStr = new Date().toISOString().slice(0, 10);
 
+            // Month names array
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            
             container.innerHTML = `
                 <div class="cal-header">
                     <button class="cal-prev"><i class="fas fa-chevron-left"></i></button>
-                    <span>${new Date(currentYear, currentMonth).toLocaleString('default', { month: 'short' })} ${currentYear}</span>
+                    <span class="cal-month-year">${monthNames[currentMonth]} ${currentYear}</span>
                     <button class="cal-next"><i class="fas fa-chevron-right"></i></button>
                 </div>
                 <div class="cal-grid">
@@ -272,6 +385,7 @@
                 container.querySelector('.cal-grid').appendChild(label);
             }
 
+            // Calculate starting offset (Monday first)
             const startOffset = (firstDay === 0) ? 6 : firstDay - 1;
             for (let i = 0; i < startOffset; i++) {
                 const empty = document.createElement('div');
@@ -293,6 +407,8 @@
                 dayDiv.className = classes;
                 dayDiv.dataset.date = dateStr;
                 dayDiv.dataset.index = index;
+                
+                // Show the day number
                 dayDiv.innerHTML = `<span class="day-num">${d}</span>`;
                 
                 if (isLogged) {
@@ -308,6 +424,21 @@
                 
                 container.querySelector('.cal-grid').appendChild(dayDiv);
             }
+
+            // Add month number display at the bottom
+            const monthNumberDisplay = document.createElement('div');
+            monthNumberDisplay.className = 'cal-month-number';
+            monthNumberDisplay.textContent = `Month ${currentMonth + 1} of ${currentYear}`;
+            monthNumberDisplay.style.cssText = `
+                text-align: center;
+                font-size: 10px;
+                color: #999;
+                margin-top: 4px;
+                padding: 2px;
+                border-top: 1px solid #eee;
+                grid-column: 1 / -1;
+            `;
+            container.querySelector('.cal-grid').appendChild(monthNumberDisplay);
 
             container.querySelector('.cal-prev').addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -355,7 +486,6 @@
             dayElement.disabled = true;
         }
 
-        // Using hardcoded URL instead of
         fetch("/adminboard/api/checklist-log/", {
             method: 'POST',
             headers: {
@@ -415,7 +545,7 @@
         const rows = document.querySelectorAll('#taskTableBody tr');
         if (!rows[index]) return;
         
-        const tdCalendar = rows[index].querySelector('.log-column');
+        const tdCalendar = rows[index].querySelector('.mini-calendar-container');
         if (!tdCalendar) return;
         
         const task = tasksData[index];
@@ -434,165 +564,14 @@
     }
 
     // ============================================
-    // CREATE EDITABLE CELL
-    // ============================================
-
-    function createEditableCell(field, value, index, isEditing) {
-        const container = document.createElement('div');
-        container.className = 'editable-cell';
-        container.dataset.field = field;
-        container.dataset.index = index;
-
-        if (isEditing) {
-            container.classList.add('editing');
-            const input = document.createElement('input');
-            input.className = 'cell-input';
-            input.type = 'text';
-            input.value = value || '';
-            input.dataset.field = field;
-            input.dataset.index = index;
-            setTimeout(() => {
-                input.focus();
-                input.select();
-            }, 50);
-            container.appendChild(input);
-        } else {
-            const display = document.createElement('span');
-            display.className = 'cell-display';
-            display.textContent = value || '-';
-            container.appendChild(display);
-        }
-
-        return container;
-    }
-
-    function createFrequencyCell(value, index, isEditing) {
-        const container = document.createElement('div');
-        container.className = 'editable-cell';
-        container.dataset.field = 'frequency';
-        container.dataset.index = index;
-
-        if (isEditing) {
-            container.classList.add('editing');
-            const select = document.createElement('select');
-            select.className = 'cell-input frequency-input';
-            select.dataset.field = 'frequency';
-            select.dataset.index = index;
-
-            const options = ['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Yearly'];
-            options.forEach(opt => {
-                const option = document.createElement('option');
-                option.value = opt.toLowerCase();
-                option.textContent = opt;
-                if (opt.toLowerCase() === value.toLowerCase()) {
-                    option.selected = true;
-                }
-                select.appendChild(option);
-            });
-
-            container.appendChild(select);
-        } else {
-            const badge = document.createElement('span');
-            badge.className = 'frequency-tag';
-            badge.textContent = value;
-            container.appendChild(badge);
-        }
-
-        return container;
-    }
-
-    // ============================================
-    // EDIT FUNCTIONS
-    // ============================================
-
-    function startEdit(index) {
-        if (editingRow !== null) {
-            cancelEdit(editingRow);
-        }
-        editingRow = index;
-        renderTable();
-    }
-
-    function saveRow(index) {
-        const rows = document.querySelectorAll('#taskTableBody tr');
-        if (!rows[index]) return;
-
-        const inputs = rows[index].querySelectorAll('.cell-input');
-        let newActivity = '';
-        let newTask = '';
-        let newFrequency = '';
-
-        inputs.forEach(input => {
-            const field = input.dataset.field;
-            if (field === 'activity') {
-                newActivity = input.value.trim() || tasksData[index].activity;
-            } else if (field === 'task') {
-                newTask = input.value.trim() || tasksData[index].task;
-            } else if (field === 'frequency') {
-                newFrequency = input.value || tasksData[index].frequency;
-            }
-        });
-
-        tasksData[index].activity = newActivity;
-        tasksData[index].task = newTask;
-        tasksData[index].frequency = newFrequency;
-
-        saveEdit(index, newActivity, newTask, newFrequency);
-
-        editingRow = null;
-        renderTable();
-        showToast(`Task "${newActivity}" updated successfully!`);
-    }
-
-    function saveEdit(index, activity, task, frequency) {
-        const taskId = tasksData[index]?.id;
-        if (!taskId) return;
-
-        // Using hardcoded URL instead of
-        fetch("/adminboard/api/checklists/" + taskId + "/edit/", {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCsrfToken()
-            },
-            body: JSON.stringify({
-                name: activity,
-                description: '',
-                frequency: frequency.toLowerCase(),
-                assignment_target: 'all',
-                assigned_users: [],
-                tasks: [{ description: task }]
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                console.log('Checklist updated:', data);
-            } else {
-                console.error('Error updating checklist:', data.error);
-                showToast('Error updating: ' + data.error, 'Error');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('An error occurred while updating.', 'Error');
-        });
-    }
-
-    function cancelEdit(index) {
-        editingRow = null;
-        renderTable();
-    }
-
-    // ============================================
     // EXPORT CHECKLIST
     // ============================================
 
     function exportChecklist() {
-        let csv = 'Activity,Task,Frequency,Logs\n';
+        let csv = 'Activity,Frequency,Task,Logs\n';
         tasksData.forEach((task, index) => {
             const logs = completionLogs[index] || [];
-            csv += `"${task.activity}","${task.task}","${task.frequency}","${logs.join('; ')}"\n`;
+            csv += `"${task.activity}","${task.frequency}","${task.task}","${logs.join('; ')}"\n`;
         });
         
         const blob = new Blob([csv], { type: 'text/csv' });
@@ -608,11 +587,34 @@
     }
 
     // ============================================
+    // KEYBOARD SHORTCUTS
+    // ============================================
+    document.addEventListener('keydown', function(event) {
+        // Ctrl+F to focus search
+        if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+            event.preventDefault();
+            document.getElementById('searchChecklist').focus();
+        }
+    });
+
+    // ============================================
     // INITIALIZE
     // ============================================
 
     document.addEventListener('DOMContentLoaded', function() {
-        renderTable();
+        console.log('Rendering calendars...');
+        renderAllCalendars();
+        console.log('Calendars rendered.');
+        
+        // Set current month and year as default selected in filters
+        const today = new Date();
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        
+        // Uncomment below to set default filter to current month/year
+        // document.getElementById('monthFilter').value = currentMonth;
+        // document.getElementById('yearFilter').value = currentYear;
+        // applyFilters();
     });
 </script>
 {% endblock %}

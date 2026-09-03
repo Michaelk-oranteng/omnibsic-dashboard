@@ -722,3 +722,260 @@
         font-size: 10px;
     }
 }
+/* ============================================
+   MEMBER DASHBOARD ENHANCED STYLES
+   ============================================ */
+
+/* Progress Bar Styles */
+.progress-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.progress-bar-small {
+    width: 60px;
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.progress-bar-small .progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+}
+
+.progress-text {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 32px;
+}
+
+.progress-bar-mini {
+    width: 100%;
+    height: 4px;
+    background: #e5e7eb;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+.progress-bar-mini .progress-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.8s ease;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.status-badge.success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-badge.danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-badge i {
+    font-size: 10px;
+}
+
+/* Metric Trends */
+.metric-trend {
+    margin-top: 6px;
+}
+
+.trend-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.trend-indicator.trend-up {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.trend-indicator.trend-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.trend-indicator.trend-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.trend-indicator.trend-neutral {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.trend-indicator i {
+    font-size: 10px;
+}
+
+/* Panel Subtitle */
+.panel-subtitle {
+    display: flex;
+    gap: 12px;
+    margin-top: 2px;
+}
+
+.panel-subtitle .badge-count {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: #f3f4f6;
+    padding: 2px 10px;
+    border-radius: 10px;
+}
+
+/* Summary Footer */
+.dashboard-summary-footer {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-top: 24px;
+    padding: 16px 24px;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(8px);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--glass-border);
+    flex-wrap: wrap;
+}
+
+.summary-item {
+    flex: 1;
+    min-width: 120px;
+}
+
+.summary-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.summary-value {
+    display: block;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 2px 0;
+}
+
+.summary-divider {
+    width: 1px;
+    height: 40px;
+    background: #e5e7eb;
+}
+
+/* Quick Actions - Additional */
+.shortcut-icon-box.info-box {
+    background: rgba(59, 130, 246, 0.12);
+    color: #3b82f6;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1024px) {
+    .dashboard-summary-footer {
+        gap: 16px;
+        padding: 14px 18px;
+    }
+    
+    .summary-item {
+        min-width: 80px;
+    }
+    
+    .summary-value {
+        font-size: 16px;
+    }
+    
+    .progress-bar-small {
+        width: 40px;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-summary-footer {
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+    }
+    
+    .summary-divider {
+        width: 100%;
+        height: 1px;
+    }
+    
+    .summary-item {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .panel-subtitle {
+        flex-wrap: wrap;
+    }
+    
+    .progress-cell {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+    
+    .progress-bar-small {
+        width: 100%;
+    }
+    
+    .status-badge {
+        font-size: 10px;
+        padding: 1px 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .metrics-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    
+    .metric-card {
+        padding: 12px;
+    }
+    
+    .card-metric-value {
+        font-size: 20px;
+    }
+    
+    .card-metric-label {
+        font-size: 10px;
+    }
+}

@@ -68,6 +68,9 @@
 <div class="table-container">
     <div class="table-header">
         <h4>Saved Reports ({{ reports|length }})</h4>
+        <div class="table-actions">
+            <span class="badge-count">Total: {{ reports|length }}</span>
+        </div>
     </div>
 
     {% if reports %}
@@ -90,81 +93,89 @@
                     <table class="report-details-table">
                         <thead>
                             <tr>
-                                <th>Branch/Unit</th>
-                                <th>Date</th>
-                                <th>Observation</th>
-                                <th>Responsible Staff</th>
-                                <th>Status</th>
-                                <th class="text-center">Actions</th>
+                                {% for report in type_group.list %}
+                                    {% with display=report.get_display_data %}
+                                        {% if forloop.first and display.is_excel %}
+                                            {# Dynamic headers from Excel - only for first report in group #}
+                                            {% for header in display.headers %}
+                                                <th>{{ header }}</th>
+                                            {% endfor %}
+                                            <th class="text-center">Actions</th>
+                                        {% endif %}
+                                    {% endwith %}
+                                {% endfor %}
+                                
+                                {# Fallback: If no Excel data, use default headers #}
+                                {% if not type_group.list.0.get_display_data.is_excel %}
+                                    <th>Branch/Unit</th>
+                                    <th>Date</th>
+                                    <th>Observation</th>
+                                    <th>Responsible Staff</th>
+                                    <th>Status</th>
+                                    <th class="text-center">Actions</th>
+                                {% endif %}
                             </tr>
                         </thead>
                         <tbody>
                             {% for report in type_group.list %}
-                                <tr data-type="{{ report.report_type }}" data-id="{{ report.id }}">
-                                    <td>
-                                        {% if report.data and report.data.form_data %}
-                                            {{ report.data.form_data.0.BRANCH_UNIT|default:report.data.form_data.0.BRANCH|default:"-" }}
-                                        {% elif report.data and report.data.BRANCH %}
-                                            {{ report.data.BRANCH }}
-                                        {% elif report.data and report.data.branch %}
-                                            {{ report.data.branch }}
-                                        {% else %}
-                                            -
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if report.data and report.data.form_data %}
-                                            {{ report.data.form_data.0.DATE|default:report.data.form_data.0.date|default:"-" }}
-                                        {% elif report.data and report.data.DATE %}
-                                            {{ report.data.DATE }}
-                                        {% elif report.data and report.data.date %}
-                                            {{ report.data.date }}
-                                        {% else %}
-                                            -
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if report.data and report.data.form_data %}
-                                            {{ report.data.form_data.0.OBSERVATION|default:report.data.form_data.0.details|default:"-" }}
-                                        {% elif report.data and report.data.OBSERVATION %}
-                                            {{ report.data.OBSERVATION }}
-                                        {% elif report.data and report.data.details %}
-                                            {{ report.data.details }}
-                                        {% else %}
-                                            -
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if report.data and report.data.form_data %}
-                                            {{ report.data.form_data.0.RESPONSIBLE_STAFF|default:report.data.form_data.0.responsible_staff|default:"-" }}
-                                        {% else %}
-                                            -
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if report.data and report.data.form_data and report.data.form_data.0.STATUS %}
-                                            <span class="badge-{% if report.data.form_data.0.STATUS == 'Open' or report.data.form_data.0.STATUS == 'open' %}success{% else %}secondary{% endif %}">
-                                                {{ report.data.form_data.0.STATUS }}
-                                            </span>
-                                        {% elif report.data and report.data.STATUS %}
-                                            <span class="badge-{% if report.data.STATUS == 'Open' or report.data.STATUS == 'open' %}success{% else %}secondary{% endif %}">
-                                                {{ report.data.STATUS }}
-                                            </span>
-                                        {% else %}
-                                            <span class="badge-secondary">Open</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="table-actions-cluster">
-                                            <button class="btn-edit-modal" onclick="openEditModal('{{ report.id }}')">
-                                                <i class="fas fa-edit"></i> Edit
-                                            </button>
-                                            <button class="btn-delete" onclick="deleteReport('{{ report.id }}')">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
+                                {% with display=report.get_display_data %}
+                                    {% if display.is_excel %}
+                                        {# Excel Import - Show ALL rows with dynamic headers #}
+                                        {% for row in display.rows %}
+                                            <tr data-type="{{ report.report_type }}" data-id="{{ report.id }}">
+                                                {# Loop through each value in the row #}
+                                                {% for key, value in row.items %}
+                                                    <td>{{ value|default:"-" }}</td>
+                                                {% endfor %}
+                                                <td class="text-center">
+                                                    <div class="table-actions-cluster">
+                                                        <button class="btn-edit-modal" onclick="openEditModal('{{ report.id }}')" title="Edit">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button class="btn-delete" onclick="deleteReport('{{ report.id }}')" title="Delete">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        {# Regular Report - Single row #}
+                                        {% with row=display.rows.0 %}
+                                            <tr data-type="{{ report.report_type }}" data-id="{{ report.id }}">
+                                                <td>{{ row.Branch|default:row.branch|default:"-" }}</td>
+                                                <td>{{ row.Date|default:row.date|default:"-" }}</td>
+                                                <td>{{ row.Observation|default:row.observation|default:"-" }}</td>
+                                                <td>{{ row.Responsible_Staff|default:row.responsible_staff|default:"-" }}</td>
+                                                <td>
+                                                    {% with status=row.Status|default:"Open" %}
+                                                        {% if status == 'Open' or status == 'open' %}
+                                                            <span class="badge-success">{{ status }}</span>
+                                                        {% elif status == 'Closed' or status == 'closed' %}
+                                                            <span class="badge-secondary">{{ status }}</span>
+                                                        {% elif status == 'In Progress' or status == 'in progress' %}
+                                                            <span class="badge-warning">{{ status }}</span>
+                                                        {% elif status == 'Resolved' or status == 'resolved' %}
+                                                            <span class="badge-success">{{ status }}</span>
+                                                        {% else %}
+                                                            <span class="badge-secondary">{{ status|default:"Open" }}</span>
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="table-actions-cluster">
+                                                        <button class="btn-edit-modal" onclick="openEditModal('{{ report.id }}')" title="Edit">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button class="btn-delete" onclick="deleteReport('{{ report.id }}')" title="Delete">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        {% endwith %}
+                                    {% endif %}
+                                {% endwith %}
                             {% endfor %}
                         </tbody>
                     </table>
@@ -181,7 +192,7 @@
 
 <!-- EDIT REPORT MODAL -->
 <div id="editReportModal" class="modal-wrapper" style="display: none;">
-    <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-content" style="max-width: 700px;">
         <div class="modal-header">
             <h3>Edit Report</h3>
             <button class="modal-close" onclick="closeEditModal()">&times;</button>
@@ -205,6 +216,9 @@
 <!-- Delete Confirmation Modal -->
 <div id="deleteModal" class="modal-wrapper" style="display: none;">
     <div class="modal-content">
+        <div class="modal-icon danger">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
         <h3>Confirm Deletion</h3>
         <p>Are you sure you want to permanently delete this report? This action cannot be undone.</p>
         <input type="hidden" id="deleteReportId" value="">
@@ -230,6 +244,7 @@
 </div>
 
 <style>
+    /* ... all your existing styles ... */
     .report-type-group {
         margin-bottom: 20px;
         border: 1px solid #e5e7eb;
@@ -289,6 +304,7 @@
     .report-details-table {
         width: 100%;
         border-collapse: collapse;
+        font-size: 13px;
     }
     .report-details-table thead th {
         background: rgba(0, 51, 102, 0.03);
@@ -300,24 +316,32 @@
         text-align: left;
         padding: 10px 14px;
         border-bottom: 2px solid #f0f0f0;
+        white-space: nowrap;
     }
     .report-details-table tbody td {
         padding: 10px 14px;
-        font-size: 13px;
         color: #1a2332;
         border-bottom: 1px solid #f3f4f6;
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    .report-details-table tbody td:first-child {
+        font-weight: 500;
     }
     .report-details-table tbody tr:last-child td {
         border-bottom: none;
     }
-    .report-details-table tbody tr:hover {
+    .report-details-table tbody tr:hover td {
         background: rgba(0, 51, 102, 0.02);
     }
     .badge-success {
         display: inline-block;
         padding: 3px 12px;
         border-radius: 12px;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 500;
         background: #d1fae5;
         color: #065f46;
@@ -326,22 +350,40 @@
         display: inline-block;
         padding: 3px 12px;
         border-radius: 12px;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 500;
         background: #f3f4f6;
         color: #6b7280;
     }
+    .badge-warning {
+        display: inline-block;
+        padding: 3px 12px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 500;
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .badge-danger {
+        display: inline-block;
+        padding: 3px 12px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 500;
+        background: #fee2e2;
+        color: #991b1b;
+    }
     .table-actions-cluster {
         display: flex;
-        gap: 6px;
+        gap: 4px;
         justify-content: center;
     }
     .btn-edit-modal {
-        padding: 4px 12px;
+        padding: 4px 10px;
         background: #fef3c7;
         color: #d97706;
         border: none;
-        border-radius: 6px;
+        border-radius: 4px;
         cursor: pointer;
         font-size: 12px;
         transition: all 0.3s;
@@ -354,7 +396,7 @@
         background: #fee2e2;
         color: #dc2626;
         border: none;
-        border-radius: 6px;
+        border-radius: 4px;
         cursor: pointer;
         font-size: 12px;
         transition: all 0.3s;
@@ -370,6 +412,7 @@
         border-radius: 6px;
         cursor: pointer;
         font-size: 14px;
+        transition: all 0.3s;
     }
     .btn-cancel:hover {
         background: #e5e7eb;
@@ -382,6 +425,7 @@
         border-radius: 6px;
         cursor: pointer;
         font-size: 14px;
+        transition: all 0.3s;
     }
     .btn-create:hover {
         background: #004e8c;
@@ -414,6 +458,14 @@
         max-height: 90vh;
         overflow-y: auto;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    }
+    .modal-icon {
+        text-align: center;
+        font-size: 48px;
+        margin-bottom: 16px;
+    }
+    .modal-icon.danger {
+        color: #dc2626;
     }
     .modal-header {
         display: flex;
@@ -483,6 +535,7 @@
         border-left: 4px solid #10b981;
         transform: translateX(120%);
         transition: transform 0.3s ease;
+        font-family: 'Poppins', sans-serif;
     }
     .toast-notification.show {
         transform: translateX(0);
@@ -549,6 +602,32 @@
         color: #6b7280;
         margin: 0;
     }
+    .table-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .badge-count {
+        font-size: 12px;
+        color: #6b7280;
+        background: #f3f4f6;
+        padding: 4px 12px;
+        border-radius: 12px;
+    }
+    .table-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .table-header h4 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #1a2332;
+    }
     @media (max-width: 768px) {
         .report-details-table {
             min-width: 600px;
@@ -562,6 +641,9 @@
         .modal-content {
             padding: 16px;
             margin: 16px;
+        }
+        .table-actions-cluster {
+            flex-wrap: wrap;
         }
     }
 </style>
@@ -673,7 +755,9 @@
             if (data.success) {
                 showToast('Report deleted successfully!', 'success');
                 closeDeleteModal();
-                location.reload();
+                setTimeout(function() {
+                    location.reload();
+                }, 1000);
             } else {
                 showToast(data.error || 'Failed to delete report.', 'error');
             }
@@ -701,27 +785,122 @@
             credentials: 'same-origin'
         })
         .then(function(response) {
+            if (!response.ok) {
+                throw new Error('Server returned ' + response.status);
+            }
             return response.json();
         })
         .then(function(data) {
             if (data.success) {
                 var report = data.report;
-                var formData = {};
+                var reportData = report.data || {};
                 
-                if (report.data && report.data.form_data && report.data.form_data.length > 0) {
-                    formData = report.data.form_data[0];
-                } else if (report.data && typeof report.data === 'object') {
-                    formData = report.data;
+                var formHTML = '';
+                
+                // Check if it's an Excel import
+                if (reportData.import_type === 'excel') {
+                    var headers = reportData.headers || [];
+                    var rows = reportData.data || [];
+                    
+                    formHTML += '<p style="color:#6b7280;font-size:13px;margin-bottom:12px;">';
+                    formHTML += '<strong>File:</strong> ' + (reportData.file_name || 'uploaded.xlsx') + ' &nbsp;|&nbsp; ';
+                    formHTML += '<strong>Records:</strong> ' + rows.length;
+                    formHTML += '</p>';
+                    
+                    // Show a table of data for editing
+                    formHTML += '<div style="max-height:300px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:6px;">';
+                    formHTML += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+                    
+                    // Headers
+                    formHTML += '<thead><tr style="background:#f8fafc;">';
+                    headers.forEach(function(header) {
+                        formHTML += '<th style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:left;">' + (header || 'Column') + '</th>';
+                    });
+                    formHTML += '</tr></thead><tbody>';
+                    
+                    // Data rows (show first 10)
+                    var displayRows = rows.slice(0, 10);
+                    displayRows.forEach(function(row) {
+                        formHTML += '<tr>';
+                        if (typeof row === 'object' && !Array.isArray(row)) {
+                            // It's a dict
+                            for (var i = 0; i < headers.length; i++) {
+                                var value = row[headers[i]] !== undefined && row[headers[i]] !== null ? row[headers[i]] : '';
+                                formHTML += '<td style="padding:4px 10px;border-bottom:1px solid #f3f4f6;">' + value + '</td>';
+                            }
+                        } else if (Array.isArray(row)) {
+                            // It's a list
+                            for (var i = 0; i < headers.length; i++) {
+                                var value = row[i] !== undefined && row[i] !== null ? row[i] : '';
+                                formHTML += '<td style="padding:4px 10px;border-bottom:1px solid #f3f4f6;">' + value + '</td>';
+                            }
+                        }
+                        formHTML += '</tr>';
+                    });
+                    
+                    if (rows.length > 10) {
+                        formHTML += '<tr><td colspan="' + headers.length + '" style="text-align:center;padding:8px;color:#6b7280;font-style:italic;">... and ' + (rows.length - 10) + ' more rows</td></tr>';
+                    }
+                    
+                    formHTML += '</tbody></table></div>';
+                    
+                    formHTML += '<p style="margin-top:12px;color:#6b7280;font-size:12px;font-style:italic;">Excel data is displayed for reference. To edit, please re-upload a new Excel file.</p>';
+                    
+                } else {
+                    // Regular form data
+                    var formData = {};
+                    if (reportData.form_data && reportData.form_data.length > 0) {
+                        formData = reportData.form_data[0];
+                    } else if (reportData && typeof reportData === 'object') {
+                        formData = reportData;
+                    }
+                    
+                    var fields = [
+                        { label: 'Branch/Unit', field_type: 'text' },
+                        { label: 'Date', field_type: 'date' },
+                        { label: 'Observation', field_type: 'textarea' },
+                        { label: 'Responsible Staff', field_type: 'text' },
+                        { label: 'Status', field_type: 'dropdown' }
+                    ];
+
+                    var statusOptions = ['Open', 'In Progress', 'Resolved', 'Closed', 'Pending Review'];
+
+                    fields.forEach(function(field) {
+                        var fieldLabel = field.label;
+                        var value = formData[fieldLabel] !== undefined ? formData[fieldLabel] : 
+                                   (formData[fieldLabel.toUpperCase()] !== undefined ? formData[fieldLabel.toUpperCase()] : 
+                                   (formData[fieldLabel.toLowerCase()] || ''));
+                        
+                        formHTML += '<div class="form-group">';
+                        formHTML += '<label>' + fieldLabel + '</label>';
+                        
+                        if (field.field_type === 'dropdown') {
+                            formHTML += '<select class="form-control" data-key="' + fieldLabel + '">';
+                            statusOptions.forEach(function(opt) {
+                                var selected = opt === value ? 'selected' : '';
+                                formHTML += '<option value="' + opt + '" ' + selected + '>' + opt + '</option>';
+                            });
+                            formHTML += '</select>';
+                        } else if (field.field_type === 'textarea') {
+                            formHTML += '<textarea class="form-control" data-key="' + fieldLabel + '" rows="3">' + (value || '') + '</textarea>';
+                        } else if (field.field_type === 'date') {
+                            formHTML += '<input type="date" class="form-control" data-key="' + fieldLabel + '" value="' + (value || '') + '">';
+                        } else {
+                            formHTML += '<input type="text" class="form-control" data-key="' + fieldLabel + '" value="' + (value || '') + '">';
+                        }
+                        formHTML += '</div>';
+                    });
                 }
                 
-                buildEditForm(formData);
+                document.getElementById('editFormFields').innerHTML = formHTML;
             } else {
-                showToast('Error loading report details.', 'error');
+                showToast('Error loading report details: ' + (data.error || 'Unknown error'), 'error');
                 closeEditModal();
             }
         })
         .catch(function(error) {
-            showToast('Error loading report details.', 'error');
+            console.error('Error:', error);
+            showToast('Error loading report details. Please try again.', 'error');
             closeEditModal();
         });
     }
@@ -730,52 +909,6 @@
         document.getElementById('editReportModal').style.display = 'none';
         document.getElementById('editReportId').value = '';
         document.getElementById('editFormFields').innerHTML = '';
-    }
-
-    // ============================================
-    // BUILD EDIT FORM
-    // ============================================
-    function buildEditForm(formData) {
-        var container = document.getElementById('editFormFields');
-        var html = '';
-        
-        var fields = [
-            { label: 'Branch/Unit', field_type: 'text' },
-            { label: 'Date', field_type: 'date' },
-            { label: 'Observation', field_type: 'textarea' },
-            { label: 'Responsible Staff', field_type: 'text' },
-            { label: 'Status', field_type: 'dropdown' }
-        ];
-
-        var statusOptions = ['Open', 'In Progress', 'Resolved', 'Closed', 'Pending Review'];
-
-        fields.forEach(function(field) {
-            var fieldLabel = field.label;
-            var value = formData[fieldLabel] !== undefined ? formData[fieldLabel] : 
-                       (formData[fieldLabel.toUpperCase()] !== undefined ? formData[fieldLabel.toUpperCase()] : 
-                       (formData[fieldLabel.toLowerCase()] || ''));
-            
-            html += '<div class="form-group">';
-            html += '<label>' + fieldLabel + '</label>';
-            
-            if (field.field_type === 'dropdown') {
-                html += '<select class="form-control" data-key="' + fieldLabel + '">';
-                statusOptions.forEach(function(opt) {
-                    var selected = opt === value ? 'selected' : '';
-                    html += '<option value="' + opt + '" ' + selected + '>' + opt + '</option>';
-                });
-                html += '</select>';
-            } else if (field.field_type === 'textarea') {
-                html += '<textarea class="form-control" data-key="' + fieldLabel + '" rows="3">' + (value || '') + '</textarea>';
-            } else if (field.field_type === 'date') {
-                html += '<input type="date" class="form-control" data-key="' + fieldLabel + '" value="' + (value || '') + '">';
-            } else {
-                html += '<input type="text" class="form-control" data-key="' + fieldLabel + '" value="' + (value || '') + '">';
-            }
-            html += '</div>';
-        });
-
-        container.innerHTML = html;
     }
 
     // ============================================
@@ -856,22 +989,34 @@
     // ============================================
     // FILTER REPORTS
     // ============================================
-    document.getElementById('type-filter').addEventListener('change', function() {
-        var selectedType = this.value;
-        var rows = document.querySelectorAll('.report-details-table tbody tr');
-        
-        rows.forEach(function(row) {
-            var reportType = row.getAttribute('data-type');
-            if (selectedType === 'all' || reportType === selectedType) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+    document.addEventListener('DOMContentLoaded', function() {
+        // Open all groups by default
+        document.querySelectorAll('.report-type-body').forEach(function(body) {
+            body.classList.remove('hidden');
         });
-    });
+        document.querySelectorAll('.report-type-toggle').forEach(function(toggle) {
+            toggle.classList.add('open');
+        });
 
-    document.getElementById('start-date').addEventListener('change', applyDateFilter);
-    document.getElementById('end-date').addEventListener('change', applyDateFilter);
+        // Filter by type
+        document.getElementById('type-filter').addEventListener('change', function() {
+            var selectedType = this.value;
+            var rows = document.querySelectorAll('.report-details-table tbody tr');
+            
+            rows.forEach(function(row) {
+                var reportType = row.getAttribute('data-type');
+                if (selectedType === 'all' || reportType === selectedType) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+
+        // Filter by date
+        document.getElementById('start-date').addEventListener('change', applyDateFilter);
+        document.getElementById('end-date').addEventListener('change', applyDateFilter);
+    });
 
     function applyDateFilter() {
         var startDate = document.getElementById('start-date').value;
@@ -900,18 +1045,5 @@
             row.style.display = show ? '' : 'none';
         });
     }
-
-    // ============================================
-    // INITIALIZE
-    // ============================================
-    document.addEventListener('DOMContentLoaded', function() {
-        // Open all groups by default
-        document.querySelectorAll('.report-type-body').forEach(function(body) {
-            body.classList.remove('hidden');
-        });
-        document.querySelectorAll('.report-type-toggle').forEach(function(toggle) {
-            toggle.classList.add('open');
-        });
-    });
 </script>
 {% endblock %}

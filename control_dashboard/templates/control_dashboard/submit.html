@@ -22,24 +22,35 @@
         flex-direction: column;
     }
     
-    /* Email form box - left column */
     .email-form-box {
         min-height: 500px;
     }
     
-    /* Exception selector box - right column */
     .exception-selector-box {
         min-height: 500px;
     }
     
-    /* Make the exception stack fill remaining space */
     .exception-checklist-stack {
         flex: 1;
         max-height: 420px;
         overflow-y: auto;
+        padding-right: 4px;
     }
     
-    /* Ensure form rows are properly spaced */
+    .exception-checklist-stack::-webkit-scrollbar {
+        width: 4px;
+    }
+    
+    .exception-checklist-stack::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    
+    .exception-checklist-stack::-webkit-scrollbar-thumb {
+        background: #0066cc;
+        border-radius: 4px;
+    }
+    
     .form-row {
         margin-bottom: 14px;
     }
@@ -48,18 +59,597 @@
         margin-bottom: 16px;
     }
     
-    /* Make send button full width */
     .btn-send-mail {
         width: 100%;
         margin-top: auto;
     }
     
-    /* Selected summary */
     .selected-summary {
         margin: 12px 0 16px;
+        padding: 12px 16px;
+        background: #f8fafc;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
     }
     
-    /* Responsive - stack on smaller screens */
+    .selected-summary.has-selections {
+        border-color: #0066cc;
+        background: #f0f7ff;
+    }
+    
+    .selected-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+    
+    .selected-count {
+        font-size: 18px;
+        font-weight: 700;
+        color: #0066cc;
+    }
+    
+    .selected-label {
+        font-size: 13px;
+        color: #6b7280;
+    }
+    
+    .selected-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        max-height: 60px;
+        overflow-y: auto;
+    }
+    
+    .selected-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 10px 2px 8px;
+        background: #dbeafe;
+        color: #1e40af;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    
+    .selected-tag .remove-tag {
+        cursor: pointer;
+        font-size: 10px;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+    }
+    
+    .selected-tag .remove-tag:hover {
+        opacity: 1;
+    }
+    
+    .empty-selection-text {
+        font-size: 13px;
+        color: #9ca3af;
+        font-style: italic;
+    }
+    
+    /* Exception Card Styles */
+    .exception-select-card {
+        display: flex;
+        align-items: stretch;
+        padding: 10px 12px;
+        margin-bottom: 6px;
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .exception-select-card:hover {
+        background: #f1f5f9;
+        border-color: #d1d5db;
+    }
+    
+    .exception-select-card.active {
+        background: #f0f7ff;
+        border-color: #0066cc;
+        box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.1);
+    }
+    
+    .exception-checkbox-wrapper {
+        display: flex;
+        align-items: center;
+        padding-right: 10px;
+        flex-shrink: 0;
+    }
+    
+    .exception-checkbox {
+        width: 18px;
+        height: 18px;
+        accent-color: #0066cc;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+    
+    .exception-card-info {
+        flex: 1;
+        min-width: 0;
+        cursor: pointer;
+    }
+    
+    .ex-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 2px;
+    }
+    
+    .ex-unit {
+        font-size: 11px;
+        font-weight: 500;
+        color: #6b7280;
+        background: #e5e7eb;
+        padding: 1px 8px;
+        border-radius: 4px;
+    }
+    
+    .report-type-badge {
+        font-size: 10px;
+        font-weight: 600;
+        color: white;
+        background: #0066cc;
+        padding: 1px 8px;
+        border-radius: 4px;
+        text-transform: uppercase;
+    }
+    
+    .ex-status {
+        font-size: 10px;
+        font-weight: 600;
+        padding: 1px 8px;
+        border-radius: 4px;
+        text-transform: uppercase;
+    }
+    
+    .ex-status.submitted {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    
+    .ex-status.draft {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    
+    .ex-status.rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .ex-status.approved {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    
+    .ex-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1a2332;
+        margin: 2px 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .ex-details {
+        font-size: 12px;
+        color: #6b7280;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin: 1px 0;
+    }
+    
+    .ex-details i {
+        margin-right: 4px;
+        font-size: 10px;
+        color: #9ca3af;
+    }
+    
+    .ex-fields {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 2px;
+    }
+    
+    .ex-field {
+        font-size: 11px;
+        color: #6b7280;
+        background: #f3f4f6;
+        padding: 1px 6px;
+        border-radius: 3px;
+    }
+    
+    .ex-field-more {
+        font-size: 10px;
+        color: #9ca3af;
+        padding: 1px 6px;
+    }
+    
+    .ex-meta {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 3px;
+        font-size: 10px;
+        color: #9ca3af;
+    }
+    
+    .ex-meta i {
+        margin-right: 2px;
+        font-size: 10px;
+    }
+    
+    .exception-select-arrow {
+        display: flex;
+        align-items: center;
+        padding-left: 8px;
+        flex-shrink: 0;
+        color: #9ca3af;
+        transition: all 0.2s ease;
+    }
+    
+    .exception-select-arrow i {
+        transition: transform 0.2s ease;
+    }
+    
+    .exception-select-arrow i.selected {
+        color: #0066cc;
+        transform: rotate(90deg);
+    }
+    
+    /* No exceptions message */
+    .no-exceptions-msg {
+        text-align: center;
+        padding: 30px 20px;
+        color: #6b7280;
+    }
+    
+    .no-exceptions-msg i {
+        font-size: 40px;
+        color: #d1d5db;
+        display: block;
+        margin-bottom: 12px;
+    }
+    
+    .no-exceptions-msg p {
+        margin: 4px 0;
+    }
+    
+    .no-exceptions-msg .sub-text {
+        font-size: 13px;
+        color: #9ca3af;
+    }
+    
+    /* Category filter */
+    .category-filter {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 12px 0;
+    }
+    
+    .category-btn {
+        padding: 4px 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 500;
+        color: #6b7280;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    .category-btn:hover {
+        background: #f3f4f6;
+    }
+    
+    .category-btn.active {
+        background: #0066cc;
+        color: white;
+        border-color: #0066cc;
+    }
+    
+    /* Selector header */
+    .selector-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .selector-header-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .selector-header-left h4 {
+        font-size: 15px;
+        font-weight: 600;
+        color: #1a2332;
+        margin: 0;
+    }
+    
+    .exception-count {
+        font-size: 12px;
+        color: #6b7280;
+        background: #f3f4f6;
+        padding: 2px 10px;
+        border-radius: 12px;
+    }
+    
+    .btn-select-all {
+        padding: 4px 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #0066cc;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: 'Poppins', sans-serif;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .btn-select-all:hover {
+        background: #f0f7ff;
+        border-color: #0066cc;
+    }
+    
+    .btn-select-all i {
+        font-size: 12px;
+    }
+    
+    /* Template textarea */
+    .template-textarea {
+        width: 100%;
+        min-height: 120px;
+        padding: 10px 14px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 13px;
+        font-family: 'Poppins', sans-serif;
+        resize: vertical;
+        transition: border-color 0.3s ease;
+        background: white;
+        color: #1a2332;
+        line-height: 1.6;
+    }
+    
+    .template-textarea:focus {
+        border-color: #0066cc;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.08);
+    }
+    
+    .template-textarea::placeholder {
+        color: #9ca3af;
+    }
+    
+    .table-select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 13px;
+        font-family: 'Poppins', sans-serif;
+        background: white;
+        color: #1a2332;
+        transition: border-color 0.3s ease;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 36px;
+        cursor: pointer;
+    }
+    
+    .table-select:focus {
+        border-color: #0066cc;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.08);
+    }
+    
+    .table-input {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 13px;
+        font-family: 'Poppins', sans-serif;
+        background: white;
+        color: #1a2332;
+        transition: border-color 0.3s ease;
+    }
+    
+    .table-input:focus {
+        border-color: #0066cc;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.08);
+    }
+    
+    .btn-send-mail {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 24px;
+        background: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    .btn-send-mail:hover:not(:disabled) {
+        background: #004e8c;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 102, 204, 0.3);
+    }
+    
+    .btn-send-mail:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    .btn-send-mail i {
+        font-size: 16px;
+    }
+    
+    .required {
+        color: #dc2626;
+        font-weight: 700;
+    }
+    
+    /* Loading overlay */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 99999;
+    }
+    
+    .loading-content {
+        background: white;
+        padding: 40px 50px;
+        border-radius: 16px;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    }
+    
+    .loading-content .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #e5e7eb;
+        border-top-color: #0066cc;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 16px;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .loading-content p {
+        font-size: 16px;
+        font-weight: 500;
+        color: #1a2332;
+        margin: 0;
+    }
+    
+    /* Toast notification */
+    .toast-notification {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        padding: 16px 20px;
+        max-width: 400px;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-left: 4px solid #10b981;
+        transform: translateX(120%);
+        transition: transform 0.3s ease;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    .toast-notification.show {
+        transform: translateX(0);
+    }
+    
+    .toast-notification.error {
+        border-left-color: #ef4444;
+    }
+    
+    .toast-notification .toast-icon {
+        flex-shrink: 0;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+    
+    .toast-notification.error .toast-icon {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+    
+    .toast-notification .toast-content {
+        flex: 1;
+    }
+    
+    .toast-notification .toast-title {
+        font-weight: 600;
+        font-size: 14px;
+        color: #1a2332;
+        margin: 0;
+    }
+    
+    .toast-notification .toast-message {
+        font-size: 13px;
+        color: #6b7280;
+        margin: 2px 0 0 0;
+    }
+    
+    .toast-notification .toast-close {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: #9ca3af;
+        padding: 0 4px;
+        line-height: 1;
+    }
+    
+    .toast-notification .toast-close:hover {
+        color: #1a2332;
+    }
+    
+    /* Responsive */
     @media (max-width: 1024px) {
         .email-builder-grid {
             grid-template-columns: 1fr;
@@ -108,6 +698,66 @@
         
         .template-textarea {
             min-height: 80px;
+        }
+        
+        .ex-title {
+            font-size: 12px;
+        }
+        
+        .ex-details {
+            font-size: 11px;
+        }
+        
+        .selected-tags {
+            max-height: 40px;
+        }
+        
+        .selected-tag {
+            font-size: 10px;
+            padding: 1px 8px 1px 6px;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .ex-header {
+            flex-wrap: wrap;
+        }
+        
+        .ex-meta {
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        
+        .exception-select-card {
+            padding: 8px 10px;
+        }
+        
+        .exception-checkbox-wrapper {
+            padding-right: 6px;
+        }
+        
+        .exception-checkbox {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .selector-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .btn-select-all {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .category-filter {
+            gap: 4px;
+        }
+        
+        .category-btn {
+            font-size: 10px;
+            padding: 2px 10px;
         }
     }
 </style>
@@ -158,8 +808,8 @@
             <label for="email-to">To <span class="required">*</span></label>
             <select id="email-to" class="table-select">
                 <option value="">Select Recipient...</option>
-                {% for recipient in email_recipients %}
-                <option value="{{ recipient.email }}">{{ recipient.name }} ({{ recipient.department }})</option>
+                {% for user in all_users %}
+                <option value="{{ user.email }}">{{ user.full_name }} ({{ user.position|default:"Member" }})</option>
                 {% endfor %}
             </select>
         </div>
@@ -168,19 +818,31 @@
             <label for="email-cc">CC</label>
             <select id="email-cc" class="table-select">
                 <option value="">Select CC Recipient...</option>
-                {% for recipient in email_recipients %}
-                <option value="{{ recipient.email }}">{{ recipient.name }} ({{ recipient.department }})</option>
+                <option value="supervisor@omnisbic.com">Supervisor</option>
+                <option value="admin@omnisbic.com">Admin</option>
+                {% for user in all_users %}
+                <option value="{{ user.email }}">{{ user.full_name }} ({{ user.position|default:"Member" }})</option>
                 {% endfor %}
             </select>
         </div>
 
         <div class="form-row">
-            <label for="email-subject">Email Subject Line <span class="required">*</span></label>
+            <label for="report-type-select">Report Type <span class="required">*</span></label>
+                <select id="reportType" class="form-control" required>
+                    <option value="">Select Report Type...</option>
+                    {% for report_type in report_types %}
+                    <option value="{{ report_type }}">{{ report_type }}</option>
+                    {% endfor %}
+                </select>
+        </div>
+
+        <div class="form-row">
+            <label for="email-subject">Subject <span class="required">*</span></label>
             <input type="text" id="email-subject" class="table-input" placeholder="Select exceptions to auto-generate subject...">
         </div>
 
         <div class="form-row">
-            <label for="email-body">Email Body Template <span class="required">*</span></label>
+            <label for="email-body">Body <span class="required">*</span></label>
             <textarea id="email-body" class="template-textarea" placeholder="Dear Sir,&#10;&#10;Kindly find attached exceptions for the week ending...&#10;&#10;Best regards,"></textarea>
         </div>
 
@@ -211,14 +873,6 @@
                     <i class="fas fa-check-double"></i> <span id="selectAllText">Select All</span>
                 </button>
             </div>
-        </div>
-
-        <!-- Debug info -->
-        <div class="debug-info" id="debugInfo">
-            <i class="fas fa-info-circle"></i> 
-            Total: <span id="debugTotal">0</span> | 
-            Filtered: <span id="debugFiltered">0</span> | 
-            Selected: <span id="debugSelected">0</span>
         </div>
 
         <div class="category-filter" id="categoryFilter">
@@ -256,6 +910,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
     // ============================================
     // CSRF Token Helper
@@ -298,12 +953,10 @@
     // EXCEPTION DATA - Coming from server
     // ============================================
 
-    // Parse exceptions data from server
     let exceptionsData = [];
     try {
         exceptionsData = JSON.parse('{{ exceptions_json|safe }}');
         console.log('Exceptions loaded:', exceptionsData.length);
-        console.log('Sample exception:', exceptionsData.length > 0 ? exceptionsData[0] : 'No exceptions');
     } catch (e) {
         console.error('Exception payload error:', e);
         {% if exceptions %}
@@ -326,25 +979,22 @@
         {% endif %}
     }
 
-    // Get user data from context
     const userData = {
         name: '{{ user_data.name|escapejs }}',
         email: '{{ user_data.email|escapejs }}',
         department: '{{ user_data.department|escapejs }}'
     };
 
-    // Assigned report types from server
-    const assignedReportTypes = {{ assigned_report_types|safe }};
-    console.log('Assigned report types:', assignedReportTypes);
-
-    // Filter exceptions to only show those assigned to the current user
     const userEmail = '{{ user_data.email }}';
+    
+    // Filter exceptions for the current user
+    const originalExceptions = [...exceptionsData];
     exceptionsData = exceptionsData.filter(ex => {
         return ex.assigned_to === userEmail || ex.created_by === userEmail;
     });
 
+    console.log('Total exceptions:', originalExceptions.length);
     console.log('After filtering by user, exceptions:', exceptionsData.length);
-    console.log('Exception report types:', exceptionsData.map(e => e.report_type));
 
     let selectedExceptions = new Set();
     let currentCategory = 'all';
@@ -360,37 +1010,7 @@
         renderExceptions();
         updateSelectedSummary();
         updateSubjectLine();
-        updateDebugInfo();
-        
-        console.log('Current report types in dropdown:', assignedReportTypes);
-        console.log('Categories available:', document.querySelectorAll('.category-btn').length);
     });
-
-    // ============================================
-    // UPDATE DEBUG INFO
-    // ============================================
-
-    function updateDebugInfo() {
-        document.getElementById('debugTotal').textContent = exceptionsData.length;
-        document.getElementById('debugSelected').textContent = selectedExceptions.size;
-        
-        let filtered = getFilteredExceptions();
-        document.getElementById('debugFiltered').textContent = filtered.length;
-    }
-
-    function getFilteredExceptions() {
-        let filtered = exceptionsData;
-
-        if (currentReportType !== 'all') {
-            filtered = filtered.filter(ex => ex.report_type === currentReportType);
-        }
-
-        if (currentCategory !== 'all') {
-            filtered = filtered.filter(ex => ex.category === currentCategory);
-        }
-
-        return filtered;
-    }
 
     // ============================================
     // RENDER EXCEPTIONS
@@ -398,30 +1018,19 @@
 
     function renderExceptions() {
         const stack = document.getElementById('exceptionStack');
-        if (!stack) {
-            console.error('Exception stack element not found');
-            return;
-        }
+        if (!stack) return;
         
         stack.innerHTML = '';
 
         let filtered = getFilteredExceptions();
 
-        console.log('Filtered exceptions for rendering:', filtered.length);
-        console.log('Current report type filter:', currentReportType);
-
         if (filtered.length === 0) {
             let msg = 'No exceptions available for selection';
             let subMsg = 'You have no submitted reports available to send via email';
             
-            if (currentReportType !== 'all') {
-                msg = `No exceptions found for "${currentReportType}"`;
-                subMsg = 'Try selecting a different report type or "All Report Types"';
-            }
-            
-            if (exceptionsData.length > 0) {
-                const statuses = [...new Set(exceptionsData.map(e => e.status))];
-                subMsg = `You have ${exceptionsData.length} exceptions with status: ${statuses.join(', ')}. Select a report type to view exceptions.`;
+            if (originalExceptions.length > 0) {
+                const statuses = [...new Set(originalExceptions.map(e => e.status))];
+                subMsg = `You have ${originalExceptions.length} total exceptions. Filter by report type to view them.`;
             }
             
             stack.innerHTML = `
@@ -432,7 +1041,6 @@
                 </div>
             `;
             document.getElementById('exceptionCount').textContent = '0 exceptions';
-            updateDebugInfo();
             return;
         }
 
@@ -447,9 +1055,8 @@
             const statusClass = exception.status || 'draft';
             const statusDisplay = exception.status_display || (exception.status ? exception.status.charAt(0).toUpperCase() + exception.status.slice(1) : 'Draft');
             
-            // Get the observation/description from form_data
+            // Get the observation/details
             let details = 'No details provided';
-            
             const formData = exception.data?.form_data || exception.data;
             
             if (formData) {
@@ -472,57 +1079,10 @@
                             break;
                         }
                     }
-                    
-                    if (details === 'No details provided') {
-                        const excludeFields = ['header', 'unit', 'branch', 'status', 'BRANCH/UNIT', 'DATE', 'date', 'created_at', 'id'];
-                        for (const [key, value] of Object.entries(dataObj)) {
-                            if (!excludeFields.includes(key) && 
-                                !excludeFields.includes(key.toLowerCase()) &&
-                                typeof value === 'string' && 
-                                value.length > 3 && 
-                                value !== '' && 
-                                value !== 'N/A') {
-                                details = value;
-                                break;
-                            }
-                        }
-                    }
                 }
             }
             
             const createdDate = exception.created_at || new Date().toLocaleDateString();
-
-            // Get all form data fields to display
-            let fieldsHtml = '';
-            if (formData) {
-                let dataObj = formData;
-                if (Array.isArray(formData) && formData.length > 0) {
-                    dataObj = formData[0];
-                }
-                
-                if (dataObj && typeof dataObj === 'object' && !Array.isArray(dataObj)) {
-                    const excludeFields = ['header', 'details', 'unit', 'branch', 'status', 'OBSERVATION', 'observation', 'Details', 'details'];
-                    const displayFields = Object.keys(dataObj).filter(key => 
-                        !excludeFields.includes(key) && 
-                        !excludeFields.includes(key.toLowerCase()) &&
-                        !key.startsWith('_')
-                    );
-                    if (displayFields.length > 0) {
-                        fieldsHtml = '<div class="ex-fields">';
-                        displayFields.slice(0, 4).forEach(key => {
-                            const value = dataObj[key] || 'N/A';
-                            if (value && value !== '' && value !== 'N/A') {
-                                const displayValue = typeof value === 'string' && value.length > 30 ? value.substring(0, 30) + '...' : value;
-                                fieldsHtml += `<span class="ex-field"><strong>${key}:</strong> ${displayValue}</span>`;
-                            }
-                        });
-                        if (displayFields.length > 4) {
-                            fieldsHtml += `<span class="ex-field-more">+${displayFields.length - 4} more</span>`;
-                        }
-                        fieldsHtml += '</div>';
-                    }
-                }
-            }
 
             card.innerHTML = `
                 <div class="exception-checkbox-wrapper" onclick="toggleException(${exception.id})">
@@ -541,7 +1101,6 @@
                     <div class="ex-details">
                         <i class="fas fa-align-left"></i> ${details}
                     </div>
-                    ${fieldsHtml}
                     <div class="ex-meta">
                         <span><i class="far fa-calendar-alt"></i> ${createdDate}</span>
                         <span><i class="fas fa-id-card"></i> ID: ${exception.id}</span>
@@ -557,7 +1116,20 @@
 
         updateSelectAllButton();
         updateExceptionCount();
-        updateDebugInfo();
+    }
+
+    function getFilteredExceptions() {
+        let filtered = exceptionsData;
+
+        if (currentReportType !== 'all') {
+            filtered = filtered.filter(ex => ex.report_type === currentReportType);
+        }
+
+        if (currentCategory !== 'all') {
+            filtered = filtered.filter(ex => ex.category === currentCategory);
+        }
+
+        return filtered;
     }
 
     // ============================================
@@ -575,10 +1147,9 @@
     }
 
     function filterByReportType() {
-        const select = document.getElementById('report-type-filter');
+        const select = document.getElementById('report-type-select');
         currentReportType = select ? select.value : 'all';
         console.log('Filtering by report type:', currentReportType);
-        console.log('Available exceptions with this type:', exceptionsData.filter(e => e.report_type === currentReportType).length);
         renderExceptions();
     }
 
@@ -721,6 +1292,7 @@
         const emailData = {
             to: document.getElementById('email-to').value,
             cc: document.getElementById('email-cc').value,
+            report_type: document.getElementById('report-type-select').value,
             subject: document.getElementById('email-subject').value,
             body: document.getElementById('email-body').value,
             selected: Array.from(selectedExceptions)
@@ -740,6 +1312,10 @@
                 const data = JSON.parse(draft);
                 if (data.to) document.getElementById('email-to').value = data.to;
                 if (data.cc) document.getElementById('email-cc').value = data.cc;
+                if (data.report_type) {
+                    document.getElementById('report-type-select').value = data.report_type;
+                    currentReportType = data.report_type;
+                }
                 if (data.subject) document.getElementById('email-subject').value = data.subject;
                 if (data.body) document.getElementById('email-body').value = data.body;
                 if (data.selected && data.selected.length > 0) {
@@ -758,7 +1334,6 @@
         }
     }
 
-    // Track input changes for auto-save
     document.addEventListener('input', function(e) {
         if (e.target.closest('.email-form-box')) {
             autoSaveDraft();
@@ -766,7 +1341,7 @@
     });
 
     // ============================================
-    // SEND EMAIL
+    // SEND EMAIL - Opens Mail App
     // ============================================
 
     function sendEmail() {
@@ -774,6 +1349,7 @@
         const cc = document.getElementById('email-cc').value;
         const subject = document.getElementById('email-subject').value;
         const body = document.getElementById('email-body').value;
+        const reportType = document.getElementById('report-type-select').value;
         
         if (!to) {
             showToast('Please select a recipient.', 'Error');
@@ -796,64 +1372,94 @@
         }
         
         const selectedExList = exceptionsData.filter(ex => selectedExceptions.has(ex.id));
+        const selectedCount = selectedExList.length;
         
-        const overlay = document.getElementById('loadingOverlay');
-        const sendBtn = document.getElementById('sendMailBtn');
-        overlay.style.display = 'flex';
-        sendBtn.disabled = true;
-        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        // Build mailto link
+        let mailtoLink = `mailto:${to}`;
+        if (cc) {
+            mailtoLink += `?cc=${encodeURIComponent(cc)}`;
+        }
         
-        const emailData = {
-            to: to,
-            cc: cc,
-            subject: subject,
-            body: body,
-            from: userData.email,
-            from_name: userData.name,
-            exceptions: selectedExList.map(ex => ({
-                id: ex.id,
-                unit: ex.unit,
-                header: ex.data?.header || ex.report_type,
-                details: ex.data?.details || '',
-                created_at: ex.created_at,
-                report_type: ex.report_type,
-                status: ex.status,
-                data: ex.data,
-                form_data: ex.data?.form_data || ex.data
-            }))
+        // Add subject and body
+        const fullSubject = `[SUBMITTED] ${subject} - Report Sent`;
+        const fullBody = `${body}
+
+---
+Report Type: ${reportType || 'N/A'}
+Number of Exceptions: ${selectedCount}
+Submitted by: ${userData.name} (${userData.email})
+Submitted on: ${new Date().toLocaleString()}
+
+Selected Exceptions:
+${selectedExList.map((ex, i) => `${i+1}. ${ex.report_type || 'Exception'} - ${ex.unit || 'N/A'} - ${ex.data?.header || ex.report_type || 'Untitled'}`).join('\n')}
+
+---
+This report has been recorded in the system.`;
+
+        if (mailtoLink.includes('?')) {
+            mailtoLink += `&subject=${encodeURIComponent(fullSubject)}`;
+            mailtoLink += `&body=${encodeURIComponent(fullBody)}`;
+        } else {
+            mailtoLink += `?subject=${encodeURIComponent(fullSubject)}`;
+            mailtoLink += `&body=${encodeURIComponent(fullBody)}`;
+        }
+
+        // Record the sent report in the system
+        const reportData = {
+            report_type: reportType || 'Exception Report',
+            frequency: 'one-off',
+            description: `Sent ${selectedCount} exceptions via email`,
+            status: 'completed',
+            created_by: userData.email,
+            data: {
+                sent_at: new Date().toISOString(),
+                recipients: to,
+                cc: cc || '',
+                subject: fullSubject,
+                exception_count: selectedCount,
+                exceptions: selectedExList.map(ex => ({
+                    id: ex.id,
+                    report_type: ex.report_type,
+                    unit: ex.unit,
+                    header: ex.data?.header || ex.report_type,
+                    status: ex.status
+                }))
+            }
         };
-        
-        fetch("/adminboard/api/send-email/", {
+
+        // Save to database via API
+        fetch("/adminboard/api/reports/create/", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCsrfToken()
             },
-            body: JSON.stringify(emailData)
+            body: JSON.stringify(reportData)
         })
         .then(response => response.json())
         .then(data => {
-            overlay.style.display = 'none';
-            sendBtn.disabled = false;
-            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Email';
-            
             if (data.success) {
-                showToast(data.message || 'Email sent successfully!', 'Success');
+                console.log('Report recorded successfully:', data);
+                // Open mail app
+                window.location.href = mailtoLink;
+                
+                // Clear selection after sending
                 selectedExceptions.clear();
                 renderExceptions();
                 updateSelectedSummary();
                 updateSubjectLine();
                 autoSaveDraft();
+                
+                showToast(`Email opened with ${selectedCount} exceptions!`, 'Success');
             } else {
-                showToast('Error: ' + data.error, 'Error');
+                showToast('Error recording report: ' + (data.error || 'Unknown error'), 'Error');
             }
         })
         .catch(error => {
-            overlay.style.display = 'none';
-            sendBtn.disabled = false;
-            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Email';
-            console.error('Error:', error);
-            showToast('An error occurred while sending the email.', 'Error');
+            console.error('Error recording report:', error);
+            // Still open mail app even if recording fails
+            window.location.href = mailtoLink;
+            showToast('Email opened, but report recording failed.', 'Warning');
         });
     }
 </script>

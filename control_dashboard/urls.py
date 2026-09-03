@@ -81,4 +81,13 @@ urlpatterns = [
     
     # ==================== API - EXPORT LOGS ====================
     path('api/export-logs/', views.api_export_logs, name='export_logs'),
+
+    # Submit Report
+    path('submit/', views.submit_page, name='submit_page'),
+    path('api/import-excel/', views.api_import_excel, name='api_import_excel'),
+    path('api/save-imported-data/', views.api_save_imported_data, name='api_save_imported_data'),
+
+    # Analytics Dashboard
+    path('analytics/', views.analytics_dashboard, name='analytics_dashboard'),
+
 ]

@@ -1105,6 +1105,7 @@ def member_dashboard(request):
             status='active'
         )
     
+    from datetime import date, timedelta
     today = timezone.now().date()
     weekday = today.weekday()
     
@@ -1117,8 +1118,9 @@ def member_dashboard(request):
     
     week_end = week_start + timedelta(days=6)
     
-    from .models import Checklist
+    from .models import Checklist, ChecklistLog
     
+    # Get all user checklists
     user_checklists = Checklist.objects.filter(
         is_active=True
     ).filter(
@@ -1127,18 +1129,126 @@ def member_dashboard(request):
         Q(assignment_target=user_profile.position)
     ).distinct()
     
-    daily_checklists = user_checklists.filter(frequency='daily')[:5]
+    # Get checklists for display (show all, sorted by frequency priority)
+    display_checklists = user_checklists.order_by('frequency')[:10]
+    
+    # Calculate month-to-date and year-to-date progress
+    month_start = today.replace(day=1)
+    year_start = today.replace(month=1, day=1)
+    
+    # Get all logs for the user
+    all_logs = ChecklistLog.objects.filter(user=user_profile)
+    
+    # Month progress calculation
+    month_expected = 0
+    month_actual = 0
+    year_expected = 0
+    year_actual = 0
+    total_checklists_completed = 0
+    
+    # Calculate progress for each checklist
+    display_checklists_with_progress = []
+    frequency_counts = {}
+    
+    for checklist in user_checklists:
+        # Get frequency count for summary
+        freq = checklist.frequency
+        frequency_counts[freq] = frequency_counts.get(freq, 0) + 1
+        
+        # Month progress for this checklist - using the new methods
+        checklist_month_expected = checklist.get_monthly_expected(user_profile)
+        checklist_month_actual = checklist.get_monthly_actual(user_profile)
+        
+        # Year progress for this checklist
+        checklist_year_expected = checklist.get_year_to_date_expected(user_profile)
+        checklist_year_actual = checklist.get_year_to_date_actual(user_profile)
+        
+        month_expected += checklist_month_expected
+        month_actual += checklist_month_actual
+        year_expected += checklist_year_expected
+        year_actual += checklist_year_actual
+        
+        # Calculate next due date
+        next_due = checklist.get_next_due_date(user_profile)
+        
+        month_progress = int((checklist_month_actual / checklist_month_expected * 100)) if checklist_month_expected > 0 else 0
+        year_progress = int((checklist_year_actual / checklist_year_expected * 100)) if checklist_year_expected > 0 else 0
+        
+        # Determine status
+        if month_progress >= 100:
+            status = 'completed'
+            total_checklists_completed += 1
+        elif month_progress >= 70:
+            status = 'on_track'
+        elif month_progress >= 40:
+            status = 'in_progress'
+        else:
+            status = 'at_risk'
+        
+        # Add progress data to checklist object for template
+        checklist.month_progress = month_progress
+        checklist.year_progress = year_progress
+        checklist.month_expected = checklist_month_expected
+        checklist.month_actual = checklist_month_actual
+        checklist.year_expected = checklist_year_expected
+        checklist.year_actual = checklist_year_actual
+        checklist.status = status
+        checklist.next_due_date = next_due.strftime('%b %d, %Y') if next_due else None
+        
+        # Only add to display list if it's in the display list
+        if checklist in display_checklists:
+            display_checklists_with_progress.append(checklist)
+    
+    # Build frequency summary
+    freq_labels = {
+        'daily': 'Daily',
+        'weekly': 'Weekly',
+        'monthly': 'Monthly',
+        'quarterly': 'Quarterly',
+        'bi-annual': 'Bi-Annual',
+        'one-off': 'One-Off'
+    }
+    freq_parts = []
+    for freq, count in frequency_counts.items():
+        if count > 0:
+            freq_parts.append(f"{count} {freq_labels.get(freq, freq)}")
+    frequency_summary = ', '.join(freq_parts) if freq_parts else 'No checklists'
+    
+    # Overall progress (capped at 100%)
+    overall_month_progress = int((month_actual / month_expected * 100)) if month_expected > 0 else 0
+    overall_year_progress = int((year_actual / year_expected * 100)) if year_expected > 0 else 0
+    month_total = month_expected
+    year_total = year_expected
+    
+    # Weekly completion rate
+    weekly_logs = all_logs.filter(log_date__gte=week_start, log_date__lte=today)
+    weekly_checklists = user_checklists.count()
+    
+    # Count weekdays in the week so far
+    weekdays_count = 0
+    current = week_start
+    while current <= today:
+        if current.weekday() < 5:
+            weekdays_count += 1
+        current += timedelta(days=1)
+    
+    weekly_expected = weekly_checklists * weekdays_count if weekly_checklists > 0 else 0
+    weekly_completion_rate = int((weekly_logs.count() / weekly_expected * 100)) if weekly_expected > 0 else 0
+    
+    # Assignments count
     assigned_this_week = user_checklists.filter(
         created_at__date__gte=week_start,
         created_at__date__lte=week_end
     ).count()
     
-    exceptions_captured = Report.objects.filter(
+    # Exceptions captured this week
+    exceptions_this_week = Report.objects.filter(
         created_by=user_profile,
         created_at__date__gte=week_start,
         created_at__date__lte=week_end
     ).count()
     
+    # Pending submissions
     pending_submissions = Report.objects.filter(
         Q(assigned_to=user_profile) |
         Q(created_by=user_profile) |
@@ -1147,42 +1257,11 @@ def member_dashboard(request):
         Q(status='submitted') | Q(status='draft')
     ).distinct().count()
     
-    recent_submissions = Report.objects.filter(
-        Q(assigned_to=user_profile) |
-        Q(created_by=user_profile) |
-        Q(is_assigned_to_all=True)
-    ).filter(
-        status='submitted'
-    ).order_by('-updated_at')[:5]
+    # Total logged days
+    total_logged_days = all_logs.values('log_date').distinct().count()
     
-    submission_data = []
-    for report in recent_submissions:
-        is_on_time = True
-        if report.deadline_date:
-            if report.deadline_date < timezone.now().date():
-                is_on_time = False
-            elif report.deadline_date == timezone.now().date() and report.deadline_time:
-                current_time = timezone.now().time()
-                if current_time > report.deadline_time:
-                    is_on_time = False
-        
-        final_score = None
-        manual_deduction = 0
-        if report.data:
-            if isinstance(report.data, dict):
-                if 'score' in report.data:
-                    final_score = report.data.get('score')
-                if 'manual_deduction' in report.data:
-                    manual_deduction = report.data.get('manual_deduction')
-        
-        submission_data.append({
-            'report_type': report.report_type,
-            'deadline_date': report.deadline_date,
-            'submitted_at': report.updated_at,
-            'is_on_time': is_on_time,
-            'manual_deduction': manual_deduction,
-            'final_score': final_score,
-        })
+    # Sort display checklists by month progress (ascending) to show items needing attention first
+    display_checklists_with_progress.sort(key=lambda x: x.month_progress)
     
     context = {
         'user_profile': user_profile,
@@ -1190,15 +1269,25 @@ def member_dashboard(request):
         'week_start': week_start,
         'week_end': week_end,
         'assigned_this_week': assigned_this_week,
-        'exceptions_captured': exceptions_captured,
+        'exceptions_this_week': exceptions_this_week,
         'pending_submissions': pending_submissions,
-        'daily_checklists': daily_checklists,
-        'recent_submissions': submission_data,
-        'all_checklists': user_checklists,
+        'daily_checklists': display_checklists_with_progress[:5],  # Show top 5
+        'all_checklists_count': user_checklists.count(),
+        'total_checklists_completed': total_checklists_completed,
+        
+        # Progress metrics
+        'overall_month_progress': overall_month_progress,
+        'overall_year_progress': overall_year_progress,
+        'month_completed': month_actual,
+        'month_total': month_total,
+        'year_completed': year_actual,
+        'year_total': year_total,
+        'total_logged_days': total_logged_days,
+        'weekly_completion_rate': weekly_completion_rate,
+        'frequency_summary': frequency_summary,
     }
     
     return render(request, 'control_dashboard/memberboard.html', context)
-
 
 # ==================== SUBMIT REPORT VIEWS ====================
 
@@ -1234,6 +1323,8 @@ def reports_page(request):
     except UserProfile.DoesNotExist:
         return redirect('control_dashboard:member_dashboard')
     
+    from .models import ReportSchedule
+    
     reports = Report.objects.filter(
         created_by=user_profile
     ).filter(
@@ -1241,8 +1332,15 @@ def reports_page(request):
     ).order_by('-created_at')
     
     report_types = reports.values_list('report_type', flat=True).distinct()
-    
     branches = Branch.objects.filter(is_active=True).order_by('name')
+    
+    # Add schedule info to each report
+    for report in reports:
+        schedule = ReportSchedule.objects.filter(report=report, is_active=True).first()
+        report.has_schedule = bool(schedule)
+        if schedule:
+            report.next_due_date = schedule.next_due_date
+            report.schedule_frequency = schedule.get_frequency_display()
     
     context = {
         'user_profile': user_profile,
@@ -1251,6 +1349,7 @@ def reports_page(request):
         'report_types': list(report_types),
         'branches': branches,
     }
+    
     return render(request, 'control_dashboard/reports.html', context)
 
 
@@ -1261,6 +1360,31 @@ def submit_page(request):
     except UserProfile.DoesNotExist:
         return redirect('control_dashboard:member_dashboard')
     
+    # Get distinct report types from reports created by the user
+    report_types = Report.objects.filter(
+        created_by=user_profile
+    ).values_list('report_type', flat=True).distinct().order_by('report_type')
+    
+    # Convert to list
+    report_types = list(report_types)
+    
+    # If no report types exist, add some defaults
+    if not report_types:
+        report_types = [
+            'Daily Control Report',
+            'Monthly Reconciliation',
+            'Exception Report',
+            'Compliance Check',
+            'Audit Report',
+            'Risk Assessment',
+            'Incident Report',
+            'Performance Report'
+        ]
+    
+    # Get all users for the "To" dropdown
+    all_users = UserProfile.objects.filter(status='active').order_by('full_name')
+    
+    # Get assigned exceptions for the current user
     assigned_exceptions = Report.objects.filter(
         Q(assigned_to=user_profile) |
         Q(created_by=user_profile) |
@@ -1269,24 +1393,7 @@ def submit_page(request):
         Q(status='submitted') | Q(status='draft') | Q(status='rejected')
     ).distinct().order_by('-updated_at')
     
-    assigned_report_types = assigned_exceptions.values_list('report_type', flat=True).distinct()
-    
-    email_recipients = UserProfile.objects.filter(
-        status='active'
-    ).exclude(
-        email__isnull=True
-    ).exclude(
-        email=''
-    ).values('email', 'full_name', 'position')
-    
-    email_recipients_list = []
-    for recipient in email_recipients:
-        email_recipients_list.append({
-            'email': recipient['email'],
-            'name': recipient['full_name'],
-            'department': recipient['position'] or 'General'
-        })
-    
+    # Get categories from exceptions
     categories = set()
     for exception in assigned_exceptions:
         if exception.data:
@@ -1303,6 +1410,7 @@ def submit_page(request):
     
     categories_list = [{'id': cat, 'name': cat} for cat in categories if cat]
     
+    # Build exceptions data
     exceptions_data = []
     for exception in assigned_exceptions:
         exception_data = exception.data or {}
@@ -1330,25 +1438,180 @@ def submit_page(request):
             'created_by': exception.created_by.email if exception.created_by else ''
         })
     
+    # Get distinct report types for the dropdown (from exceptions, not all reports)
+    exception_report_types = list(set([e['report_type'] for e in exceptions_data]))
+    
     context = {
         'user_profile': user_profile,
         'today': timezone.now(),
-        'assigned_exceptions': assigned_exceptions,
-        'assigned_report_types': list(assigned_report_types),
+        'all_users': all_users,
+        'report_types': exception_report_types or report_types,  # Use exception types, fallback to defaults
+        'assigned_report_types': exception_report_types,
         'categories_list': categories_list,
         'exceptions_json': json.dumps(exceptions_data, default=str),
         'exceptions': exceptions_data,
-        'email_recipients': email_recipients_list,
+        'email_recipients': all_users,
         'user_data': {
             'name': user_profile.full_name,
             'email': user_profile.email,
             'username': user_profile.username,
             'department': user_profile.position or 'General'
         },
-        'report_types': list(assigned_report_types),
     }
     
     return render(request, 'control_dashboard/submit.html', context)
+
+
+# ==================== API - IMPORT/EXPORT EXCEL ====================
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_import_excel(request):
+    """
+    API endpoint to import Excel data and return preview
+    """
+    try:
+        data = json.loads(request.body)
+        file_data = data.get('file_data', [])
+        file_name = data.get('file_name', 'uploaded_file.xlsx')
+        report_type = data.get('report_type', '')
+        
+        if not file_data or len(file_data) == 0:
+            return JsonResponse({
+                'success': False,
+                'error': 'No data found in the file'
+            }, status=400)
+        
+        # First row is headers
+        headers = file_data[0] if file_data else []
+        # Rest are data rows
+        rows = file_data[1:] if len(file_data) > 1 else []
+        
+        # Convert to list of dictionaries
+        parsed_data = []
+        for row in rows:
+            if row and any(cell for cell in row):  # Skip empty rows
+                row_dict = {}
+                for i, header in enumerate(headers):
+                    if i < len(row):
+                        row_dict[header] = row[i] if row[i] is not None else ''
+                    else:
+                        row_dict[header] = ''
+                parsed_data.append(row_dict)
+        
+        # Store in session for later use
+        request.session['excel_import_data'] = {
+            'headers': headers,
+            'data': parsed_data,
+            'file_name': file_name,
+            'report_type': report_type,
+            'row_count': len(parsed_data)
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'headers': headers,
+            'data': parsed_data,
+            'row_count': len(parsed_data),
+            'message': f'Successfully imported {len(parsed_data)} records'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        print(f"Error importing Excel: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_save_imported_data(request):
+    """
+    API endpoint to save imported Excel data to the database
+    """
+    try:
+        data = json.loads(request.body)
+        
+        # Get data from request
+        headers = data.get('headers', [])
+        rows_data = data.get('data', [])
+        report_type = data.get('report_type', '')
+        file_name = data.get('file_name', 'uploaded.xlsx')
+        
+        if not headers or not rows_data:
+            return JsonResponse({
+                'success': False,
+                'error': 'No data to save. Please import an Excel file first.'
+            }, status=400)
+        
+        if not report_type:
+            return JsonResponse({
+                'success': False,
+                'error': 'Please select a report type.'
+            }, status=400)
+        
+        try:
+            user_profile = UserProfile.objects.get(email=request.user.email)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+        
+        # Convert rows to list of dictionaries with proper headers
+        normalized_rows = []
+        for row in rows_data:
+            if isinstance(row, dict):
+                # Already a dictionary
+                normalized_rows.append(row)
+            elif isinstance(row, list):
+                # Convert list to dict using headers
+                row_dict = {}
+                for i, header in enumerate(headers):
+                    if i < len(row):
+                        row_dict[header] = row[i] if row[i] is not None else ''
+                    else:
+                        row_dict[header] = ''
+                normalized_rows.append(row_dict)
+        
+        # Create the report with proper data
+        report = Report.objects.create(
+            report_type=report_type,
+            frequency='one-off',
+            description=f'Excel Import: {file_name}',
+            status='submitted',
+            created_by=user_profile,
+            data={
+                'import_type': 'excel',
+                'file_name': file_name,
+                'headers': headers,  # Store the actual headers from Excel
+                'data': normalized_rows,  # Store as list of dictionaries with actual headers
+                'row_count': len(normalized_rows),
+                'imported_at': timezone.now().isoformat(),
+            }
+        )
+        
+        # Log activity
+        log_activity(
+            user=user_profile,
+            activity_type='report_submitted',
+            details=f'Submitted {report_type} with {len(normalized_rows)} records from Excel',
+            request=request
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully saved {len(normalized_rows)} records from {file_name}',
+            'report_id': report.id,
+            'record_count': len(normalized_rows)
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        print(f"Error saving imported data: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @login_required
@@ -1358,6 +1621,9 @@ def member_checklist(request):
     except UserProfile.DoesNotExist:
         return redirect('control_dashboard:member_dashboard')
     
+    from datetime import date, timedelta
+    today = timezone.now().date()
+    
     user_checklists = Checklist.objects.filter(
         is_active=True
     ).filter(
@@ -1365,6 +1631,10 @@ def member_checklist(request):
         Q(assignment_target='all') |
         Q(assignment_target=user_profile.position)
     ).distinct().order_by('name')
+    
+    # Get years for filter
+    current_year = timezone.now().year
+    years = list(range(current_year - 2, current_year + 1))
     
     checklist_data = []
     for checklist in user_checklists:
@@ -1375,18 +1645,77 @@ def member_checklist(request):
         ).values_list('log_date', flat=True)
         log_dates = [log.strftime('%Y-%m-%d') for log in logs]
         
+        # Calculate progress
+        month_start = today.replace(day=1)
+        year_start = today.replace(month=1, day=1)
+        
+        month_expected = checklist.get_expected_occurrences(month_start, today)
+        month_actual = ChecklistLog.objects.filter(
+            checklist=checklist,
+            user=user_profile,
+            log_date__gte=month_start,
+            log_date__lte=today
+        ).count()
+        
+        year_expected = checklist.get_expected_occurrences(year_start, today)
+        year_actual = ChecklistLog.objects.filter(
+            checklist=checklist,
+            user=user_profile,
+            log_date__gte=year_start,
+            log_date__lte=today
+        ).count()
+        
+        month_progress = int((month_actual / month_expected * 100)) if month_expected > 0 else 0
+        year_progress = int((year_actual / year_expected * 100)) if year_expected > 0 else 0
+        
+        # Determine status
+        if month_progress >= 100:
+            status = 'completed'
+        elif month_progress >= 70:
+            status = 'on_track'
+        elif month_progress >= 40:
+            status = 'in_progress'
+        else:
+            status = 'at_risk'
+        
+        # Calculate next due date
+        next_due = checklist.get_next_due_date(user_profile) if hasattr(checklist, 'get_next_due_date') else None
+        
         checklist_data.append({
             'id': checklist.id,
             'name': checklist.name,
             'frequency': checklist.frequency,
             'frequency_display': checklist.get_frequency_display(),
-            'tasks': [{'description': task.description} for task in tasks],
+            'tasks': [{'description': task.description, 'id': task.id} for task in tasks],
             'logs': log_dates,
+            'month_progress': month_progress,
+            'year_progress': year_progress,
+            'month_expected': month_expected,
+            'month_actual': month_actual,
+            'year_expected': year_expected,
+            'year_actual': year_actual,
+            'status': status,
+            'frequency_days': checklist.get_frequency_days(),
+            'next_due_date': next_due.strftime('%b %d, %Y') if next_due else None,
         })
+    
+    # Calculate overall progress
+    total_month_expected = sum(c['month_expected'] for c in checklist_data)
+    total_month_actual = sum(c['month_actual'] for c in checklist_data)
+    total_year_expected = sum(c['year_expected'] for c in checklist_data)
+    total_year_actual = sum(c['year_actual'] for c in checklist_data)
+    
+    overall_month_progress = int((total_month_actual / total_month_expected * 100)) if total_month_expected > 0 else 0
+    overall_year_progress = int((total_year_actual / total_year_expected * 100)) if total_year_expected > 0 else 0
     
     context = {
         'user_profile': user_profile,
+        'checklists': user_checklists,
         'checklist_data': checklist_data,
+        'years': years,
+        'overall_month_progress': overall_month_progress,
+        'overall_year_progress': overall_year_progress,
+        'total_checklists': user_checklists.count(),
     }
     
     return render(request, 'control_dashboard/checklist-mem.html', context)
@@ -1939,8 +2268,6 @@ def api_export_logs(request):
 
 
 # ==================== SUPERVISOR VIEWS (CONTINUED) ====================
-
-# Note: supervisor_dashboard is already defined above, but let's make sure we have all supervisor views
 
 @login_required
 def team_performance(request):
@@ -2661,6 +2988,16 @@ def activity_logs(request):
     today = timezone.now().date()
     today_logs = queryset.filter(created_at__date=today).count()
     
+    activity_breakdown = queryset.values('activity_type').annotate(
+        count=Count('id')
+    ).order_by('-count')
+    
+    user_activity_summary = queryset.values(
+        'user__full_name', 'user__email', 'user__role'
+    ).annotate(
+        total_activities=Count('id')
+    ).order_by('-total_activities')[:10]
+    
     last_activity_log = queryset.order_by('-created_at').first()
     last_activity = last_activity_log.created_at.strftime('%b %d, %Y %H:%M') if last_activity_log else None
     
@@ -2681,6 +3018,216 @@ def activity_logs(request):
         'unique_users': unique_users,
         'today_logs': today_logs,
         'last_activity': last_activity,
+        'activity_breakdown': activity_breakdown,
+        'user_activity_summary': user_activity_summary,
     }
     
     return render(request, 'control_dashboard/activity.html', context)
+
+
+# ==================== ANALYTICS DASHBOARD ====================
+
+@login_required
+def analytics_dashboard(request):
+    """
+    Power BI-style analytics dashboard for supervisors and admins
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+        if user_profile.role not in ['admin', 'supervisor']:
+            messages.error(request, 'You do not have permission to access this page.')
+            return redirect_dashboard(request.user)
+    except UserProfile.DoesNotExist:
+        return redirect_dashboard(request.user)
+    
+    from django.db.models import Count, Q, Sum, Avg
+    from datetime import datetime, timedelta
+    
+    today = timezone.now().date()
+    week_start = today - timedelta(days=today.weekday())
+    month_start = today.replace(day=1)
+    
+    # Get team members
+    team_members = UserProfile.objects.filter(role='member', status='active')
+    
+    # ====== KPI DATA ======
+    total_members = team_members.count()
+    
+    # Reports statistics
+    total_reports = Report.objects.filter(
+        created_by__in=team_members
+    ).count()
+    
+    reports_this_month = Report.objects.filter(
+        created_by__in=team_members,
+        created_at__date__gte=month_start,
+        created_at__date__lte=today
+    ).count()
+    
+    reports_this_week = Report.objects.filter(
+        created_by__in=team_members,
+        created_at__date__gte=week_start,
+        created_at__date__lte=today
+    ).count()
+    
+    # Checklist completion
+    total_checklists = Checklist.objects.filter(
+        assigned_users__in=team_members
+    ).distinct().count()
+    
+    total_logs = ChecklistLog.objects.filter(
+        user__in=team_members
+    ).count()
+    
+    # Calculate average completion rate
+    completion_rates = []
+    for member in team_members:
+        assigned = Checklist.objects.filter(
+            Q(assigned_users=member) |
+            Q(assignment_target='all') |
+            Q(assignment_target=member.position)
+        ).distinct().count()
+        
+        if assigned > 0:
+            completed = ChecklistLog.objects.filter(
+                user=member,
+                checklist__in=Checklist.objects.filter(
+                    Q(assigned_users=member) |
+                    Q(assignment_target='all') |
+                    Q(assignment_target=member.position)
+                )
+            ).values('checklist').distinct().count()
+            completion_rates.append((completed / assigned) * 100)
+    
+    avg_completion = int(sum(completion_rates) / len(completion_rates)) if completion_rates else 0
+    
+    # ====== FREQUENCY STATISTICS ======
+    frequency_stats = {}
+    frequency_percentages = {}
+    total_checklists_all = Checklist.objects.filter(is_active=True).count()
+    
+    for freq in ['daily', 'weekly', 'monthly', 'quarterly', 'bi-annual', 'one-off']:
+        count = Checklist.objects.filter(is_active=True, frequency=freq).count()
+        frequency_stats[freq] = count
+        frequency_percentages[freq] = int((count / total_checklists_all) * 100) if total_checklists_all > 0 else 0
+    
+    # ====== OVERALL PROGRESS ======
+    overall_month_progress = 0
+    overall_year_progress = 0
+    
+    # ====== CHART DATA ======
+    # 1. Reports by type (Pie Chart)
+    report_types_data = Report.objects.filter(
+        created_by__in=team_members
+    ).values('report_type').annotate(
+        count=Count('id')
+    ).order_by('-count')[:10]
+    
+    report_types_labels = [item['report_type'] for item in report_types_data]
+    report_types_values = [item['count'] for item in report_types_data]
+    
+    # 2. Reports by day (Line Chart - Last 30 days)
+    thirty_days_ago = today - timedelta(days=30)
+    daily_reports = []
+    for i in range(30):
+        date = thirty_days_ago + timedelta(days=i)
+        count = Report.objects.filter(
+            created_by__in=team_members,
+            created_at__date=date
+        ).count()
+        daily_reports.append({
+            'date': date.strftime('%Y-%m-%d'),
+            'count': count
+        })
+    
+    daily_labels = [d['date'] for d in daily_reports]
+    daily_values = [d['count'] for d in daily_reports]
+    
+    # 3. Member performance (Bar Chart)
+    member_performance = []
+    for member in team_members[:15]:
+        assigned = Checklist.objects.filter(
+            Q(assigned_users=member) |
+            Q(assignment_target='all') |
+            Q(assignment_target=member.position)
+        ).distinct().count()
+        
+        if assigned > 0:
+            completed = ChecklistLog.objects.filter(
+                user=member
+            ).values('checklist').distinct().count()
+            rate = int((completed / assigned) * 100)
+        else:
+            rate = 0
+        
+        member_performance.append({
+            'name': member.full_name or member.email,
+            'rate': rate,
+            'assigned': assigned,
+            'completed': completed
+        })
+    
+    member_performance.sort(key=lambda x: x['rate'], reverse=True)
+    member_names = [m['name'] for m in member_performance[:10]]
+    member_rates = [m['rate'] for m in member_performance[:10]]
+    
+    # 4. Checklist completion trend (Last 7 days)
+    weekly_completion = []
+    for i in range(7):
+        date = today - timedelta(days=6-i)
+        count = ChecklistLog.objects.filter(
+            user__in=team_members,
+            log_date=date
+        ).count()
+        weekly_completion.append({
+            'date': date.strftime('%a'),
+            'count': count
+        })
+    
+    weekly_labels = [w['date'] for w in weekly_completion]
+    weekly_values = [w['count'] for w in weekly_completion]
+    
+    # 5. Status distribution
+    status_data = Report.objects.filter(
+        created_by__in=team_members
+    ).values('status').annotate(
+        count=Count('id')
+    )
+    status_labels = [s['status'] for s in status_data]
+    status_values = [s['count'] for s in status_data]
+    
+    context = {
+        'user_profile': user_profile,
+        'today': today,
+        'week_start': week_start,
+        'month_start': month_start,
+        
+        # KPIs
+        'total_members': total_members,
+        'total_reports': total_reports,
+        'reports_this_month': reports_this_month,
+        'reports_this_week': reports_this_week,
+        'total_checklists': total_checklists,
+        'total_logs': total_logs,
+        'avg_completion': avg_completion,
+        'overall_month_progress': overall_month_progress,
+        'overall_year_progress': overall_year_progress,
+        
+        # Frequency stats
+        'frequency_stats': frequency_stats,
+        'frequency_percentages': frequency_percentages,
+        
+        # Chart data (JSON)
+        'report_types_labels': json.dumps(report_types_labels),
+        'report_types_values': json.dumps(report_types_values),
+        'daily_labels': json.dumps(daily_labels),
+        'daily_values': json.dumps(daily_values),
+        'member_names': json.dumps(member_names),
+        'member_rates': json.dumps(member_rates),
+        'weekly_labels': json.dumps(weekly_labels),
+        'weekly_values': json.dumps(weekly_values),
+        'status_labels': json.dumps(status_labels),
+        'status_values': json.dumps(status_values),
+    }
+    
+    return render(request, 'control_dashboard/analytics.html', context)

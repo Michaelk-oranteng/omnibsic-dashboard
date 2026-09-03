@@ -5,95 +5,184 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'stylesheets/member.css' %}" type="text/css">
-<link rel="stylesheet" href="{% static 'stylesheets/drafts.css' %}" type="text/css">
 <style>
-    /* Additional centering styles */
-    .submit-header-section {
+    /* ============================================
+       SUBMIT PAGE STYLES
+       ============================================ */
+    
+    .submit-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .glass-card {
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    }
+    
+    .submit-header {
         text-align: center;
         padding: 20px 0 10px 0;
     }
-    .submit-header-section h2 {
-        margin-bottom: 8px;
-        font-size: 22px;
-        font-weight: 600;
+    
+    .submit-header h2 {
+        font-size: 24px;
+        font-weight: 700;
         color: #1a2332;
-    }
-    .submit-header-section .subtitle {
-        color: #6b7280;
-        font-size: 14px;
         margin-bottom: 4px;
     }
-    .submit-header-section .excel-hint {
-        color: #217346;
+    
+    .submit-header .subtitle {
+        color: #6b7280;
         font-size: 14px;
-        margin-top: 4px;
+        margin-bottom: 8px;
     }
+    
     .submit-controls {
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 16px;
-        margin-top: 16px;
+        margin-top: 20px;
         flex-wrap: wrap;
     }
-    .submit-controls .header-filter-group {
+    
+    .submit-controls .form-group {
         display: flex;
-        align-items: center;
-        gap: 8px;
+        flex-direction: column;
+        gap: 4px;
     }
-    .submit-controls .header-filter-group label {
+    
+    .submit-controls .form-group label {
         font-size: 13px;
         font-weight: 500;
         color: #1a2332;
-        white-space: nowrap;
     }
-    .submit-controls .header-select {
-        padding: 8px 14px;
+    
+    .submit-controls .form-control {
+        padding: 10px 16px;
         border: 1.5px solid #e5e7eb;
         border-radius: 8px;
-        font-size: 13px;
-        background: white;
+        font-size: 14px;
         font-family: 'Poppins', sans-serif;
+        background: white;
         color: #1a2332;
-        cursor: pointer;
         transition: all 0.3s ease;
         min-width: 220px;
     }
-    .submit-controls .header-select:focus {
+    
+    .submit-controls .form-control:focus {
         border-color: #0066cc;
         outline: none;
         box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.08);
     }
-    .btn-upload-header {
+    
+    .btn-upload {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 8px 20px;
+        gap: 8px;
+        padding: 10px 24px;
         background: #217346;
         color: white;
         border: none;
         border-radius: 8px;
         cursor: pointer;
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 500;
         transition: all 0.3s ease;
         font-family: 'Poppins', sans-serif;
-        text-decoration: none;
+        white-space: nowrap;
+        height: 44px;
+        margin-top: 22px;
     }
-    .btn-upload-header:hover {
+    
+    .btn-upload:hover:not(:disabled) {
         background: #1a5c38;
         transform: translateY(-2px);
         box-shadow: 0 4px 16px rgba(33, 115, 70, 0.25);
-        color: white;
     }
-    .btn-upload-header.loading {
-        opacity: 0.7;
+    
+    .btn-upload:disabled {
+        opacity: 0.6;
         cursor: not-allowed;
         transform: none;
     }
-    .btn-clear-upload-sm {
-        margin-left: 12px;
-        padding: 4px 12px;
+    
+    .btn-upload .spinner {
+        display: none;
+        animation: spin 1s linear infinite;
+    }
+    
+    .btn-upload.loading .spinner {
+        display: inline-block;
+    }
+    
+    .btn-upload.loading .btn-text {
+        display: none;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* Upload Status */
+    .upload-status {
+        display: none;
+        margin-top: 16px;
+        padding: 16px 20px;
+        border-radius: 8px;
+        border-left: 4px solid #10b981;
+        background: #f0fdf4;
+    }
+    
+    .upload-status.show {
+        display: block;
+    }
+    
+    .upload-status.error {
+        border-left-color: #dc2626;
+        background: #fef2f2;
+    }
+    
+    .upload-status .status-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    
+    .upload-status .status-icon {
+        font-size: 18px;
+        color: #10b981;
+    }
+    
+    .upload-status.error .status-icon {
+        color: #dc2626;
+    }
+    
+    .upload-status .status-message {
+        font-size: 14px;
+        color: #065f46;
+        flex: 1;
+    }
+    
+    .upload-status.error .status-message {
+        color: #991b1b;
+    }
+    
+    .upload-status .status-actions {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .btn-clear {
+        padding: 4px 14px;
         background: #fee2e2;
         color: #dc2626;
         border: none;
@@ -101,188 +190,179 @@
         cursor: pointer;
         font-size: 12px;
         transition: all 0.2s ease;
+        font-family: 'Poppins', sans-serif;
     }
-    .btn-clear-upload-sm:hover {
+    
+    .btn-clear:hover {
         background: #fecaca;
     }
-    .header-divider {
+    
+    /* Preview Table */
+    .preview-container {
+        margin-top: 24px;
         display: none;
     }
-    .btn-submit-draft-header {
-        display: none;
+    
+    .preview-container.show {
+        display: block;
     }
-    .glass-card .empty-state {
+    
+    .preview-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    
+    .preview-header h4 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1a2332;
+        margin: 0;
+    }
+    
+    .preview-header .record-count {
+        font-size: 13px;
+        color: #6b7280;
+        background: #f3f4f6;
+        padding: 4px 14px;
+        border-radius: 12px;
+    }
+    
+    .table-wrapper {
+        overflow-x: auto;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        background: white;
+    }
+    
+    .preview-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    
+    .preview-table thead th {
+        background: #f8fafc;
+        color: #1a2332;
+        font-weight: 600;
+        padding: 12px 16px;
+        text-align: left;
+        border-bottom: 2px solid #e5e7eb;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        white-space: nowrap;
+    }
+    
+    .preview-table tbody td {
+        padding: 10px 16px;
+        border-bottom: 1px solid #f3f4f6;
+        color: #1a2332;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .preview-table tbody tr:hover td {
+        background: #f8fafc;
+    }
+    
+    .preview-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .preview-table .empty-cell {
+        color: #9ca3af;
+        font-style: italic;
+    }
+    
+    /* Submit Button */
+    .submit-actions {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+    
+    .btn-submit {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 32px;
+        background: #003399;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    .btn-submit:hover:not(:disabled) {
+        background: #002266;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 51, 153, 0.3);
+    }
+    
+    .btn-submit:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    .btn-cancel {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 32px;
+        background: #f3f4f6;
+        color: #6b7280;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    .btn-cancel:hover {
+        background: #e5e7eb;
+    }
+    
+    /* Empty State */
+    .empty-state {
         text-align: center;
         padding: 40px 20px;
+        color: #6b7280;
     }
-    .glass-card .empty-state i {
+    
+    .empty-state i {
         font-size: 48px;
         color: #d1d5db;
         margin-bottom: 12px;
         display: block;
     }
-    .glass-card .empty-state span {
-        font-size: 15px;
-        color: #6b7280;
-    }
-    /* Template container styling */
-    #template-container {
-        margin-top: 20px;
-    }
-    .template-header {
-        margin-bottom: 16px;
-    }
-    .template-header h4 {
-        font-size: 15px;
-        font-weight: 600;
+    
+    .empty-state h3 {
+        font-size: 18px;
         color: #1a2332;
+        margin-bottom: 4px;
+    }
+    
+    .empty-state p {
+        font-size: 14px;
         margin: 0;
     }
-    .table-container {
-        overflow-x: auto;
-    }
-    .template-table {
-        width: 100%;
-        border-collapse: collapse;
-        background: transparent;
-    }
-    .template-table thead th {
-        background: rgba(0, 51, 102, 0.03);
-        color: rgba(26, 35, 50, 0.5);
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        text-align: left;
-        padding: 12px 14px;
-        border-bottom: 2px solid #f0f0f0;
-    }
-    .template-table tbody td {
-        padding: 10px 14px;
-        color: #1a2332;
-        font-size: 13px;
-        border-bottom: 1px solid #f3f4f6;
-        vertical-align: middle;
-    }
-    .template-table tbody tr:hover {
-        background: rgba(0, 51, 102, 0.02);
-    }
-    .template-table tbody tr:last-child td {
-        border-bottom: none;
-    }
-    .template-table input,
-    .template-table select,
-    .template-table textarea {
-        width: 100%;
-        padding: 6px 10px;
-        border: 1.5px solid #e5e7eb;
-        border-radius: 6px;
-        font-size: 13px;
-        font-family: 'Poppins', sans-serif;
-        transition: all 0.3s ease;
-        background: white;
-        color: #1a2332;
-        box-sizing: border-box;
-    }
-    .template-table input:focus,
-    .template-table select:focus,
-    .template-table textarea:focus {
-        border-color: #0066cc;
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.08);
-    }
-    .template-table textarea {
-        min-height: 40px;
-        resize: vertical;
-    }
-    .template-table input[type="checkbox"] {
-        width: auto;
-        height: 18px;
-        width: 18px;
-        cursor: pointer;
-    }
-    .row-actions {
-        display: flex;
-        justify-content: center;
-        gap: 4px;
-    }
-    .btn-remove-row {
-        width: 30px;
-        height: 30px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 13px;
-        background: #fee2e2;
-        color: #dc2626;
-    }
-    .btn-remove-row:hover:not(:disabled) {
-        background: #fecaca;
-        transform: scale(1.05);
-    }
-    .btn-remove-row:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-        transform: none;
-    }
-    .btn-add-field {
-        padding: 10px 24px;
-        background: #f3f4f6;
-        color: #374151;
-        border: 1.5px dashed #d1d5db;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 13px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        font-family: 'Poppins', sans-serif;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .btn-add-field:hover {
-        background: #e5e7eb;
-        border-color: #9ca3af;
-    }
-    .required {
-        color: #dc2626;
-        font-weight: 700;
-    }
-    /* Upload progress */
-    #uploadProgress {
-        margin-bottom: 15px;
-        padding: 12px 16px;
-        background: #f8fafc;
-        border-radius: 8px;
-        border: 1px solid #e5e7eb;
-    }
-    .progress-track {
-        flex: 1;
-        height: 8px;
-        background: #e5e7eb;
-        border-radius: 4px;
-        overflow: hidden;
-    }
-    .progress-bar {
-        height: 100%;
-        background: #10b981;
-        transition: width 0.3s ease;
-    }
-    #uploadStats {
-        margin-bottom: 15px;
-        padding: 12px 16px;
-        background: #f0fdf4;
-        border-radius: 8px;
-        border-left: 4px solid #10b981;
-    }
-    #uploadStats #uploadResult {
-        font-size: 14px;
-        color: #065f46;
-    }
+    
+    /* Toast Notification */
     .toast-notification {
         position: fixed;
         bottom: 24px;
@@ -299,10 +379,17 @@
         border-left: 4px solid #10b981;
         transform: translateX(120%);
         transition: transform 0.3s ease;
+        font-family: 'Poppins', sans-serif;
     }
+    
     .toast-notification.show {
         transform: translateX(0);
     }
+    
+    .toast-notification.error {
+        border-left-color: #dc2626;
+    }
+    
     .toast-notification .toast-icon {
         flex-shrink: 0;
         width: 36px;
@@ -315,63 +402,84 @@
         background: rgba(16, 185, 129, 0.1);
         color: #10b981;
     }
+    
+    .toast-notification.error .toast-icon {
+        background: rgba(220, 38, 38, 0.1);
+        color: #dc2626;
+    }
+    
     .toast-notification .toast-content {
         flex: 1;
     }
+    
     .toast-notification .toast-title {
         font-weight: 600;
         font-size: 14px;
         color: #1a2332;
         margin: 0;
     }
+    
     .toast-notification .toast-message {
         font-size: 13px;
         color: #6b7280;
         margin: 2px 0 0 0;
     }
+    
     .toast-notification .toast-close {
         background: none;
         border: none;
-        font-size: 18px;
+        font-size: 20px;
         cursor: pointer;
         color: #9ca3af;
         padding: 0 4px;
+        line-height: 1;
     }
+    
     .toast-notification .toast-close:hover {
         color: #1a2332;
     }
+    
     /* Responsive */
     @media (max-width: 768px) {
         .submit-controls {
             flex-direction: column;
             align-items: stretch;
         }
-        .submit-controls .header-filter-group {
-            flex-direction: column;
-            align-items: stretch;
+        
+        .submit-controls .form-group {
+            width: 100%;
         }
-        .submit-controls .header-select {
+        
+        .submit-controls .form-control {
             width: 100%;
             min-width: unset;
         }
-        .btn-upload-header {
+        
+        .btn-upload {
+            width: 100%;
+            justify-content: center;
+            margin-top: 0;
+        }
+        
+        .preview-table {
+            font-size: 12px;
+        }
+        
+        .preview-table thead th,
+        .preview-table tbody td {
+            padding: 8px 12px;
+        }
+        
+        .submit-actions {
+            flex-direction: column;
+        }
+        
+        .submit-actions .btn-submit,
+        .submit-actions .btn-cancel {
+            width: 100%;
             justify-content: center;
         }
-        .template-table {
-            min-width: 600px;
-            font-size: 12px;
-        }
-        .template-table thead th,
-        .template-table tbody td {
-            padding: 8px 10px;
-            font-size: 12px;
-        }
-        .template-table input,
-        .template-table select,
-        .template-table textarea {
-            font-size: 12px;
-            padding: 4px 8px;
-        }
+        
         .toast-notification {
             left: 16px;
             right: 16px;
@@ -407,79 +515,84 @@
 </a></li> 
 {% endblock %}
 
-{% block page_title %}Submit Control Report{% endblock %}
-
-{% block top_header_center %}
-<!-- Empty - moved controls to content area -->
-{% endblock %}
-
-{% block top_header_right %}
-<!-- Empty - moved buttons to content area -->
-{% endblock %}
+{% block page_title %}Submit Report{% endblock %}
 
 {% block content %}
-<!-- Upload Progress and Stats -->
-<div id="uploadProgress" style="display: none; margin-bottom: 15px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;">
-    <div style="display: flex; align-items: center; gap: 12px;">
-        <div class="progress-track" style="flex: 1; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
-            <div class="progress-bar success" id="uploadProgressBar" style="width: 0%; height: 100%; background: #10b981; transition: width 0.3s ease;"></div>
-        </div>
-        <span id="uploadStatus" style="font-size: 13px; color: #6b7280; min-width: 120px;">Processing...</span>
-    </div>
-</div>
-
-<div id="uploadStats" style="display: none; margin-bottom: 15px; padding: 12px 16px; background: #f0fdf4; border-radius: 8px; border-left: 4px solid #10b981;">
-    <span id="uploadResult" style="font-size: 14px; color: #065f46;">
-        <i class="fas fa-check-circle"></i> Import successful!
-    </span>
-    <button class="btn-clear-upload-sm" onclick="clearUploadedData()" style="margin-left: 12px; padding: 4px 12px; background: #fee2e2; color: #dc2626; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-        <i class="fas fa-trash"></i> Clear
-    </button>
-</div>
-
-<div class="checklist-container">
+<div class="submit-container">
     <div class="glass-card">
-        <!-- Centered Header Section -->
-        <div class="submit-header-section">
-            <h2>New Submission</h2>
-            <p class="subtitle">Select a report type from the dropdown and click upload your excel</p>
+        <!-- Header -->
+        <div class="submit-header">
+            <h2>📤 Submit Excel Report</h2>
+            <p class="subtitle">Upload your Excel file, preview the data, and submit it to the system</p>
         </div>
 
-        <!-- Controls: Report Type Dropdown + Import Excel Button -->
+        <!-- Controls -->
         <div class="submit-controls">
-            <div class="header-filter-group">
-                <label for="report-type-filter">Report Type</label>
-                <select id="report-type-filter" class="header-select" onchange="loadTemplate()">
+            <div class="form-group">
+                <label for="reportType">Report Type</label>
+                <select id="reportType" class="form-control" required>
                     <option value="">Select Report Type...</option>
                     {% for report_type in report_types %}
                     <option value="{{ report_type }}">{{ report_type }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <button class="btn-upload-header" onclick="document.getElementById('excelFileInputHeader').click()" title="Import Excel Data">
-                <i class="fas fa-file-excel"></i> Upload Excel
+            <button class="btn-upload" id="uploadBtn" onclick="document.getElementById('excelFileInput').click()">
+                <i class="fas fa-file-excel"></i>
+                <span class="btn-text">Upload Excel</span>
+                <span class="spinner"><i class="fas fa-spinner"></i></span>
             </button>
-            <input type="file" id="excelFileInputHeader" accept=".xlsx,.xls,.csv" style="display: none;" onchange="handleExcelFile(this.files[0])">
+            <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display: none;" onchange="handleFileUpload(this.files[0])">
         </div>
 
-        <!-- Template Container -->
-        <div id="template-container" style="margin-top: 20px; display: none;">
-            <div class="template-header">
-                <h4><span id="template-name-display">Template</span></h4>
+        <!-- Upload Status -->
+        <div class="upload-status" id="uploadStatus">
+            <div class="status-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span class="status-icon"><i class="fas fa-check-circle"></i></span>
+                    <span class="status-message" id="statusMessage">File uploaded successfully!</span>
+                </div>
+                <div class="status-actions">
+                    <button class="btn-clear" onclick="clearData()">
+                        <i class="fas fa-trash"></i> Clear
+                    </button>
+                </div>
             </div>
-            <div class="table-container" style="overflow-x: auto;">
-                <form id="reportForm" onsubmit="event.preventDefault();">
-                    <div id="template-fields">
-                        <!-- Fields will be dynamically rendered here -->
-                    </div>
-                    <!-- Add Another Row Button -->
-                    <div style="margin-top: 20px; text-align: center;">
-                        <button type="button" class="btn-add-field" onclick="addAnotherRow()">
-                            <i class="fas fa-plus-circle"></i> Add Another Row
-                        </button>
-                    </div>
-                </form>
+        </div>
+
+        <!-- Preview Table -->
+        <div class="preview-container" id="previewContainer">
+            <div class="preview-header">
+                <h4><i class="fas fa-table"></i> Data Preview</h4>
+                <span class="record-count" id="recordCount">0 records</span>
             </div>
+            <div class="table-wrapper">
+                <table class="preview-table" id="previewTable">
+                    <thead id="tableHead">
+                        <!-- Headers will be inserted here -->
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Data rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Submit Actions -->
+            <div class="submit-actions">
+                <button class="btn-submit" id="submitBtn" onclick="submitData()">
+                    <i class="fas fa-paper-plane"></i> Submit Report
+                </button>
+                <button class="btn-cancel" onclick="clearData()">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <h3>No Data Loaded</h3>
+            <p>Select a report type and upload an Excel file to get started</p>
         </div>
     </div>
 </div>
@@ -496,8 +609,8 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-    // SheetJS Library for Excel parsing (loaded from CDN)
     // ============================================
     // CSRF TOKEN HELPER
     // ============================================
@@ -521,22 +634,32 @@
     // TOAST NOTIFICATION
     // ============================================
 
-    function showToast(message, title) {
-        title = title || 'Success!';
+    function showToast(message, title = 'Success!', isError = false) {
         const toast = document.getElementById('toastNotification');
         const msgEl = document.getElementById('toastMessage');
         const titleEl = toast.querySelector('.toast-title');
+        const iconEl = toast.querySelector('.toast-icon i');
+        
         msgEl.textContent = message || 'Action completed successfully.';
         titleEl.textContent = title;
+        
+        if (isError) {
+            toast.classList.add('error');
+            iconEl.className = 'fas fa-exclamation-circle';
+        } else {
+            toast.classList.remove('error');
+            iconEl.className = 'fas fa-check-circle';
+        }
+        
         toast.classList.add('show');
         
         if (window.toastTimeout) {
             clearTimeout(window.toastTimeout);
         }
         
-        window.toastTimeout = setTimeout(function() {
+        window.toastTimeout = setTimeout(() => {
             toast.classList.remove('show');
-        }, 3000);
+        }, 4000);
     }
 
     window.closeToast = function() {
@@ -549,514 +672,277 @@
     };
 
     // ============================================
-    // EXCEL UPLOAD FUNCTIONALITY
+    // STATE
     // ============================================
 
-    var uploadedData = [];
-    var rowCounter = 0;
-    var templateFields = [];
+    let importedData = null;
+    let importedHeaders = [];
+    let fileName = '';
 
-    function handleExcelFile(file) {
+    // ============================================
+    // EXCEL FILE HANDLING
+    // ============================================
+
+    function handleFileUpload(file) {
         if (!file) return;
 
-        var validTypes = [
+        const validTypes = [
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'application/vnd.ms-excel',
             'text/csv'
         ];
 
         if (!validTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls|csv)$/i)) {
-            showToast('Please upload a valid Excel file (.xlsx, .xls, or .csv)', 'Error');
+            showToast('Please upload a valid Excel file (.xlsx, .xls, or .csv)', 'Error', true);
             return;
         }
 
-        var progressDiv = document.getElementById('uploadProgress');
-        var statsDiv = document.getElementById('uploadStats');
-        var progressBar = document.getElementById('uploadProgressBar');
-        var statusText = document.getElementById('uploadStatus');
+        fileName = file.name;
 
-        progressDiv.style.display = 'block';
-        statsDiv.style.display = 'none';
-        progressBar.style.width = '30%';
-        statusText.textContent = 'Reading file...';
-
-        var uploadBtn = document.querySelector('.btn-upload-header');
+        const uploadBtn = document.getElementById('uploadBtn');
         uploadBtn.classList.add('loading');
-        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
+        uploadBtn.disabled = true;
 
-        var reader = new FileReader();
+        const reader = new FileReader();
 
         reader.onload = function(e) {
             try {
-                progressBar.style.width = '60%';
-                statusText.textContent = 'Parsing data...';
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
 
-                var data = new Uint8Array(e.target.result);
-                var workbook = XLSX.read(data, { type: 'array' });
-                var firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                var jsonData = XLSX.utils.sheet_to_json(firstSheet);
-
-                progressBar.style.width = '80%';
-                statusText.textContent = 'Processing data...';
-
-                var parsedData = parseExcelData(jsonData);
-
-                if (parsedData.length === 0) {
-                    showToast('No valid data found in the Excel file. Please check the format.', 'Warning');
-                    progressDiv.style.display = 'none';
+                if (!jsonData || jsonData.length === 0) {
+                    showToast('No data found in the file', 'Error', true);
                     uploadBtn.classList.remove('loading');
-                    uploadBtn.innerHTML = '<i class="fas fa-file-excel"></i> Import Excel';
+                    uploadBtn.disabled = false;
                     return;
                 }
 
-                uploadedData = parsedData;
-                autoFillForm(parsedData);
+                // First row = headers
+                const headers = jsonData[0] || [];
+                // Rest = data rows
+                const rows = jsonData.slice(1) || [];
 
-                progressBar.style.width = '100%';
-                statusText.textContent = 'Complete!';
+                // Filter out completely empty rows
+                const filteredRows = rows.filter(row => {
+                    return row.some(cell => cell !== undefined && cell !== null && cell !== '');
+                });
 
-                statsDiv.style.display = 'block';
-                document.getElementById('uploadResult').innerHTML = 
-                    '<i class="fas fa-check-circle"></i> Successfully imported <strong>' + parsedData.length + '</strong> records from <strong>' + file.name + '</strong>' +
-                    '<button class="btn-clear-upload-sm" onclick="clearUploadedData()"><i class="fas fa-trash"></i> Clear</button>';
+                if (headers.length === 0) {
+                    showToast('No headers found in the file', 'Error', true);
+                    uploadBtn.classList.remove('loading');
+                    uploadBtn.disabled = false;
+                    return;
+                }
 
-                setTimeout(function() {
-                    progressDiv.style.display = 'none';
-                }, 2000);
+                if (filteredRows.length === 0) {
+                    showToast('No data rows found in the file', 'Error', true);
+                    uploadBtn.classList.remove('loading');
+                    uploadBtn.disabled = false;
+                    return;
+                }
 
-                showToast('Successfully imported ' + parsedData.length + ' records!', 'Success');
+                // Store data
+                importedHeaders = headers;
+                importedData = filteredRows;
 
-                uploadBtn.classList.remove('loading');
-                uploadBtn.innerHTML = '<i class="fas fa-file-excel"></i> Import Excel';
+                // Show preview
+                renderPreview(headers, filteredRows);
+                showStatus(`Loaded ${filteredRows.length} records from ${fileName}`, false);
+                document.getElementById('previewContainer').classList.add('show');
+                document.getElementById('emptyState').style.display = 'none';
+
+                showToast(`Successfully loaded ${filteredRows.length} records from ${fileName}`, 'Success');
 
             } catch (error) {
-                console.error('Excel parsing error:', error);
-                showToast('Error parsing Excel file: ' + error.message, 'Error');
-                progressDiv.style.display = 'none';
+                console.error('Error parsing Excel:', error);
+                showToast('Error parsing file: ' + error.message, 'Error', true);
+            } finally {
                 uploadBtn.classList.remove('loading');
-                uploadBtn.innerHTML = '<i class="fas fa-file-excel"></i> Import Excel';
+                uploadBtn.disabled = false;
             }
         };
 
         reader.onerror = function() {
-            showToast('Error reading file. Please try again.', 'Error');
-            progressDiv.style.display = 'none';
-            var uploadBtn = document.querySelector('.btn-upload-header');
+            showToast('Error reading file. Please try again.', 'Error', true);
             uploadBtn.classList.remove('loading');
-            uploadBtn.innerHTML = '<i class="fas fa-file-excel"></i> Import Excel';
+            uploadBtn.disabled = false;
         };
 
         reader.readAsArrayBuffer(file);
     }
 
-    function parseExcelData(jsonData) {
-        var data = [];
-
-        jsonData.forEach(function(row, index) {
-            try {
-                var unit = findValue(row, ['Unit', 'Branch', 'Department', 'Dept']);
-                var header = findValue(row, ['Header', 'Exception Header', 'Title', 'Subject']);
-                var details = findValue(row, ['Details', 'Description', 'Exception Details', 'Comments']);
-                var date = findValue(row, ['Date', 'Date Noted', 'Created Date']);
-                var reportType = findValue(row, ['Category', 'Report Type', 'Type', 'Exception Type']);
-
-                if (header || details || unit) {
-                    data.push({
-                        unit: unit || 'N/A',
-                        header: header || 'Excel Imported Record',
-                        details: details || 'No details provided',
-                        date: date || new Date().toLocaleDateString(),
-                        report_type: reportType || 'Excel Import'
-                    });
-                }
-            } catch (e) {
-                console.warn('Error parsing row:', row, e);
-            }
-        });
-
-        return data;
-    }
-
-    function findValue(row, possibleKeys) {
-        for (var k = 0; k < possibleKeys.length; k++) {
-            var key = possibleKeys[k];
-            if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
-                return String(row[key]).trim();
-            }
-            for (var rowKey in row) {
-                if (rowKey.toLowerCase() === key.toLowerCase()) {
-                    var value = row[rowKey];
-                    if (value !== undefined && value !== null && String(value).trim() !== '') {
-                        return String(value).trim();
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-    function autoFillForm(data) {
-        if (!data || data.length === 0) return;
-
-        var tbody = document.getElementById('templateBody');
-        if (!tbody) return;
-
-        tbody.innerHTML = '';
-
-        data.forEach(function(record, index) {
-            addRow(record, index === 0);
-        });
-
-        showToast('Auto-filled ' + data.length + ' rows from Excel!', 'Success');
-    }
-
-    function clearUploadedData() {
-        if (!confirm('Are you sure you want to clear all imported Excel data?')) {
-            return;
-        }
-
-        uploadedData = [];
-        document.getElementById('uploadStats').style.display = 'none';
-        document.getElementById('excelFileInputHeader').value = '';
-
-        var tbody = document.getElementById('templateBody');
-        if (tbody) {
-            tbody.innerHTML = '';
-            addRow(null, true);
-        }
-
-        showToast('Uploaded data cleared successfully.', 'Success');
-    }
-
     // ============================================
-    // TABLE FORM FUNCTIONS
+    // RENDER PREVIEW
     // ============================================
 
-    function loadTemplate() {
-        var reportType = document.getElementById('report-type-filter').value;
-        var container = document.getElementById('template-container');
-        var noTemplateMsg = document.getElementById('no-template-message');
-        var fieldsContainer = document.getElementById('template-fields');
-        var nameDisplay = document.getElementById('template-name-display');
+    function renderPreview(headers, data) {
+        const thead = document.getElementById('tableHead');
+        const tbody = document.getElementById('tableBody');
+        const recordCount = document.getElementById('recordCount');
 
-        if (!reportType) {
-            container.style.display = 'none';
-            noTemplateMsg.style.display = 'block';
-            return;
-        }
-
-        // Use hardcoded URL
-        fetch("/adminboard/api/template-fields/?report_type=" + encodeURIComponent(reportType), {
-            method: 'GET',
-            headers: {
-                'X-CSRFToken': getCsrfToken()
-            }
-        })
-        .then(function(response) {
-            return response.json();
-        })
-        .then(function(data) {
-            if (data.success) {
-                var template = data.template;
-                templateFields = template.fields;
-                nameDisplay.textContent = template.name + (template.description ? ' - ' + template.description : '');
-                
-                var fieldsHTML = buildTableForm(templateFields);
-                fieldsContainer.innerHTML = fieldsHTML;
-                
-                container.style.display = 'block';
-                noTemplateMsg.style.display = 'none';
-
-                if (uploadedData.length > 0) {
-                    setTimeout(function() {
-                        autoFillForm(uploadedData);
-                    }, 500);
-                }
-            } else {
-                showToast('Error: ' + data.error, 'Error');
-            }
-        })
-        .catch(function(error) {
-            console.error('Error:', error);
-            showToast('An error occurred while loading the template.', 'Error');
+        // Render headers
+        let headerHTML = '<tr>';
+        headers.forEach(header => {
+            const displayHeader = header || 'Column';
+            headerHTML += `<th>${displayHeader}</th>`;
         });
-    }
+        headerHTML += '</tr>';
+        thead.innerHTML = headerHTML;
 
-    function buildTableForm(fields) {
-        if (!fields || fields.length === 0) {
-            return '<p style="text-align: center; color: rgba(26,35,50,0.3);">No fields defined for this template.</p>';
-        }
-
-        var headerHTML = '<table class="template-table" id="templateTable"><thead><tr>';
+        // Render data (first 50 rows for performance)
+        const displayData = data.slice(0, 50);
+        let bodyHTML = '';
         
-        for (var i = 0; i < fields.length; i++) {
-            var field = fields[i];
-            var required = field.is_required ? '<span class="required">*</span>' : '';
-            headerHTML += '<th>' + field.label + ' ' + required + '</th>';
-        }
-        
-        headerHTML += '<th style="text-align: center; min-width: 60px; width: 60px;">Actions</th>';
-        headerHTML += '</tr></thead><tbody id="templateBody">';
-        
-        headerHTML += buildRow(fields, null, true);
-        
-        headerHTML += '</tbody></table>';
-        
-        return headerHTML;
-    }
-
-    function buildRow(fields, data, isFirst) {
-        isFirst = isFirst || false;
-        var rowHTML = '<tr>';
-        
-        for (var i = 0; i < fields.length; i++) {
-            var field = fields[i];
-            var value = data ? getValueFromData(data, field.label) : '';
-            rowHTML += '<td>' + buildFieldInput(field, value) + '</td>';
-        }
-        
-        rowHTML += '<td style="text-align: center;"><div class="row-actions">';
-        rowHTML += '<button type="button" class="btn-remove-row" onclick="removeRow(this)"' + (isFirst ? ' disabled' : '') + '>';
-        rowHTML += '<i class="fas fa-trash"></i></button></div></td>';
-        rowHTML += '</tr>';
-        
-        return rowHTML;
-    }
-
-    function getValueFromData(data, label) {
-        var labelLower = label.toLowerCase();
-        for (var key in data) {
-            if (key.toLowerCase().includes(labelLower) || labelLower.includes(key.toLowerCase())) {
-                return data[key];
-            }
-        }
-        return '';
-    }
-
-    function buildFieldInput(field, value) {
-        var inputHTML = '';
-
-        switch (field.field_type) {
-            case 'textarea':
-                inputHTML = '<textarea id="field_' + field.id + '_' + rowCounter + '"' + (field.is_required ? ' required' : '') + ' placeholder="Enter ' + field.label.toLowerCase() + '...">' + (value || '') + '</textarea>';
-                break;
-            case 'dropdown':
-                inputHTML = '<select id="field_' + field.id + '_' + rowCounter + '"' + (field.is_required ? ' required' : '') + '>';
-                inputHTML += '<option value="">Select...</option>';
-                if (field.options && field.options.length > 0) {
-                    for (var o = 0; o < field.options.length; o++) {
-                        var opt = field.options[o];
-                        var selected = value && opt.toLowerCase() === value.toLowerCase() ? 'selected' : '';
-                        inputHTML += '<option value="' + opt + '" ' + selected + '>' + opt + '</option>';
-                    }
+        if (displayData.length === 0) {
+            bodyHTML = `<tr><td colspan="${headers.length}" class="empty-cell">No data to display</td></tr>`;
+        } else {
+            displayData.forEach(row => {
+                bodyHTML += '<tr>';
+                for (let i = 0; i < headers.length; i++) {
+                    const value = row[i] !== undefined && row[i] !== null ? row[i] : '';
+                    bodyHTML += `<td title="${value}">${value}</td>`;
                 }
-                inputHTML += '</select>';
-                break;
-            case 'date':
-                inputHTML = '<input type="date" id="field_' + field.id + '_' + rowCounter + '"' + (field.is_required ? ' required' : '') + ' value="' + (value || '') + '">';
-                break;
-            case 'number':
-                inputHTML = '<input type="number" id="field_' + field.id + '_' + rowCounter + '"' + (field.is_required ? ' required' : '') + ' placeholder="Enter ' + field.label.toLowerCase() + '..." value="' + (value || '') + '">';
-                break;
-            case 'checkbox':
-                var checked = value === 'true' || value === 'yes' || value === '1' || value === true ? 'checked' : '';
-                inputHTML = '<input type="checkbox" id="field_' + field.id + '_' + rowCounter + '"' + (field.is_required ? ' required' : '') + ' ' + checked + '>';
-                break;
-            default:
-                inputHTML = '<input type="text" id="field_' + field.id + '_' + rowCounter + '"' + (field.is_required ? ' required' : '') + ' placeholder="Enter ' + field.label.toLowerCase() + '..." value="' + (value || '') + '">';
-        }
-
-        return inputHTML;
-    }
-
-    function addRow(data, isFirst) {
-        data = data || null;
-        isFirst = isFirst || false;
-        var tbody = document.getElementById('templateBody');
-        if (!tbody) return;
-
-        rowCounter++;
-        var fields = templateFields.length > 0 ? templateFields : getCurrentFields();
-        var newRow = document.createElement('tr');
-        newRow.innerHTML = buildRow(fields, data, isFirst);
-        tbody.appendChild(newRow);
-    }
-
-    function addAnotherRow() {
-        var tbody = document.getElementById('templateBody');
-        if (!tbody) {
-            showToast('Please load a template first.', 'Info');
-            return;
-        }
-
-        if (templateFields.length === 0) {
-            showToast('No template fields found. Please load a template.', 'Warning');
-            return;
-        }
-
-        addRow(null, false);
-        showToast('New row added!', 'Success');
-    }
-
-    function removeRow(button) {
-        var row = button.closest('tr');
-        var tbody = row.parentElement;
-        
-        if (tbody.querySelectorAll('tr').length <= 1) {
-            showToast('Cannot remove the last row.', 'Warning');
-            return;
-        }
-        
-        if (confirm('Are you sure you want to remove this row?')) {
-            row.remove();
-            showToast('Row removed.', 'Info');
-        }
-    }
-
-    function getCurrentFields() {
-        var thead = document.querySelector('#templateTable thead');
-        if (!thead) return [];
-        
-        var headers = thead.querySelectorAll('th');
-        var fields = [];
-        for (var i = 0; i < headers.length - 1; i++) {
-            var th = headers[i];
-            var label = th.textContent.replace('*', '').trim();
-            var fieldType = 'text';
-            var isRequired = false;
-            if (templateFields.length > 0 && i < templateFields.length) {
-                fieldType = templateFields[i].field_type || 'text';
-                isRequired = templateFields[i].is_required || false;
-            }
-            fields.push({ 
-                label: label, 
-                field_type: fieldType, 
-                is_required: isRequired,
-                options: templateFields[i]?.options || []
+                bodyHTML += '</tr>';
             });
+            
+            // If more rows, show indicator
+            if (data.length > 50) {
+                bodyHTML += `<tr><td colspan="${headers.length}" style="text-align: center; color: #6b7280; font-style: italic; background: #f8fafc;">
+                    <i class="fas fa-ellipsis-h"></i> ${data.length - 50} more rows not shown
+                </td></tr>`;
+            }
         }
         
-        return fields;
+        tbody.innerHTML = bodyHTML;
+        recordCount.textContent = `${data.length} records`;
     }
 
     // ============================================
-    // SUBMIT REPORT - SAVES DIRECTLY TO DATABASE
+    // STATUS
     // ============================================
 
-    function submitReport() {
-        console.log('submitReport called');
-        var reportType = document.getElementById('report-type-filter').value;
+    function showStatus(message, isError = false) {
+        const statusEl = document.getElementById('uploadStatus');
+        const messageEl = document.getElementById('statusMessage');
+        const iconEl = statusEl.querySelector('.status-icon i');
+        
+        messageEl.textContent = message;
+        statusEl.classList.add('show');
+        
+        if (isError) {
+            statusEl.classList.add('error');
+            iconEl.className = 'fas fa-exclamation-circle';
+        } else {
+            statusEl.classList.remove('error');
+            iconEl.className = 'fas fa-check-circle';
+        }
+    }
+
+    function hideStatus() {
+        document.getElementById('uploadStatus').classList.remove('show');
+    }
+
+    // ============================================
+    // CLEAR DATA
+    // ============================================
+
+    function clearData() {
+        if (importedData && importedData.length > 0) {
+            if (!confirm('Are you sure you want to clear the loaded data?')) {
+                return;
+            }
+        }
+        
+        importedData = null;
+        importedHeaders = [];
+        fileName = '';
+        
+        document.getElementById('previewContainer').classList.remove('show');
+        document.getElementById('emptyState').style.display = 'block';
+        document.getElementById('tableHead').innerHTML = '';
+        document.getElementById('tableBody').innerHTML = '';
+        document.getElementById('recordCount').textContent = '0 records';
+        document.getElementById('excelFileInput').value = '';
+        hideStatus();
+        
+        showToast('Data cleared successfully', 'Info');
+    }
+
+    // ============================================
+    // SUBMIT DATA
+    // ============================================
+
+    function submitData() {
+        const reportType = document.getElementById('reportType').value;
+        
         if (!reportType) {
-            showToast('Please select a report type first.', 'Info');
+            showToast('Please select a report type', 'Error', true);
+            document.getElementById('reportType').focus();
+            return;
+        }
+        
+        if (!importedData || importedData.length === 0) {
+            showToast('Please upload an Excel file first', 'Error', true);
             return;
         }
 
-        var rows = document.querySelectorAll('#templateBody tr');
-        var allFormData = [];
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
 
-        rows.forEach(function(row) {
-            var inputs = row.querySelectorAll('input, select, textarea');
-            var rowData = {};
-            var headers = document.querySelectorAll('#templateTable thead th');
-            inputs.forEach(function(input, index) {
-                var label = 'field_' + index;
-                if (headers[index]) {
-                    label = headers[index].textContent.replace('*', '').trim();
-                }
-                var value = input.type === 'checkbox' ? input.checked : input.value;
-                rowData[label] = value;
-            });
-            allFormData.push(rowData);
-        });
-
-        var templateName = document.getElementById('template-name-display').textContent;
-
-        var formData = {
+        // Prepare data for API
+        const payload = {
             report_type: reportType,
-            template_name: templateName,
-            form_data: allFormData,
-            save_directly: true
+            headers: importedHeaders,
+            data: importedData,
+            file_name: fileName || 'uploaded.xlsx'
         };
 
-        if (uploadedData.length > 0) {
-            formData.excel_data = uploadedData;
-        }
-
-        console.log('Sending data:', formData);
-
-        var submitBtn = document.getElementById('saveReportBtn');
-        var originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-        submitBtn.disabled = true;
-
-        // Use hardcoded URL
-        fetch("/adminboard/api/save-draft/", {
+        fetch('/adminboard/api/save-imported-data/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCsrfToken()
             },
-            body: JSON.stringify(formData)
+            body: JSON.stringify(payload)
         })
-        .then(function(response) {
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-                return response.json().then(function(err) {
-                    throw new Error(err.error || 'Server error');
-                });
-            }
-            return response.json();
-        })
-        .then(function(data) {
-            console.log('Server response:', data);
-            submitBtn.innerHTML = originalText;
+        .then(response => response.json())
+        .then(data => {
             submitBtn.disabled = false;
-
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Report';
+            
             if (data.success) {
-                showToast('Report saved successfully!', 'Saved');
-                uploadedData = [];
-                document.getElementById('uploadStats').style.display = 'none';
-                setTimeout(function() {
-                    var inputs = document.querySelectorAll('#templateBody input, #templateBody select, #templateBody textarea');
-                    inputs.forEach(function(input) {
-                        if (input.type === 'checkbox') {
-                            input.checked = false;
-                        } else if (input.tagName === 'SELECT') {
-                            input.selectedIndex = 0;
-                        } else {
-                            input.value = '';
-                        }
-                    });
-                    var tbody = document.getElementById('templateBody');
-                    if (tbody) {
-                        tbody.innerHTML = '';
-                        addRow(null, true);
-                    }
-                    showToast('Form cleared. Ready for new entry!', 'Info');
-                }, 1500);
+                showToast(data.message, 'Success');
+                // Clear everything after successful submission
+                setTimeout(() => {
+                    clearData();
+                    document.getElementById('reportType').value = '';
+                }, 2000);
             } else {
-                showToast('Error: ' + data.error, 'Error');
+                showToast('Error: ' + data.error, 'Error', true);
             }
         })
-        .catch(function(error) {
+        .catch(error => {
             console.error('Error:', error);
-            submitBtn.innerHTML = originalText;
             submitBtn.disabled = false;
-            showToast('Error: ' + error.message, 'Error');
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Report';
+            showToast('An error occurred while submitting. Please try again.', 'Error', true);
         });
     }
 
     // ============================================
-    // INITIALIZE
+    // KEYBOARD SHORTCUTS
     // ============================================
 
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOM loaded - initializing submit report page');
-        
-        // Attach event listener to save button
-        var saveBtn = document.getElementById('saveReportBtn');
-        if (saveBtn) {
-            saveBtn.addEventListener('click', submitReport);
+    document.addEventListener('keydown', function(event) {
+        // Ctrl+Enter to submit
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+            event.preventDefault();
+            if (document.getElementById('previewContainer').classList.contains('show')) {
+                submitData();
+            }
         }
     });
 </script>
