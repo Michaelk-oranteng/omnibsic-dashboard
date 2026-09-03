@@ -301,22 +301,23 @@
 {% block content %}
 <!-- Enhanced Metrics Cards -->
 <div class="analytics-metrics-grid">
-    <div class="metric-card border-left-warning">
+    <div class="metric-card border-left-purple">
         <div class="metric-card-content">
-            <span class="card-metric-label">Assigned This Week</span>
-            <h3 class="card-metric-value text-warning">{{ assigned_this_week|default:0 }}</h3>
-            <span class="card-metric-subtext">Due by close of business</span>
+            <span class="card-metric-label">My Checklists</span>
+            <h3 class="card-metric-value text-purple">{{ all_checklists_count|default:0 }}</h3>
+            <span class="card-metric-subtext">{{ frequency_summary|default:"No" }} checklists assigned</span>
             <div class="metric-trend">
-                <span class="trend-indicator {% if assigned_this_week > 0 %}trend-up{% else %}trend-neutral{% endif %}">
-                    {% if assigned_this_week > 0 %}
-                        <i class="fas fa-arrow-up"></i> Active
+                <span class="trend-indicator trend-neutral">
+                    <i class="fas fa-tasks"></i> 
+                    {% if frequency_summary %}
+                        {{ frequency_summary }}
                     {% else %}
-                        <i class="fas fa-minus"></i> No tasks
+                        No checklists
                     {% endif %}
                 </span>
             </div>
         </div>
-        <div class="metric-card-icon text-warning-dim"><i class="fas fa-clipboard-list"></i></div>
+        <div class="metric-card-icon text-purple-dim"><i class="fas fa-tasks"></i></div>
     </div>
 
     <div class="metric-card border-left-danger">
@@ -353,56 +354,6 @@
             </div>
         </div>
         <div class="metric-card-icon text-primary-dim"><i class="fas fa-clock"></i></div>
-    </div>
-
-    <!-- New: Month Completion KPI -->
-    <div class="metric-card border-left-success">
-        <div class="metric-card-content">
-            <span class="card-metric-label">Month Progress</span>
-            <h3 class="card-metric-value text-success">{{ overall_month_progress|default:0 }}%</h3>
-            <span class="card-metric-subtext">{{ month_completed }}/{{ month_total }} checklists done</span>
-            <div class="metric-trend">
-                <div class="progress-bar-mini">
-                    <div class="progress-bar-fill" style="width: {{ overall_month_progress|default:0 }}%; background: #10b981;"></div>
-                </div>
-            </div>
-        </div>
-        <div class="metric-card-icon text-success-dim"><i class="fas fa-calendar-check"></i></div>
-    </div>
-
-    <!-- New: Year Completion KPI -->
-    <div class="metric-card border-left-info">
-        <div class="metric-card-content">
-            <span class="card-metric-label">Year Progress</span>
-            <h3 class="card-metric-value text-info">{{ overall_year_progress|default:0 }}%</h3>
-            <span class="card-metric-subtext">{{ year_completed }}/{{ year_total }} checklists done</span>
-            <div class="metric-trend">
-                <div class="progress-bar-mini">
-                    <div class="progress-bar-fill" style="width: {{ overall_year_progress|default:0 }}%; background: #0066cc;"></div>
-                </div>
-            </div>
-        </div>
-        <div class="metric-card-icon text-info-dim"><i class="fas fa-calendar-alt"></i></div>
-    </div>
-
-    <!-- New: Frequency Summary -->
-    <div class="metric-card border-left-purple">
-        <div class="metric-card-content">
-            <span class="card-metric-label">My Checklists</span>
-            <h3 class="card-metric-value text-purple">{{ all_checklists_count|default:0 }}</h3>
-            <span class="card-metric-subtext">{{ frequency_summary|default:"No" }} checklists assigned</span>
-            <div class="metric-trend">
-                <span class="trend-indicator trend-neutral">
-                    <i class="fas fa-tasks"></i> 
-                    {% if frequency_summary %}
-                        {{ frequency_summary }}
-                    {% else %}
-                        No checklists
-                    {% endif %}
-                </span>
-            </div>
-        </div>
-        <div class="metric-card-icon text-purple-dim"><i class="fas fa-tasks"></i></div>
     </div>
 </div>
 

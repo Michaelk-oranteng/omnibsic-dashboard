@@ -249,6 +249,7 @@ class Checklist(models.Model):
         ('monthly', 'Monthly'),
         ('quarterly', 'Quarterly'),
         ('bi-annual', 'Bi-Annual'),
+        ('annual', 'Annual'),
         ('one-off', 'One-off'),
     ]
     
