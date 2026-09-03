@@ -307,14 +307,6 @@
             <h3 class="card-metric-value text-purple">{{ all_checklists_count|default:0 }}</h3>
             <span class="card-metric-subtext">{{ frequency_summary|default:"No" }} checklists assigned</span>
             <div class="metric-trend">
-                <span class="trend-indicator trend-neutral">
-                    <i class="fas fa-tasks"></i> 
-                    {% if frequency_summary %}
-                        {{ frequency_summary }}
-                    {% else %}
-                        No checklists
-                    {% endif %}
-                </span>
             </div>
         </div>
         <div class="metric-card-icon text-purple-dim"><i class="fas fa-tasks"></i></div>
