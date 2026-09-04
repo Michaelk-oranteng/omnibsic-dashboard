@@ -1,5 +1,5 @@
 /* ============================================
-   MEMBER CHECKLIST STYLES
+   MEMBER CHECKLIST STYLES - FULL WIDTH
    OmniBSIC Bank - Member Checklist Page
    ============================================ */
 
@@ -44,13 +44,14 @@
 }
 
 /* ==========================================================================
-   2. CONTAINER & LAYOUT
+   2. CONTAINER & LAYOUT - FULL WIDTH
    ========================================================================== */
 
 .checklist-container {
-    max-width: 1400px;
-    margin: 0 auto;
+    max-width: 100%;
     padding: 0 var(--space-md);
+    margin: 0;
+    width: 100%;
 }
 
 .glass-card {
@@ -62,6 +63,7 @@
     padding: var(--space-lg);
     box-shadow: 0 8px 32px var(--glass-shadow);
     transition: all var(--transition-slow);
+    width: 100%;
 }
 
 .glass-card:hover {
@@ -83,7 +85,7 @@
 }
 
 /* ==========================================================================
-   3. TABLE HEADER WITH FILTERS
+   3. TABLE HEADER WITH FILTERS - FULL WIDTH
    ========================================================================== */
 
 .table-container {
@@ -95,6 +97,7 @@
     padding: var(--space-lg);
     overflow-x: auto;
     box-shadow: 0 2px 12px var(--glass-shadow);
+    width: 100%;
 }
 
 .table-header {
@@ -236,7 +239,7 @@
 }
 
 /* ==========================================================================
-   5. MAIN TABLE
+   5. MAIN TABLE - FULL WIDTH
    ========================================================================== */
 
 .dashboard-table {
@@ -374,7 +377,7 @@
 }
 
 /* ==========================================================================
-   8. MINI CALENDAR
+   8. MINI CALENDAR - ENHANCED
    ========================================================================== */
 
 .mini-calendar {
@@ -382,7 +385,7 @@
     background: #f8fafc;
     border-radius: var(--radius-sm);
     padding: 10px;
-    min-width: 210px;
+    min-width: 220px;
     border: 1px solid #e5e7eb;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     transition: all var(--transition-fast);
@@ -448,8 +451,8 @@
 }
 
 .cal-day {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     border: none;
     border-radius: 50%;
     cursor: pointer;
@@ -465,12 +468,12 @@
     margin: 0 auto;
 }
 
-.cal-day:hover:not(.empty) {
+.cal-day:hover:not(.empty):not(.weekend) {
     background: #e5e7eb;
     transform: scale(1.1);
 }
 
-.cal-day:active:not(.empty) {
+.cal-day:active:not(.empty):not(.weekend) {
     transform: scale(0.95);
 }
 
@@ -744,13 +747,13 @@
     }
     
     .mini-calendar {
-        min-width: 180px;
+        min-width: 190px;
         padding: 8px;
     }
     
     .cal-day {
-        width: 26px;
-        height: 26px;
+        width: 28px;
+        height: 28px;
         font-size: 11px;
     }
     
@@ -815,13 +818,13 @@
     }
     
     .mini-calendar {
-        min-width: 160px;
+        min-width: 170px;
         padding: 6px;
     }
     
     .cal-day {
-        width: 24px;
-        height: 24px;
+        width: 26px;
+        height: 26px;
         font-size: 10px;
     }
     
@@ -940,13 +943,13 @@
     }
     
     .mini-calendar {
-        min-width: 130px;
+        min-width: 140px;
         padding: 4px;
     }
     
     .cal-day {
-        width: 20px;
-        height: 20px;
+        width: 22px;
+        height: 22px;
         font-size: 9px;
     }
     
@@ -1101,4 +1104,115 @@
     .dashboard-table tbody tr:hover td {
         background: transparent !important;
     }
+}
+
+/* ==========================================================================
+   15. WEEKEND DAYS STYLING - GRAYED OUT
+   ========================================================================== */
+
+.cal-day.weekend {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.cal-day.weekend .day-num {
+    color: #999;
+}
+
+.cal-day.weekend.logged {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.cal-day.weekend .cal-tick-mark {
+    opacity: 0.3;
+}
+
+/* ==========================================================================
+   16. FILTER SECTION - FULL WIDTH
+   ========================================================================== */
+
+.filter-section {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    width: 100%;
+}
+
+.filter-section .filter-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #6b7280;
+    white-space: nowrap;
+}
+
+.filter-section select, 
+.filter-section .filter-input {
+    padding: 6px 12px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    background: white;
+    color: #1a2332;
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+    min-height: 38px;
+}
+
+.filter-section select:focus,
+.filter-section .filter-input:focus {
+    border-color: #0066cc;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0,102,204,0.08);
+}
+
+.filter-section .filter-input {
+    min-width: 150px;
+}
+
+.filter-section .filter-reset {
+    padding: 6px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #6b7280;
+    background: #e5e7eb;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Poppins', sans-serif;
+}
+
+.filter-section .filter-reset:hover {
+    background: #d1d5db;
+    color: #1a2332;
+}
+
+.filter-section .filter-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    background: #e8f4fd;
+    color: #0066cc;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.filter-group .filter-group-label {
+    font-size: 11px;
+    color: #9ca3af;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }

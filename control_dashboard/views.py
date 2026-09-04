@@ -1914,6 +1914,7 @@ def member_checklist(request):
     month_filter = request.GET.get('month', 'all')
     year_filter = request.GET.get('year', 'all')
     frequency_filter = request.GET.get('frequency', 'all')
+    quarter_filter = request.GET.get('quarter', 'all')  # NEW
     
     # Get user's assigned branches and departments (ONLY assigned to the user)
     user_branches = user_profile.branches.all().order_by('name')
@@ -1974,6 +1975,8 @@ def member_checklist(request):
     checklist_data = []
     total_month_expected = 0
     total_month_actual = 0
+    total_quarter_expected = 0
+    total_quarter_actual = 0
     total_year_expected = 0
     total_year_actual = 0
     
@@ -1992,6 +1995,28 @@ def member_checklist(request):
             display_year = int(year_filter)
         except ValueError:
             pass
+    
+    # ============================================
+    # DETERMINE QUARTER
+    # ============================================
+    # Get current quarter
+    current_quarter = (display_month - 1) // 3 + 1
+    
+    if quarter_filter != 'all':
+        try:
+            current_quarter = int(quarter_filter)
+        except ValueError:
+            pass
+    
+    # Calculate quarter start and end dates
+    quarter_start_month = (current_quarter - 1) * 3 + 1
+    quarter_end_month = current_quarter * 3
+    
+    quarter_start = date(display_year, quarter_start_month, 1)
+    if quarter_end_month == 12:
+        quarter_end = date(display_year + 1, 1, 1) - timedelta(days=1)
+    else:
+        quarter_end = date(display_year, quarter_end_month + 1, 1) - timedelta(days=1)
     
     # Get month start and end for filtering
     month_start = date(display_year, display_month, 1)
@@ -2016,6 +2041,17 @@ def member_checklist(request):
         month_expected = checklist.get_expected_occurrences(month_start, month_end)
         month_actual = logs.count()
         
+        # ============================================
+        # CALCULATE QUARTER PROGRESS
+        # ============================================
+        quarter_expected = checklist.get_expected_occurrences(quarter_start, quarter_end)
+        quarter_actual = ChecklistLog.objects.filter(
+            checklist=checklist,
+            user=user_profile,
+            log_date__gte=quarter_start,
+            log_date__lte=quarter_end
+        ).count()
+        
         # Calculate year-to-date progress
         year_start = date(display_year, 1, 1)
         year_end = date(display_year, 12, 31)
@@ -2030,10 +2066,13 @@ def member_checklist(request):
         
         total_month_expected += month_expected
         total_month_actual += month_actual
+        total_quarter_expected += quarter_expected
+        total_quarter_actual += quarter_actual
         total_year_expected += year_expected
         total_year_actual += year_actual
         
         month_progress = int((month_actual / month_expected * 100)) if month_expected > 0 else 0
+        quarter_progress = int((quarter_actual / quarter_expected * 100)) if quarter_expected > 0 else 0
         year_progress = int((year_actual / year_expected * 100)) if year_expected > 0 else 0
         
         # Determine status
@@ -2057,9 +2096,12 @@ def member_checklist(request):
             'tasks': [{'description': task.description, 'id': task.id} for task in tasks],
             'logs': log_dates,
             'month_progress': month_progress,
+            'quarter_progress': quarter_progress,
             'year_progress': year_progress,
             'month_expected': month_expected,
             'month_actual': month_actual,
+            'quarter_expected': quarter_expected,
+            'quarter_actual': quarter_actual,
             'year_expected': year_expected,
             'year_actual': year_actual,
             'status': status,
@@ -2071,10 +2113,12 @@ def member_checklist(request):
     # CALCULATE OVERALL PROGRESS
     # ============================================
     overall_month_progress = int((total_month_actual / total_month_expected * 100)) if total_month_expected > 0 else 0
+    overall_quarter_progress = int((total_quarter_actual / total_quarter_expected * 100)) if total_quarter_expected > 0 else 0
     overall_year_progress = int((total_year_actual / total_year_expected * 100)) if total_year_expected > 0 else 0
     
     # Cap at 100%
     overall_month_progress = min(overall_month_progress, 100)
+    overall_quarter_progress = min(overall_quarter_progress, 100)
     overall_year_progress = min(overall_year_progress, 100)
     
     # ============================================
@@ -2158,39 +2202,69 @@ def member_checklist(request):
         ('11', 'December'),
     ]
     
+    # ============================================
+    # QUARTER OPTIONS
+    # ============================================
+    quarter_options = [
+        ('all', 'All Quarters'),
+        ('1', 'Q1 (Jan - Mar)'),
+        ('2', 'Q2 (Apr - Jun)'),
+        ('3', 'Q3 (Jul - Sep)'),
+        ('4', 'Q4 (Oct - Dec)'),
+    ]
+    
+    # Get quarter name for display
+    quarter_names = {
+        1: 'Q1',
+        2: 'Q2',
+        3: 'Q3',
+        4: 'Q4'
+    }
+    selected_quarter_display = 'All Quarters'
+    if quarter_filter != 'all':
+        try:
+            q_num = int(quarter_filter)
+            selected_quarter_display = quarter_names.get(q_num, f'Q{q_num}')
+        except ValueError:
+            pass
+    
     context = {
         'user_profile': user_profile,
         'checklists': user_checklists,
         'checklist_data': checklist_data,
         'years': years,
         'overall_month_progress': overall_month_progress,
+        'overall_quarter_progress': overall_quarter_progress,
         'overall_year_progress': overall_year_progress,
         'total_checklists': user_checklists.count(),
         'total_month_expected': total_month_expected,
         'total_month_actual': total_month_actual,
+        'total_quarter_expected': total_quarter_expected,
+        'total_quarter_actual': total_quarter_actual,
         'total_year_expected': total_year_expected,
         'total_year_actual': total_year_actual,
         # Filter data - Combined only
-        'branch_filter': branch_filter,  # Keep for backend filtering
-        'department_filter': department_filter,  # Keep for backend filtering
+        'branch_filter': branch_filter,
+        'department_filter': department_filter,
         'month_filter': month_filter,
         'year_filter': year_filter,
         'frequency_filter': frequency_filter,
+        'quarter_filter': quarter_filter,
         'available_frequencies': available_frequencies,
         'month_names': month_names,
+        'quarter_options': quarter_options,
         'selected_frequency_display': selected_frequency_display,
+        'selected_quarter_display': selected_quarter_display,
         'today': today,
         'month_name': today.strftime('%B'),
         'year': today.year,
         'display_month': display_month,
         'display_year': display_year,
+        'current_quarter': current_quarter,
         # Combined filter (what the template uses)
         'combined_filter_options': combined_filter_options,
         'active_combined_filter': active_combined_filter,
         'selected_combined_display': selected_combined_display,
-        # Keep old variables for template compatibility
-        'branch_filter': branch_filter,
-        'department_filter': department_filter,
     }
     
     return render(request, 'control_dashboard/checklist-mem.html', context)
