@@ -49,12 +49,12 @@ class UserProfile(models.Model):
     departments = models.ManyToManyField(
         'Department', 
         blank=True, 
-        related_name='user_profiles'  # Fixed: Changed from 'users' to avoid clash
+        related_name='user_profiles'
     )
     branches = models.ManyToManyField(
         'Branch', 
         blank=True, 
-        related_name='user_profiles'  # Fixed: Changed from 'users' to avoid clash
+        related_name='user_profiles'
     )
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -198,6 +198,10 @@ def create_user_for_profile(sender, instance, created, **kwargs):
             print(f"Error creating user for {instance.email}: {e}")
 
 
+# ============================================
+# REPORT MODELS - NO JSON
+# ============================================
+
 class Report(models.Model):
     """
     Model for storing reports created by admin.
@@ -226,7 +230,6 @@ class Report(models.Model):
     is_assigned_to_all = models.BooleanField(default=False)
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='assigned')
     created_by = models.ForeignKey('UserProfile', on_delete=models.CASCADE, related_name='created_reports')
-    data = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -245,60 +248,205 @@ class Report(models.Model):
     
     def get_display_data(self):
         """
-        Get display data for the report, handling both Excel imports and regular reports.
+        Get display data for the report.
+        Returns a dictionary with rows, headers, and type information.
         """
-        report_data = self.data or {}
+        display_data = {
+            'rows': [],
+            'headers': [],
+            'is_excel': False,
+            'row_count': 0
+        }
         
-        # Check if this is an Excel import
-        if report_data.get('import_type') == 'excel':
-            headers = report_data.get('headers', [])
-            rows_data = report_data.get('data', [])
+        # ============================================
+        # CHECK FOR EXCEL IMPORT DATA FIRST (Relational Tables)
+        # This is the primary data source for Excel imports
+        # ============================================
+        excel_import = self.excel_imports.first()
+        if excel_import:
+            display_data['is_excel'] = True
+            display_data['headers'] = excel_import.get_headers_list()
             
-            # Normalize rows - they should already be dictionaries with proper headers
-            normalized_rows = []
-            for row in rows_data:
-                if isinstance(row, dict):
-                    normalized_rows.append(row)
-                elif isinstance(row, list):
-                    # Convert list to dict using headers
-                    row_dict = {}
-                    for i, header in enumerate(headers):
-                        if i < len(row):
-                            row_dict[header] = row[i] if row[i] is not None else ''
-                        else:
-                            row_dict[header] = ''
-                    normalized_rows.append(row_dict)
+            # Get all rows with their cells
+            for row in excel_import.rows.all().order_by('row_index'):
+                row_dict = {}
+                for cell in row.cells.all():
+                    row_dict[cell.column_name] = cell.value or ''
+                display_data['rows'].append(row_dict)
             
-            return {
-                'is_excel': True,
-                'headers': headers,
-                'rows': normalized_rows,
-                'row_count': len(normalized_rows),
-            }
-        else:
-            # Regular report (non-Excel)
-            result = {
-                'is_excel': False,
-                'rows': [],
-                'row_count': 0
-            }
+            display_data['row_count'] = len(display_data['rows'])
+            return display_data
+        
+        # ============================================
+        # CHECK FOR DATA FIELDS (ReportDataField)
+        # This is for regular form submissions, NOT Excel imports
+        # ============================================
+        data_fields = self.data_fields.all()
+        if data_fields.exists():
+            row_dict = {}
+            for field in data_fields:
+                field_name = field.field_name
+                field_value = field.field_value or ''
+                
+                # Skip empty column headers from Excel imports
+                if field_name.startswith('Column_') and not field_value:
+                    continue
+                    
+                row_dict[field_name] = field_value
             
-            # Try to extract from form_data
-            if 'form_data' in report_data and report_data['form_data']:
-                form = report_data['form_data'][0] if isinstance(report_data['form_data'], list) else report_data['form_data']
-                if isinstance(form, dict):
-                    row = {
-                        'Branch': form.get('BRANCH_UNIT', form.get('BRANCH', form.get('branch', '-'))),
-                        'Date': form.get('DATE', form.get('date', '-')),
-                        'Observation': form.get('OBSERVATION', form.get('details', form.get('OBSERVATION', '-'))),
-                        'Responsible_Staff': form.get('RESPONSIBLE_STAFF', form.get('responsible_staff', '-')),
-                        'Status': form.get('STATUS', form.get('status', 'Open'))
-                    }
-                    result['rows'] = [row]
-                    result['row_count'] = 1
-            
-            return result
+            if row_dict:
+                display_data['rows'].append(row_dict)
+                display_data['headers'] = list(row_dict.keys())
+                display_data['row_count'] = 1
+            return display_data
+        
+        # ============================================
+        # IF NO DATA FOUND, RETURN EMPTY WITH DEFAULT HEADERS
+        # ============================================
+        display_data['headers'] = ['Branch/Unit', 'Date', 'Observation', 'Responsible Staff', 'Status']
+        display_data['row_count'] = 0
+        
+        return display_data
 
+class ReportDataField(models.Model):
+    """
+    Model for storing report data fields (replaces JSON).
+    """
+    FIELD_TYPES = [
+        ('text', 'Text'),
+        ('number', 'Number'),
+        ('date', 'Date'),
+        ('email', 'Email'),
+        ('url', 'URL'),
+        ('textarea', 'Text Area'),
+    ]
+    
+    report = models.ForeignKey('Report', on_delete=models.CASCADE, related_name='data_fields')
+    field_name = models.CharField(max_length=255)
+    field_value = models.TextField(blank=True, null=True)
+    field_type = models.CharField(max_length=50, choices=FIELD_TYPES, default='text')
+    order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'report_data_fields'
+        ordering = ['order']
+        unique_together = ['report', 'field_name']
+    
+    def __str__(self):
+        return f"{self.report.report_type} - {self.field_name}"
+
+
+class ReportExcelImport(models.Model):
+    """
+    Model for storing Excel import metadata (replaces JSON).
+    """
+    report = models.ForeignKey('Report', on_delete=models.CASCADE, related_name='excel_imports')
+    file_name = models.CharField(max_length=255)
+    headers = models.TextField(blank=True, help_text="Comma-separated headers")
+    imported_at = models.DateTimeField(auto_now_add=True)
+    row_count = models.IntegerField(default=0)
+    
+    class Meta:
+        db_table = 'report_excel_imports'
+        ordering = ['-imported_at']
+    
+    def get_headers_list(self):
+        return [h.strip() for h in self.headers.split(',') if h.strip()]
+
+
+class ReportExcelRow(models.Model):
+    """
+    Model for storing each row of Excel data.
+    """
+    import_record = models.ForeignKey('ReportExcelImport', on_delete=models.CASCADE, related_name='rows')
+    row_index = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'report_excel_rows'
+        ordering = ['row_index']
+
+
+class ReportExcelCell(models.Model):
+    """
+    Model for storing individual cell data.
+    """
+    row = models.ForeignKey('ReportExcelRow', on_delete=models.CASCADE, related_name='cells')
+    column_name = models.CharField(max_length=255)
+    value = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        db_table = 'report_excel_cells'
+        ordering = ['row__row_index']
+
+
+# ============================================
+# REPORT SUBMISSION MODELS - NO JSON
+# ============================================
+
+class ReportSubmission(models.Model):
+    """
+    Model for storing member report submissions.
+    """
+    STATUS_CHOICES = [
+        ('submitted', 'Submitted'),
+    ]
+    
+    report_type = models.CharField(max_length=200)
+    submitted_by = models.ForeignKey('UserProfile', on_delete=models.CASCADE, related_name='report_submissions')
+    submission_date = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    # REMOVED: data = models.JSONField(default=dict)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='submitted')
+    notes = models.TextField(blank=True)
+    
+    def __str__(self):
+        return f"{self.report_type} - {self.submitted_by.full_name} - {self.submission_date.strftime('%Y-%m-%d')}"
+    
+    class Meta:
+        db_table = 'report_submissions'
+        ordering = ['-submission_date']
+
+
+class ReportSubmissionField(models.Model):
+    """
+    Model for storing submission form data (replaces JSON).
+    """
+    FIELD_TYPES = [
+        ('text', 'Text'),
+        ('number', 'Number'),
+        ('date', 'Date'),
+        ('email', 'Email'),
+        ('url', 'URL'),
+        ('textarea', 'Text Area'),
+        ('select', 'Select'),
+        ('checkbox', 'Checkbox'),
+        ('radio', 'Radio'),
+    ]
+    
+    submission = models.ForeignKey('ReportSubmission', on_delete=models.CASCADE, related_name='fields')
+    field_key = models.CharField(max_length=255)
+    field_value = models.TextField(blank=True, null=True)
+    field_type = models.CharField(max_length=50, choices=FIELD_TYPES, default='text')
+    field_label = models.CharField(max_length=255, blank=True)
+    order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'report_submission_fields'
+        ordering = ['order']
+        unique_together = ['submission', 'field_key']
+    
+    def __str__(self):
+        return f"{self.submission.report_type} - {self.field_key}"
+
+
+# ============================================
+# CHECKLIST MODELS
+# ============================================
 
 class Checklist(models.Model):
     """
@@ -717,30 +865,6 @@ class ChecklistLog(models.Model):
     
     def __str__(self):
         return f"{self.checklist.name} - {self.user.full_name} - {self.log_date}"
-
-
-class ReportSubmission(models.Model):
-    """
-    Model for storing member report submissions.
-    """
-    STATUS_CHOICES = [
-        ('submitted', 'Submitted'),
-    ]
-    
-    report_type = models.CharField(max_length=200)
-    submitted_by = models.ForeignKey('UserProfile', on_delete=models.CASCADE, related_name='report_submissions')
-    submission_date = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    data = models.JSONField(default=dict)
-    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='submitted')
-    notes = models.TextField(blank=True)
-    
-    def __str__(self):
-        return f"{self.report_type} - {self.submitted_by.full_name} - {self.submission_date.strftime('%Y-%m-%d')}"
-    
-    class Meta:
-        db_table = 'report_submissions'
-        ordering = ['-submission_date']
 
 
 class ActivityLog(models.Model):

@@ -26,6 +26,11 @@ from .models import (
     AdHocDeduction,
     Branch,
     Department,
+    ReportDataField,     
+    ReportExcelImport,    
+    ReportExcelRow,       
+    ReportExcelCell,      
+    ReportSubmissionField,
 )
 from .forms import UserProfileForm
 
@@ -1581,12 +1586,26 @@ def drafts_page(request):
     except UserProfile.DoesNotExist:
         return redirect('control_dashboard:member_dashboard')
     
+    # Get reports assigned to the user
     assigned_reports = Report.objects.filter(
         Q(assigned_to=user_profile) |
         Q(is_assigned_to_all=True)
     ).filter(
         status__in=['assigned', 'in_progress']
     ).distinct().order_by('-created_at')
+    
+    # Get report types with their data fields
+    report_data = []
+    for report in assigned_reports:
+        # Get data fields from the new relational model
+        data_fields = report.data_fields.all().order_by('order')
+        fields_dict = {field.field_name: field.field_value for field in data_fields}
+        
+        report_data.append({
+            'report': report,
+            'data_fields': data_fields,
+            'fields_dict': fields_dict,
+        })
     
     report_types = assigned_reports.values_list('report_type', flat=True).distinct()
     
@@ -1595,9 +1614,9 @@ def drafts_page(request):
         'today': timezone.now(),
         'report_types': list(report_types),
         'assigned_reports': assigned_reports,
+        'report_data': report_data,
     }
     return render(request, 'control_dashboard/draft.html', context)
-
 
 @login_required
 def reports_page(request):
@@ -1624,6 +1643,9 @@ def reports_page(request):
         if schedule:
             report.next_due_date = schedule.next_due_date
             report.schedule_frequency = schedule.get_frequency_display()
+        
+        # Pre-fetch display data to avoid repeated queries in template
+        report._display_data = report.get_display_data()
     
     context = {
         'user_profile': user_profile,
@@ -1634,7 +1656,6 @@ def reports_page(request):
     }
     
     return render(request, 'control_dashboard/reports.html', context)
-
 
 @login_required
 def submit_page(request):
@@ -1648,10 +1669,8 @@ def submit_page(request):
         created_by=user_profile
     ).values_list('report_type', flat=True).distinct().order_by('report_type')
     
-    # Convert to list
     report_types = list(report_types)
     
-    # If no report types exist, add some defaults
     if not report_types:
         report_types = [
             'Daily Control Report',
@@ -1664,10 +1683,9 @@ def submit_page(request):
             'Performance Report'
         ]
     
-    # Get all users for the "To" dropdown
     all_users = UserProfile.objects.filter(status='active').order_by('full_name')
     
-    # Get assigned exceptions for the current user
+    # Get assigned exceptions for the current user - now using data_fields
     assigned_exceptions = Report.objects.filter(
         Q(assigned_to=user_profile) |
         Q(created_by=user_profile) |
@@ -1676,27 +1694,17 @@ def submit_page(request):
         Q(status='submitted') | Q(status='draft') | Q(status='rejected')
     ).distinct().order_by('-updated_at')
     
-    # Get categories from exceptions
-    categories = set()
-    for exception in assigned_exceptions:
-        if exception.data:
-            unit = (
-                exception.data.get('unit') or 
-                exception.data.get('branch') or 
-                exception.data.get('BRANCH') or 
-                exception.data.get('DEPARTMENT') or
-                exception.data.get('BRANCH/UNIT') or
-                exception.data.get('branch_unit')
-            )
-            if unit:
-                categories.add(unit)
-    
-    categories_list = [{'id': cat, 'name': cat} for cat in categories if cat]
-    
-    # Build exceptions data
+    # Build exceptions data from relational fields
     exceptions_data = []
+    categories = set()
+    
     for exception in assigned_exceptions:
-        exception_data = exception.data or {}
+        # Get data fields as dictionary
+        data_fields = exception.data_fields.all()
+        exception_data = {}
+        for field in data_fields:
+            exception_data[field.field_name] = field.field_value
+        
         unit = (
             exception_data.get('unit') or 
             exception_data.get('branch') or 
@@ -1706,7 +1714,9 @@ def submit_page(request):
             exception_data.get('branch_unit') or
             'N/A'
         )
-        category = unit if unit != 'N/A' else 'uncategorized'
+        
+        if unit and unit != 'N/A':
+            categories.add(unit)
         
         exceptions_data.append({
             'id': exception.id,
@@ -1716,19 +1726,19 @@ def submit_page(request):
             'data': exception_data,
             'created_at': exception.created_at.strftime('%b %d, %Y'),
             'unit': unit,
-            'category': category,
+            'category': unit if unit != 'N/A' else 'uncategorized',
             'assigned_to': user_profile.email,
             'created_by': exception.created_by.email if exception.created_by else ''
         })
     
-    # Get distinct report types for the dropdown (from exceptions, not all reports)
+    categories_list = [{'id': cat, 'name': cat} for cat in categories if cat]
     exception_report_types = list(set([e['report_type'] for e in exceptions_data]))
     
     context = {
         'user_profile': user_profile,
         'today': timezone.now(),
         'all_users': all_users,
-        'report_types': exception_report_types or report_types,  # Use exception types, fallback to defaults
+        'report_types': exception_report_types or report_types,
         'assigned_report_types': exception_report_types,
         'categories_list': categories_list,
         'exceptions_json': json.dumps(exceptions_data, default=str),
@@ -1743,7 +1753,6 @@ def submit_page(request):
     }
     
     return render(request, 'control_dashboard/submit.html', context)
-
 
 # ==================== API - IMPORT/EXPORT EXCEL ====================
 
@@ -1807,17 +1816,15 @@ def api_import_excel(request):
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_save_imported_data(request):
     """
-    API endpoint to save imported Excel data to the database
+    API endpoint to save imported Excel data to the database using relational tables
     """
     try:
         data = json.loads(request.body)
         
-        # Get data from request
         headers = data.get('headers', [])
         rows_data = data.get('data', [])
         report_type = data.get('report_type', '')
@@ -1840,52 +1847,67 @@ def api_save_imported_data(request):
         except UserProfile.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
         
-        # Convert rows to list of dictionaries with proper headers
-        normalized_rows = []
-        for row in rows_data:
-            if isinstance(row, dict):
-                # Already a dictionary
-                normalized_rows.append(row)
-            elif isinstance(row, list):
-                # Convert list to dict using headers
-                row_dict = {}
-                for i, header in enumerate(headers):
-                    if i < len(row):
-                        row_dict[header] = row[i] if row[i] is not None else ''
-                    else:
-                        row_dict[header] = ''
-                normalized_rows.append(row_dict)
-        
-        # Create the report with proper data
+        # Create the report
         report = Report.objects.create(
             report_type=report_type,
             frequency='one-off',
             description=f'Excel Import: {file_name}',
             status='submitted',
             created_by=user_profile,
-            data={
-                'import_type': 'excel',
-                'file_name': file_name,
-                'headers': headers,  # Store the actual headers from Excel
-                'data': normalized_rows,  # Store as list of dictionaries with actual headers
-                'row_count': len(normalized_rows),
-                'imported_at': timezone.now().isoformat(),
-            }
         )
+        
+        # ============================================
+        # SAVE HEADERS AS DATA FIELDS (ONLY ONCE)
+        # ============================================
+        for i, header in enumerate(headers):
+            ReportDataField.objects.create(
+                report=report,
+                field_name=header or f'Column_{i+1}',
+                field_value='',  # Headers don't have values
+                field_type='text',
+                order=i
+            )
+        
+        # ============================================
+        # CREATE EXCEL IMPORT RECORD
+        # ============================================
+        import_record = ReportExcelImport.objects.create(
+            report=report,
+            file_name=file_name,
+            headers=','.join(headers),
+            row_count=len(rows_data)
+        )
+        
+        # ============================================
+        # SAVE ROWS AND CELLS (THIS IS WHERE DATA GOES)
+        # ============================================
+        for row_idx, row in enumerate(rows_data):
+            excel_row = ReportExcelRow.objects.create(
+                import_record=import_record,
+                row_index=row_idx
+            )
+            for i, header in enumerate(headers):
+                if i < len(row):
+                    value = row[i] if row[i] is not None else ''
+                    ReportExcelCell.objects.create(
+                        row=excel_row,
+                        column_name=header or f'Column_{i+1}',
+                        value=str(value)
+                    )
         
         # Log activity
         log_activity(
             user=user_profile,
             activity_type='report_submitted',
-            details=f'Submitted {report_type} with {len(normalized_rows)} records from Excel',
+            details=f'Submitted {report_type} with {len(rows_data)} records from Excel',
             request=request
         )
         
         return JsonResponse({
             'success': True,
-            'message': f'Successfully saved {len(normalized_rows)} records from {file_name}',
+            'message': f'Successfully saved {len(rows_data)} records from {file_name}',
             'report_id': report.id,
-            'record_count': len(normalized_rows)
+            'record_count': len(rows_data)
         })
         
     except json.JSONDecodeError:
@@ -2528,19 +2550,50 @@ def api_get_draft(request, report_id):
         except UserProfile.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'User profile context not found'}, status=404)
         
+        # ============================================
+        # BUILD DATA FROM RELATIONAL TABLES
+        # ============================================
+        report_data = {}
+        form_data = {}
+        
+        # Get data fields
+        data_fields = report.data_fields.all()
+        for field in data_fields:
+            form_data[field.field_name] = field.field_value or ''
+        
+        # Check for Excel import
+        excel_import = report.excel_imports.first()
+        if excel_import:
+            report_data['import_type'] = 'excel'
+            report_data['headers'] = excel_import.get_headers_list()
+            report_data['file_name'] = excel_import.file_name
+            rows_data = []
+            for row in excel_import.rows.all().order_by('row_index'):
+                row_dict = {}
+                for cell in row.cells.all():
+                    row_dict[cell.column_name] = cell.value or ''
+                rows_data.append(row_dict)
+            report_data['data'] = rows_data
+            report_data['row_count'] = len(rows_data)
+        else:
+            # Regular form data
+            report_data['form_data'] = [form_data] if form_data else []
+        
         response_data = {
             'success': True,
             'report': {
                 'id': str(report.id),
                 'report_type': report.report_type,
                 'status': report.status,
-                'data': report.data or {},
+                'data': report_data,
             }
         }
         return JsonResponse(response_data)
     except Exception as e:
+        print(f"Error in api_get_draft: {e}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -2560,53 +2613,22 @@ def api_edit_draft(request, report_id):
         data = json.loads(request.body)
         form_data = data.get('form_data', {})
         
-        submission_id = report.data.get('submission_id') if isinstance(report.data, dict) else None
-        submission = None
-        
-        if submission_id:
-            try:
-                submission = ReportSubmission.objects.get(id=submission_id)
-                if not isinstance(submission.data, dict):
-                    submission.data = {}
-                
-                if 'form_data' in submission.data and isinstance(submission.data['form_data'], list):
-                    if submission.data['form_data']:
-                        submission.data['form_data'][0].update(form_data)
-                    else:
-                        submission.data['form_data'] = [form_data]
-                else:
-                    submission.data['form_data'] = [form_data]
-                
-                submission.updated_at = timezone.now()
-                submission.save()
-            except ReportSubmission.DoesNotExist:
-                submission = None
-
-        if not submission:
-            submission = ReportSubmission.objects.create(
-                report_type=report.report_type,
-                template_name=getattr(report, 'description', report.report_type),
-                submitted_by=user_profile,
-                status='submitted',
-                data={'form_data': [form_data]}
+        # ============================================
+        # UPDATE DATA FIELDS (RELATIONAL TABLES)
+        # ============================================
+        for field_name, field_value in form_data.items():
+            # Update existing field or create new one
+            field, created = ReportDataField.objects.update_or_create(
+                report=report,
+                field_name=field_name,
+                defaults={
+                    'field_value': field_value,
+                    'field_type': 'text'
+                }
             )
         
-        if not isinstance(report.data, dict):
-            report.data = {}
-            
-        report.data['submission_id'] = submission.id
-        
-        if 'form_data' in report.data and isinstance(report.data['form_data'], list):
-            if report.data['form_data']:
-                report.data['form_data'][0].update(form_data)
-            else:
-                report.data['form_data'] = [form_data]
-        else:
-            report.data['form_data'] = [form_data]
-
         if report.status == 'assigned':
             report.status = 'in_progress'
-
         report.save()
         
         return JsonResponse({
@@ -2622,7 +2644,6 @@ def api_edit_draft(request, report_id):
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-
 @csrf_exempt
 @require_http_methods(["DELETE"])
 def api_delete_draft(request, report_id):
@@ -2637,21 +2658,28 @@ def api_delete_draft(request, report_id):
         except UserProfile.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'User context profile not found'}, status=404)
         
-        if isinstance(report.data, dict) and 'submission_id' in report.data:
-            submission_id = report.data.get('submission_id')
-            if submission_id:
-                ReportSubmission.objects.filter(id=submission_id).delete()
+        # ============================================
+        # DELETE ALL RELATED DATA
+        # ============================================
+        # Delete data fields
+        report.data_fields.all().delete()
         
+        # Delete Excel imports (cascades to rows and cells)
+        report.excel_imports.all().delete()
+        
+        # Delete the report itself
         report.delete()
         
         return JsonResponse({
             'success': True,
-            'message': 'Draft and associated data payload permanently removed from database storage.'
+            'message': 'Draft and associated data permanently removed from database storage.'
         })
         
     except Exception as e:
+        print(f"Error in api_delete_draft: {e}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
 
 @require_http_methods(["GET"])
 def api_get_report_data(request):

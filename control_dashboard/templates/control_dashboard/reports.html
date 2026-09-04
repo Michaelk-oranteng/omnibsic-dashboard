@@ -1,5 +1,6 @@
 {% extends 'control_dashboard/base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}My Reports{% endblock %}
 
@@ -67,7 +68,7 @@
 {% block content %}
 <div class="table-container">
     <div class="table-header">
-        <h4>Saved Reports ({{ reports|length }})</h4>
+        <h4>Saved Reports <span class="report-count">({{ reports|length }})</span></h4>
         <div class="table-actions">
             <span class="badge-count">Total: {{ reports|length }}</span>
         </div>
@@ -84,101 +85,137 @@
                         <h3 class="report-type-title">{{ type_group.grouper|default:"Uncategorized" }}</h3>
                         <span class="report-type-count">{{ type_group.list|length }} reports</span>
                     </div>
-                    <div class="report-type-toggle">
+                    <div class="report-type-toggle open">
                         <i class="fas fa-chevron-down"></i>
                     </div>
                 </div>
                 
                 <div class="report-type-body">
-                    <table class="report-details-table">
-                        <thead>
-                            <tr>
-                                {% for report in type_group.list %}
-                                    {% with display=report.get_display_data %}
-                                        {% if forloop.first and display.is_excel %}
-                                            {# Dynamic headers from Excel - only for first report in group #}
-                                            {% for header in display.headers %}
-                                                <th>{{ header }}</th>
-                                            {% endfor %}
-                                            <th class="text-center">Actions</th>
-                                        {% endif %}
-                                    {% endwith %}
-                                {% endfor %}
-                                
-                                {# Fallback: If no Excel data, use default headers #}
-                                {% if not type_group.list.0.get_display_data.is_excel %}
-                                    <th>Branch/Unit</th>
-                                    <th>Date</th>
-                                    <th>Observation</th>
-                                    <th>Responsible Staff</th>
-                                    <th>Status</th>
-                                    <th class="text-center">Actions</th>
-                                {% endif %}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for report in type_group.list %}
-                                {% with display=report.get_display_data %}
-                                    {% if display.is_excel %}
-                                        {# Excel Import - Show ALL rows with dynamic headers #}
-                                        {% for row in display.rows %}
-                                            <tr data-type="{{ report.report_type }}" data-id="{{ report.id }}">
-                                                {# Loop through each value in the row #}
-                                                {% for key, value in row.items %}
-                                                    <td>{{ value|default:"-" }}</td>
+                    {% for report_item in type_group.list %}
+                        {% with display=report_item.get_display_data %}
+                            {% if forloop.first %}
+                                <table class="report-details-table">
+                                    <thead>
+                                        <tr>
+                                            {% if display.is_excel %}
+                                                {# Excel Import: Use Excel headers #}
+                                                {% for header in display.headers %}
+                                                    <th>{{ header|default:"Column" }}</th>
                                                 {% endfor %}
-                                                <td class="text-center">
-                                                    <div class="table-actions-cluster">
-                                                        <button class="btn-edit-modal" onclick="openEditModal('{{ report.id }}')" title="Edit">
-                                                            <i class="fas fa-edit"></i>
-                                                        </button>
-                                                        <button class="btn-delete" onclick="deleteReport('{{ report.id }}')" title="Delete">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
+                                            {% else %}
+                                                {# Regular Report: Use default headers #}
+                                                <th>Branch/Unit</th>
+                                                <th>Date</th>
+                                                <th>Observation</th>
+                                                <th>Responsible Staff</th>
+                                                <th>Status</th>
+                                            {% endif %}
+                                            <th class="text-center">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                            {% endif %}
+                            
+                            {% if display.is_excel %}
+                                {# ============================================ #}
+                                {# EXCEL IMPORT - Show all rows with dynamic headers #}
+                                {# ============================================ #}
+                                {% for row in display.rows %}
+                                    <tr data-type="{{ report_item.report_type }}" data-id="{{ report_item.id }}">
+                                        {% for header in display.headers %}
+                                            <td>
+                                                {% with value=row|get_item:header %}
+                                                    {{ value|default:"-" }}
+                                                {% endwith %}
+                                            </td>
                                         {% endfor %}
-                                    {% else %}
-                                        {# Regular Report - Single row #}
-                                        {% with row=display.rows.0 %}
-                                            <tr data-type="{{ report.report_type }}" data-id="{{ report.id }}">
-                                                <td>{{ row.Branch|default:row.branch|default:"-" }}</td>
-                                                <td>{{ row.Date|default:row.date|default:"-" }}</td>
-                                                <td>{{ row.Observation|default:row.observation|default:"-" }}</td>
-                                                <td>{{ row.Responsible_Staff|default:row.responsible_staff|default:"-" }}</td>
-                                                <td>
-                                                    {% with status=row.Status|default:"Open" %}
-                                                        {% if status == 'Open' or status == 'open' %}
-                                                            <span class="badge-success">{{ status }}</span>
-                                                        {% elif status == 'Closed' or status == 'closed' %}
-                                                            <span class="badge-secondary">{{ status }}</span>
-                                                        {% elif status == 'In Progress' or status == 'in progress' %}
-                                                            <span class="badge-warning">{{ status }}</span>
-                                                        {% elif status == 'Resolved' or status == 'resolved' %}
-                                                            <span class="badge-success">{{ status }}</span>
-                                                        {% else %}
-                                                            <span class="badge-secondary">{{ status|default:"Open" }}</span>
-                                                        {% endif %}
-                                                    {% endwith %}
-                                                </td>
-                                                <td class="text-center">
-                                                    <div class="table-actions-cluster">
-                                                        <button class="btn-edit-modal" onclick="openEditModal('{{ report.id }}')" title="Edit">
-                                                            <i class="fas fa-edit"></i>
-                                                        </button>
-                                                        <button class="btn-delete" onclick="deleteReport('{{ report.id }}')" title="Delete">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        {% endwith %}
-                                    {% endif %}
+                                        <td class="text-center">
+                                            <div class="table-actions-cluster">
+                                                <button class="btn-edit-modal" onclick="openEditModal('{{ report_item.id }}')" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn-delete" onclick="deleteReport('{{ report_item.id }}')" title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="{{ display.headers|length|add:1 }}" class="empty-row">
+                                            No data rows found in this Excel import.
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                {# ============================================ #}
+                                {# REGULAR REPORT - Single row with standard fields #}
+                                {# ============================================ #}
+                                {% with row=display.rows.0 %}
+                                    <tr data-type="{{ report_item.report_type }}" data-id="{{ report_item.id }}">
+                                        {% if row %}
+                                            <td>
+                                                {% with value=row.Branch|default:row.branch|default:row.BRANCH|default:row.BRANCH_UNIT|default:row.branch_unit|default:row.Unit|default:row.unit|default:"-" %}
+                                                    {{ value }}
+                                                {% endwith %}
+                                            </td>
+                                            <td>
+                                                {% with value=row.Date|default:row.date|default:row.DATE|default:row.Submission_Date|default:row.submission_date|default:"-" %}
+                                                    {{ value }}
+                                                {% endwith %}
+                                            </td>
+                                            <td>
+                                                {% with value=row.Observation|default:row.observation|default:row.OBSERVATION|default:row.Comments|default:row.comments|default:"-" %}
+                                                    {{ value }}
+                                                {% endwith %}
+                                            </td>
+                                            <td>
+                                                {% with value=row.Responsible_Staff|default:row.responsible_staff|default:row.RESPONSIBLE_STAFF|default:row.Staff|default:row.staff|default:"-" %}
+                                                    {{ value }}
+                                                {% endwith %}
+                                            </td>
+                                            <td>
+                                                {% with status=row.Status|default:row.status|default:"Open" %}
+                                                    {% if status == 'Open' or status == 'open' or status == 'OPEN' %}
+                                                        <span class="badge-success">{{ status }}</span>
+                                                    {% elif status == 'Closed' or status == 'closed' or status == 'CLOSED' %}
+                                                        <span class="badge-secondary">{{ status }}</span>
+                                                    {% elif status == 'In Progress' or status == 'in progress' or status == 'IN PROGRESS' or status == 'In-Progress' %}
+                                                        <span class="badge-warning">{{ status }}</span>
+                                                    {% elif status == 'Resolved' or status == 'resolved' or status == 'RESOLVED' %}
+                                                        <span class="badge-success">{{ status }}</span>
+                                                    {% elif status == 'Pending' or status == 'pending' or status == 'PENDING' %}
+                                                        <span class="badge-warning">{{ status }}</span>
+                                                    {% elif status == 'Rejected' or status == 'rejected' or status == 'REJECTED' %}
+                                                        <span class="badge-danger">{{ status }}</span>
+                                                    {% else %}
+                                                        <span class="badge-secondary">{{ status|default:"Open" }}</span>
+                                                    {% endif %}
+                                                {% endwith %}
+                                            </td>
+                                        {% else %}
+                                            <td colspan="5" class="empty-row">No data available</td>
+                                        {% endif %}
+                                        <td class="text-center">
+                                            <div class="table-actions-cluster">
+                                                <button class="btn-edit-modal" onclick="openEditModal('{{ report_item.id }}')" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn-delete" onclick="deleteReport('{{ report_item.id }}')" title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
                                 {% endwith %}
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                            {% endif %}
+                            
+                            {% if forloop.last %}
+                                    </tbody>
+                                </table>
+                            {% endif %}
+                        {% endwith %}
+                    {% endfor %}
                 </div>
             </div>
         {% endfor %}
@@ -244,12 +281,15 @@
 </div>
 
 <style>
-    /* ... all your existing styles ... */
+    /* ============================================
+       REPORTS PAGE STYLES
+    ============================================ */
     .report-type-group {
         margin-bottom: 20px;
         border: 1px solid #e5e7eb;
         border-radius: 8px;
         overflow: hidden;
+        background: white;
     }
     .report-type-header {
         display: flex;
@@ -322,7 +362,7 @@
         padding: 10px 14px;
         color: #1a2332;
         border-bottom: 1px solid #f3f4f6;
-        max-width: 180px;
+        max-width: 200px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -336,6 +376,12 @@
     }
     .report-details-table tbody tr:hover td {
         background: rgba(0, 51, 102, 0.02);
+    }
+    .report-details-table tbody .empty-row {
+        text-align: center;
+        color: #6b7280;
+        padding: 20px;
+        font-style: italic;
     }
     .badge-success {
         display: inline-block;
@@ -614,6 +660,11 @@
         padding: 4px 12px;
         border-radius: 12px;
     }
+    .report-count {
+        font-size: 14px;
+        font-weight: 400;
+        color: #6b7280;
+    }
     .table-header {
         display: flex;
         justify-content: space-between;
@@ -628,6 +679,93 @@
         font-weight: 600;
         color: #1a2332;
     }
+
+    /* Header filter styles */
+    .header-filter-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .header-filter-group label {
+        font-size: 12px;
+        font-weight: 500;
+        color: #6b7280;
+    }
+    .header-select {
+        padding: 6px 12px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 13px;
+        background: white;
+        color: #1a2332;
+        cursor: pointer;
+        font-family: 'Poppins', sans-serif;
+        min-width: 140px;
+    }
+    .header-select:focus {
+        border-color: #0066cc;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.08);
+    }
+    .header-date-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .header-date-group label {
+        font-size: 12px;
+        font-weight: 500;
+        color: #6b7280;
+    }
+    .header-date-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .header-date-wrapper span {
+        font-size: 12px;
+        color: #6b7280;
+    }
+    .header-date-input {
+        padding: 6px 10px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 13px;
+        background: white;
+        color: #1a2332;
+        font-family: 'Poppins', sans-serif;
+        min-width: 130px;
+    }
+    .header-date-input:focus {
+        border-color: #0066cc;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.08);
+    }
+    .header-divider {
+        width: 1px;
+        height: 30px;
+        background: #e5e7eb;
+    }
+    .btn-reset-header {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 16px;
+        background: #f3f4f6;
+        color: #6b7280;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        font-family: 'Poppins', sans-serif;
+    }
+    .btn-reset-header:hover {
+        background: #e5e7eb;
+        color: #1a2332;
+    }
+
     @media (max-width: 768px) {
         .report-details-table {
             min-width: 600px;
@@ -644,6 +782,18 @@
         }
         .table-actions-cluster {
             flex-wrap: wrap;
+        }
+        .header-filter-group, .header-date-group {
+            flex-wrap: wrap;
+        }
+        .header-date-wrapper {
+            flex-wrap: wrap;
+        }
+        .header-date-input {
+            min-width: 100px;
+        }
+        .header-divider {
+            display: none;
         }
     }
 </style>
@@ -773,6 +923,11 @@
     // OPEN EDIT MODAL
     // ============================================
     function openEditModal(reportId) {
+        if (!reportId) {
+            showToast('Invalid report ID', 'error');
+            return;
+        }
+        
         document.getElementById('editReportId').value = reportId;
         document.getElementById('editFormFields').innerHTML = '<p style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> Loading...</p>';
         document.getElementById('editReportModal').style.display = 'flex';
@@ -781,7 +936,10 @@
         
         fetch(url, {
             method: 'GET',
-            headers: { 'Accept': 'application/json' },
+            headers: { 
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             credentials: 'same-origin'
         })
         .then(function(response) {
@@ -798,7 +956,7 @@
                 var formHTML = '';
                 
                 // Check if it's an Excel import
-                if (reportData.import_type === 'excel') {
+                if (reportData.import_type === 'excel' || reportData.headers) {
                     var headers = reportData.headers || [];
                     var rows = reportData.data || [];
                     
@@ -807,29 +965,27 @@
                     formHTML += '<strong>Records:</strong> ' + rows.length;
                     formHTML += '</p>';
                     
-                    // Show a table of data for editing
                     formHTML += '<div style="max-height:300px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:6px;">';
                     formHTML += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
                     
-                    // Headers
-                    formHTML += '<thead><tr style="background:#f8fafc;">';
-                    headers.forEach(function(header) {
-                        formHTML += '<th style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:left;">' + (header || 'Column') + '</th>';
-                    });
-                    formHTML += '</tr></thead><tbody>';
+                    if (headers.length > 0) {
+                        formHTML += '<thead><tr style="background:#f8fafc;">';
+                        headers.forEach(function(header) {
+                            formHTML += '<th style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:left;">' + (header || 'Column') + '</th>';
+                        });
+                        formHTML += '</tr></thead>';
+                    }
                     
-                    // Data rows (show first 10)
+                    formHTML += '<tbody>';
                     var displayRows = rows.slice(0, 10);
                     displayRows.forEach(function(row) {
                         formHTML += '<tr>';
                         if (typeof row === 'object' && !Array.isArray(row)) {
-                            // It's a dict
                             for (var i = 0; i < headers.length; i++) {
                                 var value = row[headers[i]] !== undefined && row[headers[i]] !== null ? row[headers[i]] : '';
                                 formHTML += '<td style="padding:4px 10px;border-bottom:1px solid #f3f4f6;">' + value + '</td>';
                             }
                         } else if (Array.isArray(row)) {
-                            // It's a list
                             for (var i = 0; i < headers.length; i++) {
                                 var value = row[i] !== undefined && row[i] !== null ? row[i] : '';
                                 formHTML += '<td style="padding:4px 10px;border-bottom:1px solid #f3f4f6;">' + value + '</td>';
@@ -843,7 +999,6 @@
                     }
                     
                     formHTML += '</tbody></table></div>';
-                    
                     formHTML += '<p style="margin-top:12px;color:#6b7280;font-size:12px;font-style:italic;">Excel data is displayed for reference. To edit, please re-upload a new Excel file.</p>';
                     
                 } else {
@@ -855,41 +1010,45 @@
                         formData = reportData;
                     }
                     
-                    var fields = [
-                        { label: 'Branch/Unit', field_type: 'text' },
-                        { label: 'Date', field_type: 'date' },
-                        { label: 'Observation', field_type: 'textarea' },
-                        { label: 'Responsible Staff', field_type: 'text' },
-                        { label: 'Status', field_type: 'dropdown' }
-                    ];
+                    if (!formData || Object.keys(formData).length === 0) {
+                        formHTML += '<p style="color:#6b7280;">No editable fields found.</p>';
+                    } else {
+                        var fields = [
+                            { label: 'Branch/Unit', field_type: 'text' },
+                            { label: 'Date', field_type: 'date' },
+                            { label: 'Observation', field_type: 'textarea' },
+                            { label: 'Responsible Staff', field_type: 'text' },
+                            { label: 'Status', field_type: 'dropdown' }
+                        ];
 
-                    var statusOptions = ['Open', 'In Progress', 'Resolved', 'Closed', 'Pending Review'];
+                        var statusOptions = ['Open', 'In Progress', 'Resolved', 'Closed', 'Pending Review'];
 
-                    fields.forEach(function(field) {
-                        var fieldLabel = field.label;
-                        var value = formData[fieldLabel] !== undefined ? formData[fieldLabel] : 
-                                   (formData[fieldLabel.toUpperCase()] !== undefined ? formData[fieldLabel.toUpperCase()] : 
-                                   (formData[fieldLabel.toLowerCase()] || ''));
-                        
-                        formHTML += '<div class="form-group">';
-                        formHTML += '<label>' + fieldLabel + '</label>';
-                        
-                        if (field.field_type === 'dropdown') {
-                            formHTML += '<select class="form-control" data-key="' + fieldLabel + '">';
-                            statusOptions.forEach(function(opt) {
-                                var selected = opt === value ? 'selected' : '';
-                                formHTML += '<option value="' + opt + '" ' + selected + '>' + opt + '</option>';
-                            });
-                            formHTML += '</select>';
-                        } else if (field.field_type === 'textarea') {
-                            formHTML += '<textarea class="form-control" data-key="' + fieldLabel + '" rows="3">' + (value || '') + '</textarea>';
-                        } else if (field.field_type === 'date') {
-                            formHTML += '<input type="date" class="form-control" data-key="' + fieldLabel + '" value="' + (value || '') + '">';
-                        } else {
-                            formHTML += '<input type="text" class="form-control" data-key="' + fieldLabel + '" value="' + (value || '') + '">';
-                        }
-                        formHTML += '</div>';
-                    });
+                        fields.forEach(function(field) {
+                            var fieldLabel = field.label;
+                            var value = formData[fieldLabel] !== undefined ? formData[fieldLabel] : 
+                                       (formData[fieldLabel.toUpperCase()] !== undefined ? formData[fieldLabel.toUpperCase()] : 
+                                       (formData[fieldLabel.toLowerCase()] || ''));
+                            
+                            formHTML += '<div class="form-group">';
+                            formHTML += '<label>' + fieldLabel + '</label>';
+                            
+                            if (field.field_type === 'dropdown') {
+                                formHTML += '<select class="form-control" data-key="' + fieldLabel + '">';
+                                statusOptions.forEach(function(opt) {
+                                    var selected = opt === value ? 'selected' : '';
+                                    formHTML += '<option value="' + opt + '" ' + selected + '>' + opt + '</option>';
+                                });
+                                formHTML += '</select>';
+                            } else if (field.field_type === 'textarea') {
+                                formHTML += '<textarea class="form-control" data-key="' + fieldLabel + '" rows="3">' + (value || '') + '</textarea>';
+                            } else if (field.field_type === 'date') {
+                                formHTML += '<input type="date" class="form-control" data-key="' + fieldLabel + '" value="' + (value || '') + '">';
+                            } else {
+                                formHTML += '<input type="text" class="form-control" data-key="' + fieldLabel + '" value="' + (value || '') + '">';
+                            }
+                            formHTML += '</div>';
+                        });
+                    }
                 }
                 
                 document.getElementById('editFormFields').innerHTML = formHTML;
