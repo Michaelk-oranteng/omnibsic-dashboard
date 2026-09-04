@@ -5,6 +5,198 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'stylesheets/admin.css' %}" type="text/css">
+<style>
+    /* Additional styles for department/branch fields */
+    .field-group {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    
+    .field-group .field-item {
+        flex: 1;
+        min-width: 150px;
+    }
+    
+    .field-group .field-item label {
+        display: block;
+        font-size: 11px;
+        font-weight: 500;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 2px;
+    }
+    
+    .field-group .field-item .table-select {
+        width: 100%;
+        min-height: 38px;
+    }
+    
+    .field-group .field-item .table-select[multiple] {
+        min-height: 60px;
+        padding: 4px;
+    }
+    
+    .field-group .field-item .table-select[multiple] option {
+        padding: 4px 8px;
+        border-radius: 3px;
+        margin: 1px 0;
+    }
+    
+    .field-group .field-item .table-select[multiple] option:checked {
+        background: #0066cc;
+        color: white;
+    }
+    
+    .field-group .field-item .help-text {
+        font-size: 10px;
+        color: #9ca3af;
+        margin-top: 2px;
+        display: block;
+    }
+    
+    .status-toggle-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    /* Switch styling */
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+        flex-shrink: 0;
+    }
+    
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #ccc;
+        transition: .3s;
+        border-radius: 24px;
+    }
+    
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background: white;
+        transition: .3s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .slider {
+        background: #0066cc;
+    }
+    
+    input:checked + .slider:before {
+        transform: translateX(20px);
+    }
+    
+    .status-text {
+        font-size: 13px;
+        font-weight: 500;
+        color: #1a2332;
+        min-width: 48px;
+    }
+    
+    /* User table enhancements */
+    .users-table .user-info {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .users-table .user-info .user-email {
+        font-weight: 600;
+        color: #1a2332;
+    }
+    
+    .users-table .user-info .user-badge {
+        font-size: 11px;
+        color: #6b7280;
+        background: #f3f4f6;
+        padding: 1px 8px;
+        border-radius: 10px;
+        display: inline-block;
+        margin-top: 2px;
+    }
+    
+    .users-table .user-assignments {
+        font-size: 12px;
+        color: #6b7280;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        align-items: center;
+    }
+    
+    .users-table .user-assignments .tag {
+        display: inline-block;
+        background: #f3f4f6;
+        padding: 1px 8px;
+        border-radius: 10px;
+        font-size: 10px;
+        white-space: nowrap;
+    }
+    
+    .users-table .user-assignments .tag.branch {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    
+    .users-table .user-assignments .tag.department {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    
+    .users-table .user-assignments .tag.more {
+        background: #f3f4f6;
+        color: #6b7280;
+        font-size: 9px;
+        cursor: help;
+    }
+    
+    .users-table .no-assignment {
+        color: #9ca3af;
+        font-size: 12px;
+        font-style: italic;
+    }
+    
+    /* Responsive */
+    @media (max-width: 1024px) {
+        .field-group {
+            flex-direction: column;
+        }
+        .field-group .field-item {
+            min-width: 100%;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .users-table {
+            min-width: 800px;
+        }
+        .field-group .field-item .table-select[multiple] {
+            min-height: 50px;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block dashboard_url %}{% url 'control_dashboard:admin_page' %}{% endblock %}
@@ -18,7 +210,7 @@
     <span class="nav-icon"><i class="fas fa-flag"></i></span>
     <span class="nav-text">Report Creation</span>
 </a></li>  
-<li><a href="{% url 'control_dashboard:report_center' %}"s>
+<li><a href="{% url 'control_dashboard:report_center' %}">
     <span class="nav-icon"><i class="fas fa-flag"></i></span>
     <span class="nav-text">Report Center</span>
 </a></li> 
@@ -46,17 +238,18 @@
         <table class="users-table">
             <thead>
                 <tr>
-                    <th>E-mail</th>
-                    <th>Full Name</th>
-                    <th>Position</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th class="text-center">Action</th>
+                    <th style="min-width: 140px;">E-mail</th>
+                    <th style="min-width: 140px;">Full Name</th>
+                    <th style="min-width: 100px;">Position</th>
+                    <th style="min-width: 100px;">Role</th>
+                    <th style="min-width: 220px;">Department / Branch</th>
+                    <th style="min-width: 80px;">Status</th>
+                    <th style="min-width: 60px;" class="text-center">Action</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td><input type="email" id="newEmail" class="table-input" placeholder="enter email address..." required></td>
+                    <td><input type="email" id="newEmail" class="table-input" placeholder="enter email..." required></td>
                     <td><input type="text" id="newFullName" class="table-input" placeholder="enter full name..." required></td>
                     <td>
                         <select id="newPosition" class="table-select">
@@ -71,6 +264,28 @@
                             <option value="{{ value }}">{{ label }}</option>
                             {% endfor %}
                         </select>
+                    </td>
+                    <td>
+                        <div class="field-group">
+                            <div class="field-item">
+                                <label for="newDepartments">Departments</label>
+                                <select id="newDepartments" class="table-select" multiple>
+                                    {% for department in departments %}
+                                    <option value="{{ department.id }}">{{ department.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <small class="help-text">Hold Ctrl (Win) / Cmd (Mac) to select multiple</small>
+                            </div>
+                            <div class="field-item">
+                                <label for="newBranches">Branches</label>
+                                <select id="newBranches" class="table-select" multiple>
+                                    {% for branch in branches %}
+                                    <option value="{{ branch.id }}">{{ branch.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <small class="help-text">Hold Ctrl (Win) / Cmd (Mac) to select multiple</small>
+                            </div>
+                        </div>
                     </td>
                     <td>
                         <select id="newStatus" class="table-select">
@@ -96,21 +311,54 @@
     <table class="users-table">
         <thead>
             <tr>
-                <th>E-mail</th>
-                <th>Full Name</th>
-                <th>Position</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th class="text-center">Actions</th>
+                <th style="min-width: 160px;">User</th>
+                <th style="min-width: 100px;">Position</th>
+                <th style="min-width: 100px;">Role</th>
+                <th style="min-width: 200px;">Department / Branch</th>
+                <th style="min-width: 80px;">Status</th>
+                <th style="min-width: 60px;" class="text-center">Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for user in users %}
             <tr id="user-row-{{ user.id }}">
-                <td class="font-bold user-email" data-val="{{ user.email }}">{{ user.email }}</td>
-                <td class="user-fullname" data-val="{{ user.full_name|default:'' }}">{{ user.full_name|default:"-" }}</td>
+                <td>
+                    <div class="user-info">
+                        <span class="user-email" data-val="{{ user.email }}">{{ user.email }}</span>
+                        <span class="user-fullname" data-val="{{ user.full_name|default:'' }}">{{ user.full_name|default:"-" }}</span>
+                    </div>
+                </td>
                 <td class="user-position" data-val="{{ user.position }}">{{ user.get_position_display }}</td>
                 <td class="user-role" data-val="{{ user.role }}">{{ user.get_role_display }}</td>
+                <td>
+                    <div class="user-assignments">
+                        {% with departments=user.departments.all %}
+                            {% if departments %}
+                                {% for dept in departments|slice:":3" %}
+                                    <span class="tag department">{{ dept.name }}</span>
+                                {% endfor %}
+                                {% if departments|length > 3 %}
+                                    <span class="tag more" title="{{ departments|join:', ' }}">+{{ departments|length|add:"-3" }} more</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="no-assignment">No departments</span>
+                            {% endif %}
+                        {% endwith %}
+                        <br>
+                        {% with branches=user.branches.all %}
+                            {% if branches %}
+                                {% for branch in branches|slice:":3" %}
+                                    <span class="tag branch">{{ branch.name }}</span>
+                                {% endfor %}
+                                {% if branches|length > 3 %}
+                                    <span class="tag more" title="{{ branches|join:', ' }}">+{{ branches|length|add:"-3" }} more</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="no-assignment">No branches</span>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                </td>
                 <td>
                     <div class="status-toggle-container">
                         <label class="switch">
@@ -154,6 +402,36 @@
         { value: "{{ value }}", label: "{{ label }}" },
         {% endfor %}
     ];
+    
+    // Store departments and branches for inline editing
+    const DEPARTMENTS = [
+        {% for department in departments %}
+        { id: {{ department.id }}, name: "{{ department.name }}" },
+        {% endfor %}
+    ];
+    const BRANCHES = [
+        {% for branch in branches %}
+        { id: {{ branch.id }}, name: "{{ branch.name }}" },
+        {% endfor %}
+    ];
+
+    // ============================================
+    // CSRF TOKEN HELPER
+    // ============================================
+    function getCsrfToken() {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, 10) === 'csrftoken=') {
+                    cookieValue = decodeURIComponent(cookie.substring(10));
+                    break;
+                }
+            }
+        }
+        return cookieValue || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    }
 
     // ============================================
     // USER MANAGEMENT FUNCTIONS
@@ -167,6 +445,14 @@
         const position = document.getElementById('newPosition').value;
         const role = document.getElementById('newRole').value;
         const status = document.getElementById('newStatus').value;
+        
+        // Get selected departments
+        const deptSelect = document.getElementById('newDepartments');
+        const departmentIds = Array.from(deptSelect.selectedOptions).map(opt => parseInt(opt.value));
+        
+        // Get selected branches
+        const branchSelect = document.getElementById('newBranches');
+        const branchIds = Array.from(branchSelect.selectedOptions).map(opt => parseInt(opt.value));
 
         fetch("{% url 'control_dashboard:api_create_user' %}", {
             method: 'POST',
@@ -179,7 +465,9 @@
                 full_name: fullName,
                 position: position,
                 role: role,
-                status: status
+                status: status,
+                department_ids: departmentIds,
+                branch_ids: branchIds
             })
         })
         .then(response => response.json())
@@ -202,29 +490,86 @@
 
         row.classList.add('editing');
 
-        const emailCell = row.querySelector('.user-email');
-        const fullNameCell = row.querySelector('.user-fullname');
+        const userInfoCell = row.querySelector('td:first-child');
         const positionCell = row.querySelector('.user-position');
         const roleCell = row.querySelector('.user-role');
+        const assignCell = row.querySelector('.user-assignments')?.parentElement || row.querySelector('td:nth-child(4)');
         const actionsCell = row.querySelector('.actions-cell');
 
-        const origEmail = emailCell.dataset.val;
-        const origFullName = fullNameCell.dataset.val;
+        const origEmail = row.querySelector('.user-email').dataset.val;
+        const origFullName = row.querySelector('.user-fullname').dataset.val;
         const origPosition = positionCell.dataset.val;
         const origRole = roleCell.dataset.val;
+        
+        // Get current departments and branches from tags
+        const deptTags = row.querySelectorAll('.tag.department');
+        const branchTags = row.querySelectorAll('.tag.branch');
+        const origDepartmentIds = [];
+        const origBranchIds = [];
+        
+        deptTags.forEach(tag => {
+            DEPARTMENTS.forEach(d => {
+                if (d.name === tag.textContent) origDepartmentIds.push(d.id);
+            });
+        });
+        
+        branchTags.forEach(tag => {
+            BRANCHES.forEach(b => {
+                if (b.name === tag.textContent) origBranchIds.push(b.id);
+            });
+        });
 
-        emailCell.innerHTML = `<input type="email" id="edit-email-${userId}" class="table-input" value="${origEmail}" required>`;
-        fullNameCell.innerHTML = `<input type="text" id="edit-fullname-${userId}" class="table-input" value="${origFullName}">`;
+        // Replace user info cell with inputs
+        userInfoCell.innerHTML = `
+            <div class="user-info">
+                <input type="email" id="edit-email-${userId}" class="table-input" value="${origEmail}" required style="margin-bottom:4px;">
+                <input type="text" id="edit-fullname-${userId}" class="table-input" value="${origFullName}" placeholder="Full name">
+            </div>
+        `;
 
+        // Position dropdown
         let positionOptions = POSITIONS.map(opt => 
             `<option value="${opt.value}" ${opt.value === origPosition ? 'selected' : ''}>${opt.label}</option>`
         ).join('');
         positionCell.innerHTML = `<select id="edit-position-${userId}" class="table-select">${positionOptions}</select>`;
 
+        // Role dropdown
         let roleOptions = ROLES.map(opt => 
             `<option value="${opt.value}" ${opt.value === origRole ? 'selected' : ''}>${opt.label}</option>`
         ).join('');
         roleCell.innerHTML = `<select id="edit-role-${userId}" class="table-select">${roleOptions}</select>`;
+
+        // Department and Branch multi-select fields
+        let deptOptions = '';
+        DEPARTMENTS.forEach(d => {
+            const selected = origDepartmentIds.includes(d.id) ? 'selected' : '';
+            deptOptions += `<option value="${d.id}" ${selected}>${d.name}</option>`;
+        });
+        
+        let branchOptions = '';
+        BRANCHES.forEach(b => {
+            const selected = origBranchIds.includes(b.id) ? 'selected' : '';
+            branchOptions += `<option value="${b.id}" ${selected}>${b.name}</option>`;
+        });
+
+        assignCell.innerHTML = `
+            <div class="field-group" style="gap: 6px;">
+                <div class="field-item" style="min-width: 120px;">
+                    <label style="font-size:10px;color:#6b7280;">Departments</label>
+                    <select id="edit-departments-${userId}" class="table-select" multiple style="min-height:50px;font-size:12px;">
+                        ${deptOptions}
+                    </select>
+                    <small style="font-size:9px;color:#9ca3af;">Ctrl/Cmd + click to multi-select</small>
+                </div>
+                <div class="field-item" style="min-width: 120px;">
+                    <label style="font-size:10px;color:#6b7280;">Branches</label>
+                    <select id="edit-branches-${userId}" class="table-select" multiple style="min-height:50px;font-size:12px;">
+                        ${branchOptions}
+                    </select>
+                    <small style="font-size:9px;color:#9ca3af;">Ctrl/Cmd + click to multi-select</small>
+                </div>
+            </div>
+        `;
 
         actionsCell.innerHTML = `
             <button class="btn-create" onclick="submitEditUserInline('${userId}')" style="padding: 6px 12px; font-size: 11px;">
@@ -236,43 +581,63 @@
         `;
     }
 
-    function submitEditUserInline(userId) {
-        const email = document.getElementById(`edit-email-${userId}`).value;
-        const fullName = document.getElementById(`edit-fullname-${userId}`).value;
-        const position = document.getElementById(`edit-position-${userId}`).value;
-        const role = document.getElementById(`edit-role-${userId}`).value;
+function submitEditUserInline(userId) {
+    const email = document.getElementById(`edit-email-${userId}`).value;
+    const fullName = document.getElementById(`edit-fullname-${userId}`).value;
+    const position = document.getElementById(`edit-position-${userId}`).value;
+    const role = document.getElementById(`edit-role-${userId}`).value;
+    
+    const deptSelect = document.getElementById(`edit-departments-${userId}`);
+    const departmentIds = Array.from(deptSelect.selectedOptions).map(opt => parseInt(opt.value));
+    
+    const branchSelect = document.getElementById(`edit-branches-${userId}`);
+    const branchIds = Array.from(branchSelect.selectedOptions).map(opt => parseInt(opt.value));
 
-        const row = document.getElementById(`user-row-${userId}`);
-        const statusCheckbox = row.querySelector('input[type="checkbox"]');
-        const status = statusCheckbox.checked ? 'active' : 'inactive';
+    const row = document.getElementById(`user-row-${userId}`);
+    const statusCheckbox = row.querySelector('input[type="checkbox"]');
+    const status = statusCheckbox.checked ? 'active' : 'inactive';
 
-        fetch("{% url 'control_dashboard:api_edit_user' 0 %}".replace('0', userId), {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCsrfToken()
-            },
-            body: JSON.stringify({
-                email: email,
-                full_name: fullName,
-                position: position,
-                role: role,
-                status: status
-            })
+    console.log('Saving user:', {
+        userId,
+        email,
+        fullName,
+        position,
+        role,
+        status,
+        departmentIds,
+        branchIds
+    });
+
+    fetch("{% url 'control_dashboard:api_edit_user' 0 %}".replace('0', userId), {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            email: email,
+            full_name: fullName,
+            position: position,
+            role: role,
+            status: status,
+            department_ids: departmentIds,
+            branch_ids: branchIds
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Error: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred. Please try again.');
-        });
-    }
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Response:', data);
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred. Please try again. Check console for details.');
+    });
+}
 
     function toggleStatus(userId, isChecked) {
         const status = isChecked ? 'active' : 'inactive';

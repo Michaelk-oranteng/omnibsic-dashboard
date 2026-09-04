@@ -44,6 +44,7 @@
     .progress-ring-item .ring-value.blue { color: #0066cc; }
     .progress-ring-item .ring-value.orange { color: #f59e0b; }
     .progress-ring-item .ring-value.red { color: #ef4444; }
+    .progress-ring-item .ring-value.purple { color: #8b5cf6; }
     
     /* Mini progress ring using SVG */
     .mini-ring {
@@ -75,37 +76,7 @@
     .frequency-tag.monthly { background: #fef3c7; color: #92400e; }
     .frequency-tag.quarterly { background: #fce7f3; color: #9d174d; }
     .frequency-tag.bi_annual { background: #e0e7ff; color: #3730a3; }
-    .frequency-tag.one_off { background: #f3f4f6; color: #374151; }
-    
-    /* Status badges with colors */
-    .status-badge.completed {
-        background: #d1fae5;
-        color: #065f46;
-    }
-    .status-badge.on-track {
-        background: #dbeafe;
-        color: #1e40af;
-    }
-    .status-badge.in-progress {
-        background: #fef3c7;
-        color: #92400e;
-    }
-    .status-badge.at-risk {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-    .status-badge.success {
-        background: #d1fae5;
-        color: #065f46;
-    }
-    .status-badge.warning {
-        background: #fef3c7;
-        color: #92400e;
-    }
-    .status-badge.danger {
-        background: #fee2e2;
-        color: #991b1b;
-    }
+    .frequency-tag.annual { background: #f3f4f6; color: #374151; }
     
     /* Progress bar enhancements */
     .progress-cell {
@@ -140,6 +111,35 @@
     .shortcut-icon-box.info-box {
         background: #dbeafe;
         color: #2563eb;
+    }
+    
+    /* Branch/Department tags - Only shows user's assigned branches/depts */
+    .branch-dept-tag {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 10px;
+        margin: 1px 2px;
+        white-space: nowrap;
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .branch-dept-tag.branch {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    
+    .branch-dept-tag.department {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    
+    .branch-dept-tag.no-assignment {
+        background: #f3f4f6;
+        color: #9ca3af;
+        font-style: italic;
     }
     
     /* Summary footer styles */
@@ -183,11 +183,108 @@
     .summary-item .summary-value.blue { color: #0066cc; }
     .summary-item .summary-value.orange { color: #f59e0b; }
     .summary-item .summary-value.red { color: #ef4444; }
+    .summary-item .summary-value.purple { color: #8b5cf6; }
     
     .summary-divider {
         width: 1px;
         height: 40px;
         background: #e5e7eb;
+    }
+    
+    /* Frequency Filter Buttons */
+    .frequency-filter-group {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+    }
+    
+    .frequency-filter-btn {
+        padding: 4px 14px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+        color: #6b7280;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    .frequency-filter-btn:hover {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+        transform: translateY(-1px);
+    }
+    
+    .frequency-filter-btn.active {
+        background: #0066cc;
+        color: white;
+        border-color: #0066cc;
+        box-shadow: 0 2px 8px rgba(0, 102, 204, 0.25);
+    }
+    
+    .frequency-filter-btn.active:hover {
+        background: #004e8c;
+        border-color: #004e8c;
+    }
+    
+    .frequency-filter-btn .badge-count {
+        display: inline-block;
+        background: rgba(255,255,255,0.2);
+        color: inherit;
+        font-size: 9px;
+        padding: 1px 6px;
+        border-radius: 10px;
+        margin-left: 4px;
+    }
+    
+    .frequency-filter-btn.active .badge-count {
+        background: rgba(255,255,255,0.2);
+        color: white;
+    }
+    
+    .frequency-filter-btn .badge-count.dark {
+        background: #e5e7eb;
+        color: #6b7280;
+    }
+    
+    .frequency-filter-btn.active .badge-count.dark {
+        background: rgba(255,255,255,0.2);
+        color: white;
+    }
+    
+    /* Panel header adjustments */
+    .panel-card-header {
+        flex-wrap: wrap;
+    }
+    
+    .panel-card-header .header-left {
+        flex: 1;
+        min-width: 200px;
+    }
+    
+    .panel-card-header .header-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    
+    /* Progress bar mini for footer */
+    .progress-bar-mini {
+        width: 100%;
+        height: 4px;
+        background: #e5e7eb;
+        border-radius: 2px;
+        overflow: hidden;
+    }
+    
+    .progress-bar-mini .progress-bar-fill {
+        height: 100%;
+        border-radius: 2px;
+        transition: width 0.8s ease;
     }
     
     /* Responsive */
@@ -238,12 +335,20 @@
         .progress-bar-small {
             width: 100%;
         }
-        .status-badge {
-            font-size: 10px;
-            padding: 1px 8px;
+        .frequency-filter-group {
+            justify-content: center;
         }
-        .analytics-metrics-grid {
-            grid-template-columns: 1fr 1fr;
+        .frequency-filter-btn {
+            font-size: 10px;
+            padding: 3px 10px;
+        }
+        .panel-card-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .panel-card-header .header-right {
+            width: 100%;
+            justify-content: space-between;
         }
     }
     
@@ -266,6 +371,13 @@
         }
         .progress-ring-item {
             justify-content: center;
+        }
+        .frequency-filter-group {
+            gap: 4px;
+        }
+        .frequency-filter-btn {
+            font-size: 9px;
+            padding: 2px 8px;
         }
     }
 </style>
@@ -415,38 +527,72 @@
 
 <!-- Split Layout: Checklist + Quick Actions -->
 <div class="dashboard-split-layout">
-    <!-- Activity Checklist Panel - Enhanced -->
+    <!-- Activity Checklist Panel -->
     <div class="dashboard-panel-card">
         <div class="panel-card-header">
-            <div>
+            <div class="header-left">
                 <h4>Activity Checklist</h4>
-                <div class="panel-subtitle">
-                    <span class="badge-count">Month: {{ overall_month_progress|default:0 }}%</span>
-                    <span class="badge-count">Year: {{ overall_year_progress|default:0 }}%</span>
+                <!-- Frequency Filter Buttons - Updated: One-Off → Annual -->
+                <div class="frequency-filter-group" id="frequencyFilterGroup">
+                    <button class="frequency-filter-btn active" data-frequency="all" onclick="filterByFrequency('all')">
+                        All <span class="badge-count dark">{{ all_checklists_count|default:0 }}</span>
+                    </button>
+                    <button class="frequency-filter-btn" data-frequency="daily" onclick="filterByFrequency('daily')">
+                        Daily <span class="badge-count dark" id="dailyCount">0</span>
+                    </button>
+                    <button class="frequency-filter-btn" data-frequency="weekly" onclick="filterByFrequency('weekly')">
+                        Weekly <span class="badge-count dark" id="weeklyCount">0</span>
+                    </button>
+                    <button class="frequency-filter-btn" data-frequency="monthly" onclick="filterByFrequency('monthly')">
+                        Monthly <span class="badge-count dark" id="monthlyCount">0</span>
+                    </button>
+                    <button class="frequency-filter-btn" data-frequency="quarterly" onclick="filterByFrequency('quarterly')">
+                        Quarterly <span class="badge-count dark" id="quarterlyCount">0</span>
+                    </button>
+                    <button class="frequency-filter-btn" data-frequency="bi-annual" onclick="filterByFrequency('bi-annual')">
+                        Bi-Annual <span class="badge-count dark" id="biAnnualCount">0</span>
+                    </button>
+                    <button class="frequency-filter-btn" data-frequency="annual" onclick="filterByFrequency('annual')">
+                        Annual <span class="badge-count dark" id="annualCount">0</span>
+                    </button>
                 </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <span class="badge-count">{{ daily_checklists|length }} Daily Controls</span>
+            <div class="header-right">
+                <span class="badge-count" id="visibleCount">{{ daily_checklists|length }} visible</span>
                 <a href="{% url 'control_dashboard:member_checklist' %}" class="btn-view">
                     <i class="fas fa-arrow-right"></i> View All
                 </a>
             </div>
         </div>
         
-        <table class="users-table">
+        <table class="users-table" id="checklistTable">
             <thead>
                 <tr>
-                    <th style="width: 25%;">Activity / Task</th>
+                    <th style="width: 18%;">Department / Branch</th>
+                    <th style="width: 22%;">Activity / Task</th>
                     <th style="width: 12%;">Frequency</th>
-                    <th style="width: 18%;">Month Progress</th>
-                    <th style="width: 18%;">Year Progress</th>
-                    <th style="width: 12%;">Status</th>
-                    <th style="width: 15%;">Next Due</th>
+                    <th style="width: 24%;">Month-to-Date Progress</th>
+                    <th style="width: 24%;">Year-to-Date Progress</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="checklistTableBody">
                 {% for checklist in daily_checklists %}
-                <tr>
+                <tr data-frequency="{{ checklist.frequency }}" class="checklist-row">
+                    <!-- Department / Branch - Shows ONLY user-specific assigned branches/departments -->
+                    <td>
+                        <div style="display: flex; flex-wrap: wrap; gap: 2px;">
+                            {% for dept in checklist.user_departments %}
+                            <span class="branch-dept-tag department">{{ dept.name }}</span>
+                            {% endfor %}
+                            {% for branch in checklist.user_branches %}
+                            <span class="branch-dept-tag branch">{{ branch.name }}</span>
+                            {% endfor %}
+                            {% if not checklist.user_branches and not checklist.user_departments %}
+                            <span class="branch-dept-tag no-assignment">Not assigned</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <!-- Activity / Task -->
                     <td>
                         <span class="font-bold block-element">{{ checklist.name }}</span>
                         <span class="sub-table-desc">
@@ -458,7 +604,9 @@
                             {% endif %}
                         </span>
                     </td>
+                    <!-- Frequency -->
                     <td><span class="frequency-tag {{ checklist.frequency }}">{{ checklist.get_frequency_display }}</span></td>
+                    <!-- Month-to-Date Progress -->
                     <td>
                         <div class="progress-cell">
                             <div class="progress-bar-small">
@@ -470,6 +618,7 @@
                             {{ checklist.month_actual|default:0 }}/{{ checklist.month_expected|default:0 }} done
                         </div>
                     </td>
+                    <!-- Year-to-Date Progress -->
                     <td>
                         <div class="progress-cell">
                             <div class="progress-bar-small">
@@ -481,30 +630,12 @@
                             {{ checklist.year_actual|default:0 }}/{{ checklist.year_expected|default:0 }} done
                         </div>
                     </td>
-                    <td>
-                        {% with status=checklist.status|default:"in_progress" %}
-                            <span class="status-badge {{ status }}">
-                                <i class="fas fa-{% if status == 'completed' %}check-circle{% elif status == 'on_track' %}chart-line{% elif status == 'in_progress' %}clock{% else %}exclamation-circle{% endif %}"></i>
-                                {% if status == 'completed' %}Completed{% elif status == 'on_track' %}On Track{% elif status == 'in_progress' %}In Progress{% else %}At Risk{% endif %}
-                            </span>
-                        {% endwith %}
-                    </td>
-                    <td>
-                        {% if checklist.frequency != 'one_off' %}
-                            <span style="font-size: 12px; color: #6b7280;">
-                                <i class="far fa-calendar-alt"></i>
-                                {{ checklist.next_due_date|default:"-" }}
-                            </span>
-                        {% else %}
-                            <span style="font-size: 12px; color: #9ca3af;">As needed</span>
-                        {% endif %}
-                    </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center">
+                    <td colspan="5" class="text-center">
                         <i class="fas fa-check-circle"></i>
-                        No daily checklists assigned
+                        No checklists assigned
                     </td>
                 </tr>
                 {% endfor %}
@@ -601,6 +732,71 @@
                 el.style.width = width;
             }, 100);
         });
+        
+        // Update frequency counts
+        updateFrequencyCounts();
     });
+
+    // ============================================
+    // FREQUENCY FILTER FUNCTIONS
+    // ============================================
+
+    function filterByFrequency(frequency) {
+        // Update active button
+        const buttons = document.querySelectorAll('.frequency-filter-btn');
+        buttons.forEach(function(btn) {
+            btn.classList.remove('active');
+            if (btn.dataset.frequency === frequency) {
+                btn.classList.add('active');
+            }
+        });
+
+        // Filter rows
+        const rows = document.querySelectorAll('#checklistTableBody .checklist-row');
+        let visibleCount = 0;
+
+        rows.forEach(function(row) {
+            const rowFrequency = row.dataset.frequency;
+            if (frequency === 'all' || rowFrequency === frequency) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Update visible count
+        const visibleCountEl = document.getElementById('visibleCount');
+        if (visibleCountEl) {
+            visibleCountEl.textContent = visibleCount + ' visible';
+        }
+    }
+
+    function updateFrequencyCounts() {
+        const rows = document.querySelectorAll('#checklistTableBody .checklist-row');
+        const counts = {
+            daily: 0,
+            weekly: 0,
+            monthly: 0,
+            quarterly: 0,
+            'bi-annual': 0,
+            annual: 0
+        };
+
+        rows.forEach(function(row) {
+            const freq = row.dataset.frequency;
+            if (counts.hasOwnProperty(freq)) {
+                counts[freq]++;
+            }
+        });
+
+        // Update badge counts
+        document.getElementById('dailyCount').textContent = counts.daily;
+        document.getElementById('weeklyCount').textContent = counts.weekly;
+        document.getElementById('monthlyCount').textContent = counts.monthly;
+        document.getElementById('quarterlyCount').textContent = counts.quarterly;
+        document.getElementById('biAnnualCount').textContent = counts['bi-annual'];
+        document.getElementById('annualCount').textContent = counts.annual;
+    }
 </script>
 {% endblock %}

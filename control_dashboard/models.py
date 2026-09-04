@@ -42,6 +42,21 @@ class UserProfile(models.Model):
     position = models.CharField(max_length=50, choices=POSITION_CHOICES, default='member')
     role = models.CharField(max_length=50, choices=ROLE_CHOICES, default='member')
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='active')
+    
+    # ============================================
+    # DEPARTMENT AND BRANCH ASSIGNMENTS (Many-to-Many)
+    # ============================================
+    departments = models.ManyToManyField(
+        'Department', 
+        blank=True, 
+        related_name='user_profiles'  # Fixed: Changed from 'users' to avoid clash
+    )
+    branches = models.ManyToManyField(
+        'Branch', 
+        blank=True, 
+        related_name='user_profiles'  # Fixed: Changed from 'users' to avoid clash
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -107,9 +122,55 @@ class UserProfile(models.Model):
         
         return user
     
+    def get_department_names(self):
+        """Get comma-separated department names."""
+        return ', '.join([d.name for d in self.departments.all()])
+    
+    def get_branch_names(self):
+        """Get comma-separated branch names."""
+        return ', '.join([b.name for b in self.branches.all()])
+    
     class Meta:
         db_table = 'user_profiles'
         ordering = ['full_name']
+
+
+# ============================================
+# BRANCH AND DEPARTMENT MODELS
+# ============================================
+
+class Branch(models.Model):
+    """Model for storing bank branches."""
+    name = models.CharField(max_length=100, unique=True)
+    code = models.CharField(max_length=20, unique=True, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        db_table = 'branches'
+        ordering = ['name']
+        verbose_name_plural = 'Branches'
+
+
+class Department(models.Model):
+    """Model for storing bank departments."""
+    name = models.CharField(max_length=100, unique=True)
+    code = models.CharField(max_length=20, unique=True, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        db_table = 'departments'
+        ordering = ['name']
+        verbose_name_plural = 'Departments'
 
 
 # ============================================
@@ -250,7 +311,6 @@ class Checklist(models.Model):
         ('quarterly', 'Quarterly'),
         ('bi-annual', 'Bi-Annual'),
         ('annual', 'Annual'),
-        ('one-off', 'One-off'),
     ]
     
     ASSIGNMENT_CHOICES = [
@@ -269,6 +329,8 @@ class Checklist(models.Model):
     created_by = models.ForeignKey('UserProfile', on_delete=models.SET_NULL, null=True, related_name='created_checklists')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    assigned_branches = models.ManyToManyField('Branch', blank=True, related_name='checklist_assignments')
+    assigned_departments = models.ManyToManyField('Department', blank=True, related_name='checklist_assignments')
     
     def __str__(self):
         return self.name
@@ -301,7 +363,7 @@ class Checklist(models.Model):
             'monthly': 30,
             'quarterly': 91,
             'bi-annual': 182,
-            'one-off': 365,  # One-off doesn't repeat
+            'annual': 365,
         }
         return frequency_map.get(self.frequency, 7)
     
@@ -323,9 +385,10 @@ class Checklist(models.Model):
         if end_date < start_date:
             start_date, end_date = end_date, start_date
         
-        # For one-off, return 1 if the date range includes any date
-        if self.frequency == 'one-off':
-            return 1
+        # For annual frequency, count the number of years
+        if self.frequency == 'annual':
+            years = end_date.year - start_date.year + 1
+            return years
         
         # For daily frequency, count only weekdays (Monday to Friday)
         if self.frequency == 'daily':
@@ -479,7 +542,7 @@ class Checklist(models.Model):
         """
         from datetime import timedelta
         
-        if self.frequency == 'one-off':
+        if self.frequency == 'one-off' or self.frequency == 'annual':
             return None
         
         # Get the last log for this checklist and user
@@ -678,36 +741,6 @@ class ReportSubmission(models.Model):
     class Meta:
         db_table = 'report_submissions'
         ordering = ['-submission_date']
-
-
-class Branch(models.Model):
-    """Model for storing branch/department names."""
-    name = models.CharField(max_length=200, unique=True)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    def __str__(self):
-        return self.name
-    
-    class Meta:
-        db_table = 'branches'
-        ordering = ['name']
-
-
-class ExceptionCategory(models.Model):
-    """Model for storing exception categories."""
-    name = models.CharField(max_length=200, unique=True)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    def __str__(self):
-        return self.name
-    
-    class Meta:
-        db_table = 'exception_categories'
-        ordering = ['name']
 
 
 class ActivityLog(models.Model):

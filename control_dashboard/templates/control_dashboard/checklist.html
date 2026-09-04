@@ -5,6 +5,145 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'stylesheets/checklist.css' %}" type="text/css">
+<style>
+    /* Additional styles for branch/department assignment */
+    .assignment-group {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-top: 8px;
+        background: #fafbfc;
+    }
+    
+    .assignment-group .assignment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    
+    .assignment-group .assignment-header label {
+        font-weight: 600;
+        font-size: 13px;
+        color: #1a2332;
+        margin: 0;
+    }
+    
+    .assignment-group .assignment-header label .optional-badge {
+        font-weight: 400;
+        font-size: 11px;
+        color: #9ca3af;
+        margin-left: 6px;
+    }
+    
+    .assignment-group .assignment-header .badge-count {
+        font-size: 11px;
+        background: #e5e7eb;
+        padding: 2px 10px;
+        border-radius: 12px;
+        color: #6b7280;
+    }
+    
+    .assignment-group select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 13px;
+        font-family: 'Poppins', sans-serif;
+        background: white;
+        color: #1a2332;
+        transition: border-color 0.3s ease;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 36px;
+        cursor: pointer;
+    }
+    
+    .assignment-group select:focus {
+        border-color: #0066cc;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.08);
+    }
+    
+    .assignment-group select[multiple] {
+        height: 100px;
+        background-image: none;
+        padding-right: 12px;
+    }
+    
+    .assignment-group select[multiple] option {
+        padding: 6px 8px;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .assignment-group select[multiple] option:checked {
+        background: #0066cc;
+        color: white;
+    }
+    
+    .assignment-group .help-text {
+        font-size: 11px;
+        color: #9ca3af;
+        margin-top: 4px;
+        display: block;
+    }
+    
+    .assignment-toggle-group {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+    
+    .assignment-toggle-btn {
+        padding: 4px 16px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #6b7280;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    .assignment-toggle-btn:hover {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+    }
+    
+    .assignment-toggle-btn.active {
+        background: #0066cc;
+        color: white;
+        border-color: #0066cc;
+    }
+    
+    .assignment-toggle-btn .count {
+        display: inline-block;
+        background: rgba(0,0,0,0.1);
+        font-size: 10px;
+        padding: 0 6px;
+        border-radius: 10px;
+        margin-left: 4px;
+    }
+    
+    .assignment-toggle-btn.active .count {
+        background: rgba(255,255,255,0.2);
+    }
+    
+    .optional-field .form-control {
+        border-style: dashed;
+    }
+    
+    .optional-field .form-control:focus {
+        border-style: solid;
+    }
+</style>
 {% endblock %}
 
 {% block dashboard_url %}{% url 'control_dashboard:admin_page' %}{% endblock %}
@@ -78,6 +217,7 @@
                     </select>
                 </div>
 
+                <!-- Assignment Target -->
                 <div class="form-group">
                     <label for="checklist-assignment">
                         <i class="fas fa-users"></i> Assignment Target <span class="required">*</span>
@@ -90,17 +230,77 @@
                     </select>
                 </div>
 
+                <!-- Specific Users -->
                 <div id="individual-users-wrapper" style="display: none;">
-                    <div class="form-group">
-                        <label for="checklist-specific-users">
-                            <i class="fas fa-user-check"></i> Select Members <span class="required">*</span>
-                        </label>
+                    <div class="assignment-group">
+                        <div class="assignment-header">
+                            <label><i class="fas fa-user-check"></i> Select Members <span class="required">*</span></label>
+                            <span class="badge-count">{{ users|length }} users</span>
+                        </div>
                         <select id="checklist-specific-users" class="form-control" multiple>
                             {% for user in users %}
                             <option value="{{ user.id }}">{{ user.full_name|default:user.email }} ({{ user.get_position_display }})</option>
                             {% endfor %}
                         </select>
                         <small class="help-text">Hold Ctrl (Win) / Cmd (Mac) to select multiple users</small>
+                    </div>
+                </div>
+
+                <!-- Department Assignment - Optional -->
+                <div class="form-group optional-field">
+                    <label for="department-assignment">
+                        <i class="fas fa-sitemap"></i> Department Assignment
+                        <span class="optional-badge">(Optional)</span>
+                    </label>
+                    <select id="department-assignment" class="form-control" onchange="toggleDepartmentFields()">
+                        <option value="none">None</option>
+                        <option value="all">All Departments</option>
+                        <option value="specific">Select Specific Departments</option>
+                    </select>
+                </div>
+
+                <!-- Specific Departments -->
+                <div id="department-select-wrapper" style="display: none;">
+                    <div class="assignment-group">
+                        <div class="assignment-header">
+                            <label><i class="fas fa-building"></i> Select Departments</label>
+                            <span class="badge-count">{{ departments|length }} departments</span>
+                        </div>
+                        <select id="checklist-departments" class="form-control" multiple>
+                            {% for department in departments %}
+                            <option value="{{ department.id }}">{{ department.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="help-text">Hold Ctrl (Win) / Cmd (Mac) to select multiple departments</small>
+                    </div>
+                </div>
+
+                <!-- Branch Assignment - Optional -->
+                <div class="form-group optional-field">
+                    <label for="branch-assignment">
+                        <i class="fas fa-store"></i> Branch Assignment
+                        <span class="optional-badge">(Optional)</span>
+                    </label>
+                    <select id="branch-assignment" class="form-control" onchange="toggleBranchFields()">
+                        <option value="none">None</option>
+                        <option value="all">All Branches</option>
+                        <option value="specific">Select Specific Branches</option>
+                    </select>
+                </div>
+
+                <!-- Specific Branches -->
+                <div id="branch-select-wrapper" style="display: none;">
+                    <div class="assignment-group">
+                        <div class="assignment-header">
+                            <label><i class="fas fa-store"></i> Select Branches</label>
+                            <span class="badge-count">{{ branches|length }} branches</span>
+                        </div>
+                        <select id="checklist-branches" class="form-control" multiple>
+                            {% for branch in branches %}
+                            <option value="{{ branch.id }}">{{ branch.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="help-text">Hold Ctrl (Win) / Cmd (Mac) to select multiple branches</small>
                     </div>
                 </div>
             </div>
@@ -226,23 +426,54 @@
         wrapper.style.display = (val === 'specific') ? 'block' : 'none';
     }
 
+    function toggleDepartmentFields() {
+        const val = document.getElementById('department-assignment').value;
+        const wrapper = document.getElementById('department-select-wrapper');
+        wrapper.style.display = (val === 'specific') ? 'block' : 'none';
+    }
+
+    function toggleBranchFields() {
+        const val = document.getElementById('branch-assignment').value;
+        const wrapper = document.getElementById('branch-select-wrapper');
+        wrapper.style.display = (val === 'specific') ? 'block' : 'none';
+    }
+
     function resetForm() {
         document.getElementById('checklist-name').value = '';
         document.getElementById('checklist-tasks').value = '';
         document.getElementById('checklist-frequency').value = 'weekly';
         document.getElementById('checklist-assignment').value = 'all';
+        document.getElementById('department-assignment').value = 'none';
+        document.getElementById('branch-assignment').value = 'none';
         
+        // Reset users
         const userSelect = document.getElementById('checklist-specific-users');
         if (userSelect) {
             Array.from(userSelect.options).forEach(opt => opt.selected = false);
         }
+        
+        // Reset departments
+        const deptSelect = document.getElementById('checklist-departments');
+        if (deptSelect) {
+            Array.from(deptSelect.options).forEach(opt => opt.selected = false);
+        }
+        
+        // Reset branches
+        const branchSelect = document.getElementById('checklist-branches');
+        if (branchSelect) {
+            Array.from(branchSelect.options).forEach(opt => opt.selected = false);
+        }
+        
+        // Hide all wrappers
+        document.getElementById('individual-users-wrapper').style.display = 'none';
+        document.getElementById('department-select-wrapper').style.display = 'none';
+        document.getElementById('branch-select-wrapper').style.display = 'none';
         
         document.getElementById('form-title').textContent = 'Create New Activity';
         document.getElementById('formStatus').textContent = 'New';
         document.getElementById('formStatus').className = 'status-badge new';
         document.getElementById('saveBtnText').textContent = 'Create Activity';
         currentChecklistId = null;
-        toggleUserAssignmentField();
         
         // Remove edit highlight from any activity items
         document.querySelectorAll('.activity-item').forEach(item => {
@@ -292,17 +523,54 @@
         document.getElementById('checklist-frequency').value = checklist.frequency;
         document.getElementById('checklist-tasks').value = checklist.tasks.map(t => t.description).join('\n');
 
+        // Assignment Target
         const assignmentSelect = document.getElementById('checklist-assignment');
-        assignmentSelect.value = checklist.assignment_target;
-        
+        assignmentSelect.value = checklist.assignment_target || 'all';
         toggleUserAssignmentField();
 
-        const specificUsersSelect = document.getElementById('checklist-specific-users');
-        if (specificUsersSelect) {
-            Array.from(specificUsersSelect.options).forEach(option => {
-                const userId = parseInt(option.value);
-                option.selected = (checklist.assignment_target === 'specific' && checklist.assigned_users && checklist.assigned_users.includes(userId));
+        // Department Assignment
+        const deptAssignment = document.getElementById('department-assignment');
+        if (checklist.assigned_departments && checklist.assigned_departments.length > 0) {
+            deptAssignment.value = 'specific';
+            toggleDepartmentFields();
+            const deptSelect = document.getElementById('checklist-departments');
+            Array.from(deptSelect.options).forEach(option => {
+                option.selected = checklist.assigned_departments.includes(parseInt(option.value));
             });
+        } else if (checklist.assignment_target === 'all' || checklist.assignment_target === 'hc' || checklist.assignment_target === 'cc') {
+            deptAssignment.value = 'all';
+            toggleDepartmentFields();
+        } else {
+            deptAssignment.value = 'none';
+            toggleDepartmentFields();
+        }
+
+        // Branch Assignment
+        const branchAssignment = document.getElementById('branch-assignment');
+        if (checklist.assigned_branches && checklist.assigned_branches.length > 0) {
+            branchAssignment.value = 'specific';
+            toggleBranchFields();
+            const branchSelect = document.getElementById('checklist-branches');
+            Array.from(branchSelect.options).forEach(option => {
+                option.selected = checklist.assigned_branches.includes(parseInt(option.value));
+            });
+        } else if (checklist.assignment_target === 'all' || checklist.assignment_target === 'hc' || checklist.assignment_target === 'cc') {
+            branchAssignment.value = 'all';
+            toggleBranchFields();
+        } else {
+            branchAssignment.value = 'none';
+            toggleBranchFields();
+        }
+
+        // Specific Users
+        if (checklist.assignment_target === 'specific') {
+            const specificUsersSelect = document.getElementById('checklist-specific-users');
+            if (specificUsersSelect && checklist.assigned_users) {
+                Array.from(specificUsersSelect.options).forEach(option => {
+                    const userId = parseInt(option.value);
+                    option.selected = checklist.assigned_users.includes(userId);
+                });
+            }
         }
 
         document.getElementById('form-title').textContent = 'Edit Activity';
@@ -314,92 +582,161 @@
     // ============================================
     // SAVE / UPDATE CHECKLIST
     // ============================================
-    function saveChecklist() {
-        const name = document.getElementById('checklist-name').value.trim();
-        const tasksText = document.getElementById('checklist-tasks').value.trim();
-        const frequency = document.getElementById('checklist-frequency').value;
-        const assignmentTarget = document.getElementById('checklist-assignment').value;
+function saveChecklist() {
+    const name = document.getElementById('checklist-name').value.trim();
+    const tasksText = document.getElementById('checklist-tasks').value.trim();
+    const frequency = document.getElementById('checklist-frequency').value;
+    const assignmentTarget = document.getElementById('checklist-assignment').value;
+    const departmentAssignment = document.getElementById('department-assignment').value;
+    const branchAssignment = document.getElementById('branch-assignment').value;
+    
+    const tasks = tasksText.split('\n')
+        .map(t => t.trim())
+        .filter(t => t.length > 0)
+        .map(t => ({ description: t }));
+
+    if (!name) {
+        showToast('Please enter an activity name.', 'error');
+        document.getElementById('checklist-name').focus();
+        return;
+    }
+    if (tasks.length === 0) {
+        showToast('Please add at least one task.', 'error');
+        document.getElementById('checklist-tasks').focus();
+        return;
+    }
+
+    let assignedUsers = [];
+    let assignedDepartments = [];
+    let assignedBranches = [];
+
+    // Get assigned users
+    if (assignmentTarget === 'specific') {
+        const specificUsersSelect = document.getElementById('checklist-specific-users');
+        assignedUsers = Array.from(specificUsersSelect.selectedOptions).map(opt => parseInt(opt.value));
         
-        const tasks = tasksText.split('\n')
-            .map(t => t.trim())
-            .filter(t => t.length > 0)
-            .map(t => ({ description: t }));
-
-        if (!name) {
-            showToast('Please enter an activity name.', 'error');
-            document.getElementById('checklist-name').focus();
+        if (assignedUsers.length === 0) {
+            showToast('Please select at least one individual user.', 'error');
+            specificUsersSelect.focus();
             return;
         }
-        if (tasks.length === 0) {
-            showToast('Please add at least one task.', 'error');
-            document.getElementById('checklist-tasks').focus();
+    } else if (assignmentTarget === 'all') {
+        // "All Personnel" - get ALL user IDs from the select
+        const userSelect = document.getElementById('checklist-specific-users');
+        const allOptions = Array.from(userSelect.options);
+        assignedUsers = allOptions.map(opt => parseInt(opt.value));
+        console.log('📌 All Personnel selected - sending ALL user IDs:', assignedUsers);
+    }
+    // For 'hc' and 'cc', the backend handles it, so we send empty array
+
+    // ============================================
+    // HANDLE DEPARTMENTS - Same logic as users
+    // ============================================
+    if (departmentAssignment === 'all') {
+        // "All Departments" - get ALL department IDs from the select
+        const deptSelect = document.getElementById('checklist-departments');
+        const allOptions = Array.from(deptSelect.options);
+        assignedDepartments = allOptions.map(opt => parseInt(opt.value));
+        console.log('📌 All Departments selected - sending ALL department IDs:', assignedDepartments);
+    } else if (departmentAssignment === 'specific') {
+        const deptSelect = document.getElementById('checklist-departments');
+        assignedDepartments = Array.from(deptSelect.selectedOptions).map(opt => parseInt(opt.value));
+        if (assignedDepartments.length === 0) {
+            showToast('Please select at least one department.', 'error');
+            deptSelect.focus();
             return;
         }
-
-        let assignedUsers = [];
-        if (assignmentTarget === 'specific') {
-            const specificUsersSelect = document.getElementById('checklist-specific-users');
-            assignedUsers = Array.from(specificUsersSelect.selectedOptions).map(opt => parseInt(opt.value));
-            
-            if (assignedUsers.length === 0) {
-                showToast('Please select at least one individual user.', 'error');
-                specificUsersSelect.focus();
-                return;
-            }
-        }
-
-        const payload = {
-            name: name,
-            description: '',
-            frequency: frequency,
-            assignment_target: assignmentTarget,
-            assigned_users: assignedUsers,
-            tasks: tasks
-        };
-
-        let url = '/adminboard/api/checklists/create/';
-        let method = 'POST';
-        if (currentChecklistId) {
-            url = `/adminboard/api/checklists/${currentChecklistId}/edit/`;
-            method = 'PUT';
-        }
-
-        const btn = document.getElementById('mainSaveBtn');
-        const originalText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-
-        fetch(url, {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCsrfToken()
-            },
-            body: JSON.stringify(payload)
-        })
-        .then(response => {
-            if (!response.ok) return response.json().then(data => { throw new Error(data.error); });
-            return response.json();
-        })
-        .then(data => {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-            if (data.success) {
-                showToast(currentChecklistId ? 'Activity updated successfully!' : 'Activity created successfully!');
-                setTimeout(() => window.location.reload(), 1000);
-            } else {
-                showToast('Error: ' + data.error, 'error');
-            }
-        })
-        .catch(error => {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-            console.error('Error:', error);
-            showToast('An error occurred while saving', 'error');
-        });
+    } else {
+        // 'none' - send empty array
+        assignedDepartments = [];
     }
 
     // ============================================
+    // HANDLE BRANCHES - Same logic as users
+    // ============================================
+    if (branchAssignment === 'all') {
+        // "All Branches" - get ALL branch IDs from the select
+        const branchSelect = document.getElementById('checklist-branches');
+        const allOptions = Array.from(branchSelect.options);
+        assignedBranches = allOptions.map(opt => parseInt(opt.value));
+        console.log('📌 All Branches selected - sending ALL branch IDs:', assignedBranches);
+    } else if (branchAssignment === 'specific') {
+        const branchSelect = document.getElementById('checklist-branches');
+        assignedBranches = Array.from(branchSelect.selectedOptions).map(opt => parseInt(opt.value));
+        if (assignedBranches.length === 0) {
+            showToast('Please select at least one branch.', 'error');
+            branchSelect.focus();
+            return;
+        }
+    } else {
+        // 'none' - send empty array
+        assignedBranches = [];
+    }
+
+    const payload = {
+        name: name,
+        description: '',
+        frequency: frequency,
+        assignment_target: assignmentTarget,
+        assigned_users: assignedUsers,
+        assigned_departments: assignedDepartments,
+        assigned_branches: assignedBranches,
+        tasks: tasks
+    };
+
+    // ============================================
+    // DEBUG - Log the payload being sent
+    // ============================================
+    console.log('='.repeat(60));
+    console.log('📤 SENDING PAYLOAD:');
+    console.log('📌 Assignment Target:', assignmentTarget);
+    console.log('📌 Users:', assignedUsers.length, 'users');
+    console.log('📌 Branch Assignment Mode:', branchAssignment);
+    console.log('📌 Branches:', assignedBranches.length, 'branches');
+    console.log('📌 Department Assignment Mode:', departmentAssignment);
+    console.log('📌 Departments:', assignedDepartments.length, 'departments');
+    console.log('📌 Full Payload:', JSON.stringify(payload, null, 2));
+    console.log('='.repeat(60));
+
+    let url = '/adminboard/api/checklists/create/';
+    let method = 'POST';
+    if (currentChecklistId) {
+        url = `/adminboard/api/checklists/${currentChecklistId}/edit/`;
+        method = 'PUT';
+    }
+
+    const btn = document.getElementById('mainSaveBtn');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('📥 RESPONSE:', data);
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        if (data.success) {
+            showToast(currentChecklistId ? 'Activity updated successfully!' : 'Activity created successfully!');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showToast('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        console.error('❌ Error:', error);
+        showToast('An error occurred while saving', 'error');
+    });
+}    // ============================================
     // DELETE CHECKLIST FUNCTIONS
     // ============================================
     function deleteChecklist(checklistId) {
@@ -448,12 +785,10 @@
     // KEYBOARD SHORTCUTS
     // ============================================
     document.addEventListener('keydown', function(event) {
-        // Ctrl+Enter to save
         if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
             event.preventDefault();
             saveChecklist();
         }
-        // Escape to cancel edit
         if (event.key === 'Escape' && currentChecklistId) {
             if (confirm('Discard changes?')) {
                 resetForm();
@@ -474,6 +809,8 @@
     // ============================================
     document.addEventListener('DOMContentLoaded', function() {
         toggleUserAssignmentField();
+        toggleDepartmentFields();
+        toggleBranchFields();
     });
 </script>
 {% endblock %}

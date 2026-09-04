@@ -25,6 +25,7 @@ from .models import (
     ActivityLog,
     AdHocDeduction,
     Branch,
+    Department,
 )
 from .forms import UserProfileForm
 
@@ -331,10 +332,14 @@ def admin_page(request):
     except UserProfile.DoesNotExist:
         return redirect_dashboard(request.user)
     
+    from .models import Branch, Department
+    
     users = UserProfile.objects.all().order_by('full_name')
     positions = UserProfile.POSITION_CHOICES
     roles = UserProfile.ROLE_CHOICES
     statuses = UserProfile.STATUS_CHOICES
+    branches = Branch.objects.filter(is_active=True).order_by('name')
+    departments = Department.objects.filter(is_active=True).order_by('name')
     
     context = {
         'user_profile': user_profile,
@@ -342,6 +347,8 @@ def admin_page(request):
         'positions': positions,
         'roles': roles,
         'statuses': statuses,
+        'branches': branches,
+        'departments': departments,
     }
     
     return render(request, 'control_dashboard/adminboard.html', context)
@@ -359,6 +366,8 @@ def api_create_user(request):
         position = data.get('position', 'member')
         role = data.get('role', 'member')
         status = data.get('status', 'active')
+        department_id = data.get('department_id')
+        branch_id = data.get('branch_id')
         
         if not email:
             return JsonResponse({'success': False, 'error': 'Email is required'}, status=400)
@@ -376,6 +385,24 @@ def api_create_user(request):
             role=role,
             status=status
         )
+        
+        # Assign department if provided
+        if department_id:
+            try:
+                department = Department.objects.get(id=department_id, is_active=True)
+                user.departments.add(department)
+            except Department.DoesNotExist:
+                pass
+        
+        # Assign branch if provided
+        if branch_id:
+            try:
+                branch = Branch.objects.get(id=branch_id, is_active=True)
+                user.branches.add(branch)
+            except Branch.DoesNotExist:
+                pass
+        
+        user.save()
         
         django_user = get_or_create_django_user(
             email=email.lower(),
@@ -401,7 +428,6 @@ def api_create_user(request):
         return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
 
 @csrf_exempt
 @require_http_methods(["PUT", "POST"])
@@ -451,6 +477,65 @@ def api_edit_user(request, user_id):
         
         user.save()
         
+        # ============================================
+        # HANDLE DEPARTMENT AND BRANCH ASSIGNMENTS
+        # ============================================
+        # Handle departments - clear and set new ones
+        if 'department_ids' in data:
+            department_ids = data['department_ids']
+            if department_ids:
+                # Clear existing departments and add new ones
+                user.departments.clear()
+                departments = Department.objects.filter(id__in=department_ids, is_active=True)
+                user.departments.add(*departments)
+                changes.append(f'Departments updated to {len(departments)} departments')
+            else:
+                user.departments.clear()
+                changes.append('Departments cleared')
+        
+        # Handle branches - clear and set new ones
+        if 'branch_ids' in data:
+            branch_ids = data['branch_ids']
+            if branch_ids:
+                # Clear existing branches and add new ones
+                user.branches.clear()
+                branches = Branch.objects.filter(id__in=branch_ids, is_active=True)
+                user.branches.add(*branches)
+                changes.append(f'Branches updated to {len(branches)} branches')
+            else:
+                user.branches.clear()
+                changes.append('Branches cleared')
+        
+        # Also support single department_id and branch_id (backward compatibility)
+        if 'department_id' in data and 'department_ids' not in data:
+            department_id = data.get('department_id')
+            if department_id:
+                try:
+                    department = Department.objects.get(id=department_id, is_active=True)
+                    user.departments.clear()
+                    user.departments.add(department)
+                    changes.append(f'Department set to {department.name}')
+                except Department.DoesNotExist:
+                    pass
+            else:
+                user.departments.clear()
+                changes.append('Departments cleared')
+        
+        if 'branch_id' in data and 'branch_ids' not in data:
+            branch_id = data.get('branch_id')
+            if branch_id:
+                try:
+                    branch = Branch.objects.get(id=branch_id, is_active=True)
+                    user.branches.clear()
+                    user.branches.add(branch)
+                    changes.append(f'Branch set to {branch.name}')
+                except Branch.DoesNotExist:
+                    pass
+            else:
+                user.branches.clear()
+                changes.append('Branches cleared')
+        
+        # Update Django user
         try:
             django_user = DjangoUser.objects.get(username=old_username)
             if user.username and user.username != old_username:
@@ -485,8 +570,10 @@ def api_edit_user(request, user_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
+        print(f"Error in api_edit_user: {e}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -865,17 +952,27 @@ def checklist_builder(request):
     except UserProfile.DoesNotExist:
         return redirect_dashboard(request.user)
     
-    from .models import Checklist, ChecklistTask
+    from .models import Checklist, ChecklistTask, Branch, Department
     
     checklists = Checklist.objects.all().order_by('-created_at')
     users = UserProfile.objects.filter(status='active').order_by('full_name')
+    branches = Branch.objects.filter(is_active=True).order_by('name')  # Make sure this exists
+    departments = Department.objects.filter(is_active=True).order_by('name')  # Make sure this exists
     frequencies = Checklist.FREQUENCY_CHOICES
     assignments = Checklist.ASSIGNMENT_CHOICES
+    
+    # ============================================
+    # DEBUG - Print branch and department counts
+    # ============================================
+    print(f"📊 Branches in context: {branches.count()}")
+    print(f"📊 Departments in context: {departments.count()}")
     
     context = {
         'user_profile': user_profile,
         'checklists': checklists,
         'users': users,
+        'branches': branches,  # Make sure this is included
+        'departments': departments,  # Make sure this is included
         'frequencies': frequencies,
         'assignments': assignments,
     }
@@ -918,11 +1015,27 @@ def api_create_checklist(request):
             
         data = json.loads(request.body)
         
+        # ============================================
+        # DEBUG - Print received data
+        # ============================================
+        print("=" * 60)
+        print("CREATE CHECKLIST - RECEIVED DATA:")
+        print(f"Name: {data.get('name')}")
+        print(f"Frequency: {data.get('frequency')}")
+        print(f"Assignment Target: {data.get('assignment_target')}")
+        print(f"Assigned Users: {data.get('assigned_users', [])}")
+        print(f"Assigned Branches IDs: {data.get('assigned_branches', [])}")
+        print(f"Assigned Departments IDs: {data.get('assigned_departments', [])}")
+        print(f"Tasks: {data.get('tasks', [])}")
+        print("=" * 60)
+        
         name = data.get('name', '').strip()
         description = data.get('description', '').strip()
         frequency = data.get('frequency', 'weekly')
         assignment_target = data.get('assignment_target', 'all')
         assigned_users_ids = data.get('assigned_users', [])
+        assigned_branches_ids = data.get('assigned_branches', [])
+        assigned_departments_ids = data.get('assigned_departments', [])
         tasks_data = data.get('tasks', [])
         
         if not name:
@@ -950,16 +1063,55 @@ def api_create_checklist(request):
             is_active=True
         )
         
-        if assignment_target == 'specific':
+        print(f"✅ Checklist created with ID: {checklist.id}")
+        
+        # Assign users
+        if assignment_target == 'specific' and assigned_users_ids:
             active_users = UserProfile.objects.filter(id__in=assigned_users_ids, status='active')
             checklist.assigned_users.set(active_users)
+            print(f"✅ Assigned {active_users.count()} specific users")
         elif assignment_target == 'cc':
-            checklist.assigned_users.set(UserProfile.objects.filter(position='cc', status='active'))
+            users = UserProfile.objects.filter(position='cc', status='active')
+            checklist.assigned_users.set(users)
+            print(f"✅ Assigned {users.count()} Cluster Control users")
         elif assignment_target == 'hc':
-            checklist.assigned_users.set(UserProfile.objects.filter(position='hc', status='active'))
+            users = UserProfile.objects.filter(position='hc', status='active')
+            checklist.assigned_users.set(users)
+            print(f"✅ Assigned {users.count()} Head Office Control users")
         elif assignment_target == 'all':
-            checklist.assigned_users.set(UserProfile.objects.filter(status='active'))
+            users = UserProfile.objects.filter(status='active')
+            checklist.assigned_users.set(users)
+            print(f"✅ Assigned {users.count()} all active users")
         
+        # ============================================
+        # ASSIGN BRANCHES
+        # ============================================
+        print(f"\n📌 Processing Branches - IDs received: {assigned_branches_ids}")
+        if assigned_branches_ids:
+            branches = Branch.objects.filter(id__in=assigned_branches_ids, is_active=True)
+            print(f"   Found {branches.count()} branches in database")
+            for branch in branches:
+                print(f"   - {branch.id}: {branch.name}")
+            checklist.assigned_branches.set(branches)
+            print(f"✅ Assigned {branches.count()} branches to checklist")
+        else:
+            print("ℹ️ No branches to assign")
+        
+        # ============================================
+        # ASSIGN DEPARTMENTS
+        # ============================================
+        print(f"\n📌 Processing Departments - IDs received: {assigned_departments_ids}")
+        if assigned_departments_ids:
+            departments = Department.objects.filter(id__in=assigned_departments_ids, is_active=True)
+            print(f"   Found {departments.count()} departments in database")
+            for dept in departments:
+                print(f"   - {dept.id}: {dept.name}")
+            checklist.assigned_departments.set(departments)
+            print(f"✅ Assigned {departments.count()} departments to checklist")
+        else:
+            print("ℹ️ No departments to assign")
+        
+        # Create tasks
         for index, task_item in enumerate(tasks_data):
             task_desc = task_item.get('description', '').strip()
             if task_desc:
@@ -968,18 +1120,42 @@ def api_create_checklist(request):
                     description=task_desc,
                     order=index
                 )
+        print(f"✅ Created {len(tasks_data)} tasks")
+        
+        # Verify what was saved
+        saved_branches = checklist.assigned_branches.all()
+        saved_departments = checklist.assigned_departments.all()
+        print(f"\n📊 FINAL SAVED STATE:")
+        print(f"   Branches: {[b.name for b in saved_branches]}")
+        print(f"   Departments: {[d.name for d in saved_departments]}")
+        print("=" * 60)
+        
+        # Log activity
+        try:
+            log_activity(
+                user=created_by,
+                activity_type='checklist_created',
+                details=f'Created checklist "{name}" with {len(tasks_data)} tasks',
+                request=request
+            )
+        except:
+            pass
                 
         return JsonResponse({
             'success': True,
             'message': 'Checklist created successfully',
-            'checklist_id': checklist.id
+            'checklist_id': checklist.id,
+            'branches_saved': [b.name for b in saved_branches],
+            'departments_saved': [d.name for d in saved_departments]
         }, status=201)
         
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Malformed or invalid JSON payload structure'}, status=400)
     except Exception as e:
+        print(f"Error in api_create_checklist: {e}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
 
 @csrf_exempt
 @require_http_methods(["GET"])
@@ -989,6 +1165,10 @@ def api_get_checklist(request, checklist_id):
         
         checklist = get_object_or_404(Checklist, id=checklist_id)
         tasks = checklist.tasks.all().order_by('order')
+        
+        # Get branch names for display
+        branch_names = [branch.name for branch in checklist.assigned_branches.all()]
+        department_names = [dept.name for dept in checklist.assigned_departments.all()]
         
         return JsonResponse({
             'success': True,
@@ -1000,6 +1180,10 @@ def api_get_checklist(request, checklist_id):
                 'assignment_target': checklist.assignment_target,
                 'is_active': checklist.is_active,
                 'assigned_users': list(checklist.assigned_users.values_list('id', flat=True)),
+                'assigned_branches': list(checklist.assigned_branches.values_list('id', flat=True)),
+                'assigned_branches_names': branch_names,
+                'assigned_departments': list(checklist.assigned_departments.values_list('id', flat=True)),
+                'assigned_departments_names': department_names,
                 'tasks': [
                     {
                         'id': task.id,
@@ -1013,6 +1197,9 @@ def api_get_checklist(request, checklist_id):
         })
         
     except Exception as e:
+        print(f"Error in api_get_checklist: {e}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
@@ -1025,28 +1212,76 @@ def api_edit_checklist(request, checklist_id):
             
         data = json.loads(request.body)
         
+        changes = []
+        
+        # Update basic fields
         if 'name' in data:
             checklist.name = data['name'].strip()
+            changes.append(f"Name updated to '{checklist.name}'")
         if 'frequency' in data:
+            old_freq = checklist.get_frequency_display()
             checklist.frequency = data['frequency']
+            changes.append(f"Frequency changed from {old_freq} to {checklist.get_frequency_display()}")
         if 'assignment_target' in data:
+            old_target = checklist.get_assignment_display()
             checklist.assignment_target = data['assignment_target']
+            changes.append(f"Assignment target changed from {old_target} to {checklist.get_assignment_display()}")
+        
         checklist.save()
         
+        # ============================================
+        # HANDLE USER ASSIGNMENT
+        # ============================================
         assignment_target = data.get('assignment_target', checklist.assignment_target)
         if assignment_target == 'specific':
             assigned_users_ids = data.get('assigned_users', [])
-            checklist.assigned_users.set(UserProfile.objects.filter(id__in=assigned_users_ids, status='active'))
+            if assigned_users_ids:
+                checklist.assigned_users.set(UserProfile.objects.filter(id__in=assigned_users_ids, status='active'))
+                changes.append(f"Assigned {len(assigned_users_ids)} specific users")
+            else:
+                checklist.assigned_users.clear()
+                changes.append("Cleared all user assignments")
         elif assignment_target == 'cc':
             checklist.assigned_users.set(UserProfile.objects.filter(position='cc', status='active'))
+            changes.append("Assigned to Cluster Control users")
         elif assignment_target == 'hc':
             checklist.assigned_users.set(UserProfile.objects.filter(position='hc', status='active'))
+            changes.append("Assigned to Head Office Control users")
         elif assignment_target == 'all':
             checklist.assigned_users.set(UserProfile.objects.filter(status='active'))
-            
+            changes.append("Assigned to all active users")
+        
+        # ============================================
+        # HANDLE BRANCH ASSIGNMENT
+        # ============================================
+        assigned_branches_ids = data.get('assigned_branches', [])
+        if assigned_branches_ids:
+            branches = Branch.objects.filter(id__in=assigned_branches_ids, is_active=True)
+            checklist.assigned_branches.set(branches)
+            changes.append(f"Assigned to {len(branches)} branches")
+        else:
+            checklist.assigned_branches.clear()
+            changes.append("Cleared all branch assignments")
+        
+        # ============================================
+        # HANDLE DEPARTMENT ASSIGNMENT
+        # ============================================
+        assigned_departments_ids = data.get('assigned_departments', [])
+        if assigned_departments_ids:
+            departments = Department.objects.filter(id__in=assigned_departments_ids, is_active=True)
+            checklist.assigned_departments.set(departments)
+            changes.append(f"Assigned to {len(departments)} departments")
+        else:
+            checklist.assigned_departments.clear()
+            changes.append("Cleared all department assignments")
+        
+        # ============================================
+        # HANDLE TASKS
+        # ============================================
         if 'tasks' in data:
             checklist.tasks.all().delete()
-            for index, task_item in enumerate(data['tasks']):
+            tasks_data = data['tasks']
+            for index, task_item in enumerate(tasks_data):
                 task_desc = task_item.get('description', '').strip()
                 if task_desc:
                     ChecklistTask.objects.create(
@@ -1054,12 +1289,33 @@ def api_edit_checklist(request, checklist_id):
                         description=task_desc,
                         order=index
                     )
+            changes.append(f"Updated {len(tasks_data)} tasks")
+        
+        # Log the activity
+        if changes and request.user.is_authenticated:
+            try:
+                user_profile = UserProfile.objects.get(email=request.user.email)
+                log_activity(
+                    user=user_profile,
+                    activity_type='checklist_updated',
+                    details=f'Checklist "{checklist.name}" updated: ' + '; '.join(changes[:3]) + ('...' if len(changes) > 3 else ''),
+                    request=request
+                )
+            except UserProfile.DoesNotExist:
+                pass
                     
-        return JsonResponse({'success': True, 'message': 'Checklist records synchronized successfully'})
+        return JsonResponse({
+            'success': True, 
+            'message': 'Checklist updated successfully',
+            'changes': changes
+        })
         
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON data payload parameters'}, status=400)
     except Exception as e:
+        print(f"Error in api_edit_checklist: {e}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
@@ -1139,6 +1395,12 @@ def member_dashboard(request):
     # Get all logs for the user
     all_logs = ChecklistLog.objects.filter(user=user_profile)
     
+    # ============================================
+    # GET USER'S ASSIGNED BRANCHES AND DEPARTMENTS
+    # ============================================
+    user_branches = user_profile.branches.all()
+    user_departments = user_profile.departments.all()
+    
     # Month progress calculation
     month_expected = 0
     month_actual = 0
@@ -1155,7 +1417,7 @@ def member_dashboard(request):
         freq = checklist.frequency
         frequency_counts[freq] = frequency_counts.get(freq, 0) + 1
         
-        # Month progress for this checklist - using the new methods
+        # Month progress for this checklist
         checklist_month_expected = checklist.get_monthly_expected(user_profile)
         checklist_month_actual = checklist.get_monthly_actual(user_profile)
         
@@ -1194,6 +1456,21 @@ def member_dashboard(request):
         checklist.year_actual = checklist_year_actual
         checklist.status = status
         checklist.next_due_date = next_due.strftime('%b %d, %Y') if next_due else None
+        
+        # ============================================
+        # Filter branches/departments to ONLY those assigned to the user
+        # ============================================
+        # Get branches from checklist that the user is also assigned to
+        checklist_branches = checklist.assigned_branches.all()
+        user_matching_branches = [b for b in checklist_branches if b in user_branches]
+        
+        # Get departments from checklist that the user is also assigned to
+        checklist_departments = checklist.assigned_departments.all()
+        user_matching_departments = [d for d in checklist_departments if d in user_departments]
+        
+        # Store the user-specific branches and departments on the checklist object
+        checklist.user_branches = user_matching_branches
+        checklist.user_departments = user_matching_departments
         
         # Only add to display list if it's in the display list
         if checklist in display_checklists:
@@ -1285,6 +1562,12 @@ def member_dashboard(request):
         'total_logged_days': total_logged_days,
         'weekly_completion_rate': weekly_completion_rate,
         'frequency_summary': frequency_summary,
+        
+        # ============================================
+        # User's assigned branches and departments
+        # ============================================
+        'user_branches': user_branches,
+        'user_departments': user_departments,
     }
     
     return render(request, 'control_dashboard/memberboard.html', context)
@@ -1613,7 +1896,6 @@ def api_save_imported_data(request):
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-
 @login_required
 def member_checklist(request):
     try:
@@ -1624,46 +1906,132 @@ def member_checklist(request):
     from datetime import date, timedelta
     today = timezone.now().date()
     
+    # ============================================
+    # GET FILTER PARAMETERS
+    # ============================================
+    branch_filter = request.GET.get('branch', 'all')
+    department_filter = request.GET.get('department', 'all')
+    month_filter = request.GET.get('month', 'all')
+    year_filter = request.GET.get('year', 'all')
+    frequency_filter = request.GET.get('frequency', 'all')
+    
+    # Get user's assigned branches and departments (ONLY assigned to the user)
+    user_branches = user_profile.branches.all().order_by('name')
+    user_departments = user_profile.departments.all().order_by('name')
+    
+    # Get all checklists assigned to the user
     user_checklists = Checklist.objects.filter(
         is_active=True
     ).filter(
         Q(assigned_users=user_profile) |
         Q(assignment_target='all') |
         Q(assignment_target=user_profile.position)
-    ).distinct().order_by('name')
+    ).distinct()
     
-    # Get years for filter
+    # ============================================
+    # FILTER BY BRANCH
+    # ============================================
+    if branch_filter != 'all':
+        try:
+            branch_id = int(branch_filter)
+            if user_branches.filter(id=branch_id).exists():
+                user_checklists = user_checklists.filter(
+                    Q(assigned_branches__id=branch_id) |
+                    Q(assigned_branches__isnull=True)
+                ).distinct()
+        except ValueError:
+            pass
+    
+    # ============================================
+    # FILTER BY DEPARTMENT
+    # ============================================
+    if department_filter != 'all':
+        try:
+            dept_id = int(department_filter)
+            if user_departments.filter(id=dept_id).exists():
+                user_checklists = user_checklists.filter(
+                    Q(assigned_departments__id=dept_id) |
+                    Q(assigned_departments__isnull=True)
+                ).distinct()
+        except ValueError:
+            pass
+    
+    # ============================================
+    # FILTER BY FREQUENCY
+    # ============================================
+    if frequency_filter != 'all':
+        user_checklists = user_checklists.filter(frequency=frequency_filter)
+    
+    # ============================================
+    # GET YEARS FOR FILTER
+    # ============================================
     current_year = timezone.now().year
     years = list(range(current_year - 2, current_year + 1))
     
+    # ============================================
+    # CALCULATE PROGRESS FOR EACH CHECKLIST
+    # ============================================
     checklist_data = []
+    total_month_expected = 0
+    total_month_actual = 0
+    total_year_expected = 0
+    total_year_actual = 0
+    
+    # Determine which month/year to show in calendars
+    display_month = today.month
+    display_year = today.year
+    
+    if month_filter != 'all':
+        try:
+            display_month = int(month_filter) + 1
+        except ValueError:
+            pass
+    
+    if year_filter != 'all':
+        try:
+            display_year = int(year_filter)
+        except ValueError:
+            pass
+    
+    # Get month start and end for filtering
+    month_start = date(display_year, display_month, 1)
+    if display_month == 12:
+        month_end = date(display_year + 1, 1, 1) - timedelta(days=1)
+    else:
+        month_end = date(display_year, display_month + 1, 1) - timedelta(days=1)
+    
     for checklist in user_checklists:
         tasks = checklist.tasks.all().order_by('order')
+        
+        # Get logs for the selected month/year
         logs = ChecklistLog.objects.filter(
-            checklist=checklist,
-            user=user_profile
-        ).values_list('log_date', flat=True)
-        log_dates = [log.strftime('%Y-%m-%d') for log in logs]
-        
-        # Calculate progress
-        month_start = today.replace(day=1)
-        year_start = today.replace(month=1, day=1)
-        
-        month_expected = checklist.get_expected_occurrences(month_start, today)
-        month_actual = ChecklistLog.objects.filter(
             checklist=checklist,
             user=user_profile,
             log_date__gte=month_start,
-            log_date__lte=today
-        ).count()
+            log_date__lte=month_end
+        ).values_list('log_date', flat=True)
+        log_dates = [log.strftime('%Y-%m-%d') for log in logs]
         
-        year_expected = checklist.get_expected_occurrences(year_start, today)
+        # Calculate progress for selected month
+        month_expected = checklist.get_expected_occurrences(month_start, month_end)
+        month_actual = logs.count()
+        
+        # Calculate year-to-date progress
+        year_start = date(display_year, 1, 1)
+        year_end = date(display_year, 12, 31)
+        
+        year_expected = checklist.get_expected_occurrences(year_start, year_end)
         year_actual = ChecklistLog.objects.filter(
             checklist=checklist,
             user=user_profile,
             log_date__gte=year_start,
-            log_date__lte=today
+            log_date__lte=year_end
         ).count()
+        
+        total_month_expected += month_expected
+        total_month_actual += month_actual
+        total_year_expected += year_expected
+        total_year_actual += year_actual
         
         month_progress = int((month_actual / month_expected * 100)) if month_expected > 0 else 0
         year_progress = int((year_actual / year_expected * 100)) if year_expected > 0 else 0
@@ -1699,14 +2067,96 @@ def member_checklist(request):
             'next_due_date': next_due.strftime('%b %d, %Y') if next_due else None,
         })
     
-    # Calculate overall progress
-    total_month_expected = sum(c['month_expected'] for c in checklist_data)
-    total_month_actual = sum(c['month_actual'] for c in checklist_data)
-    total_year_expected = sum(c['year_expected'] for c in checklist_data)
-    total_year_actual = sum(c['year_actual'] for c in checklist_data)
-    
+    # ============================================
+    # CALCULATE OVERALL PROGRESS
+    # ============================================
     overall_month_progress = int((total_month_actual / total_month_expected * 100)) if total_month_expected > 0 else 0
     overall_year_progress = int((total_year_actual / total_year_expected * 100)) if total_year_expected > 0 else 0
+    
+    # Cap at 100%
+    overall_month_progress = min(overall_month_progress, 100)
+    overall_year_progress = min(overall_year_progress, 100)
+    
+    # ============================================
+    # GET FILTER OPTIONS (ONLY assigned to user)
+    # ============================================
+    # Get branches that are assigned to the user AND have checklists
+    available_branches = user_branches.filter(
+        checklist_assignments__in=user_checklists
+    ).distinct().order_by('name')
+    
+    # Get departments that are assigned to the user AND have checklists
+    available_departments = user_departments.filter(
+        checklist_assignments__in=user_checklists
+    ).distinct().order_by('name')
+    
+    # ============================================
+    # BUILD COMBINED FILTER OPTIONS
+    # ============================================
+    combined_filter_options = []
+    
+    # Add branches with type 'branch'
+    for branch in available_branches:
+        combined_filter_options.append({
+            'type': 'branch',
+            'id': branch.id,
+            'display': f'🏢 {branch.name}',
+            'value': f'branch_{branch.id}'
+        })
+    
+    # Add departments with type 'department'
+    for dept in available_departments:
+        combined_filter_options.append({
+            'type': 'department',
+            'id': dept.id,
+            'display': f'🏛️ {dept.name}',
+            'value': f'department_{dept.id}'
+        })
+    
+    # Sort by display name
+    combined_filter_options.sort(key=lambda x: x['display'])
+    
+    # Determine the active combined filter value
+    active_combined_filter = 'all'
+    if branch_filter != 'all':
+        active_combined_filter = f'branch_{branch_filter}'
+    elif department_filter != 'all':
+        active_combined_filter = f'department_{department_filter}'
+    
+    # Get selected display name
+    selected_combined_display = 'All Branches/Departments'
+    for option in combined_filter_options:
+        if option['value'] == active_combined_filter:
+            selected_combined_display = option['display']
+            break
+    
+    # Get all frequencies for filter
+    available_frequencies = Checklist.FREQUENCY_CHOICES
+    
+    # Frequency display
+    selected_frequency_display = 'All Frequencies'
+    if frequency_filter != 'all':
+        for freq_value, freq_label in Checklist.FREQUENCY_CHOICES:
+            if freq_value == frequency_filter:
+                selected_frequency_display = freq_label
+                break
+    
+    # Month names for filter
+    month_names = [
+        ('all', 'All Months'),
+        ('0', 'January'),
+        ('1', 'February'),
+        ('2', 'March'),
+        ('3', 'April'),
+        ('4', 'May'),
+        ('5', 'June'),
+        ('6', 'July'),
+        ('7', 'August'),
+        ('8', 'September'),
+        ('9', 'October'),
+        ('10', 'November'),
+        ('11', 'December'),
+    ]
     
     context = {
         'user_profile': user_profile,
@@ -1716,10 +2166,34 @@ def member_checklist(request):
         'overall_month_progress': overall_month_progress,
         'overall_year_progress': overall_year_progress,
         'total_checklists': user_checklists.count(),
+        'total_month_expected': total_month_expected,
+        'total_month_actual': total_month_actual,
+        'total_year_expected': total_year_expected,
+        'total_year_actual': total_year_actual,
+        # Filter data - Combined only
+        'branch_filter': branch_filter,  # Keep for backend filtering
+        'department_filter': department_filter,  # Keep for backend filtering
+        'month_filter': month_filter,
+        'year_filter': year_filter,
+        'frequency_filter': frequency_filter,
+        'available_frequencies': available_frequencies,
+        'month_names': month_names,
+        'selected_frequency_display': selected_frequency_display,
+        'today': today,
+        'month_name': today.strftime('%B'),
+        'year': today.year,
+        'display_month': display_month,
+        'display_year': display_year,
+        # Combined filter (what the template uses)
+        'combined_filter_options': combined_filter_options,
+        'active_combined_filter': active_combined_filter,
+        'selected_combined_display': selected_combined_display,
+        # Keep old variables for template compatibility
+        'branch_filter': branch_filter,
+        'department_filter': department_filter,
     }
     
     return render(request, 'control_dashboard/checklist-mem.html', context)
-
 
 # ==================== API - CHECKLIST LOG ====================
 
