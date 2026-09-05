@@ -12,6 +12,11 @@ from django.db.models import Q, Count
 from django.contrib.auth.decorators import login_required
 import json
 from datetime import datetime, timedelta
+import base64
+import io
+import openpyxl
+from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.utils import get_column_letter
 from django.utils import timezone
 import re
 
@@ -31,6 +36,7 @@ from .models import (
     ReportExcelRow,       
     ReportExcelCell,      
     ReportSubmissionField,
+    ReportSchedule,
 )
 from .forms import UserProfileForm
 
@@ -434,6 +440,7 @@ def api_create_user(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["PUT", "POST"])
 def api_edit_user(request, user_id):
@@ -579,6 +586,7 @@ def api_edit_user(request, user_id):
         import traceback
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -961,14 +969,11 @@ def checklist_builder(request):
     
     checklists = Checklist.objects.all().order_by('-created_at')
     users = UserProfile.objects.filter(status='active').order_by('full_name')
-    branches = Branch.objects.filter(is_active=True).order_by('name')  # Make sure this exists
-    departments = Department.objects.filter(is_active=True).order_by('name')  # Make sure this exists
+    branches = Branch.objects.filter(is_active=True).order_by('name')
+    departments = Department.objects.filter(is_active=True).order_by('name')
     frequencies = Checklist.FREQUENCY_CHOICES
     assignments = Checklist.ASSIGNMENT_CHOICES
     
-    # ============================================
-    # DEBUG - Print branch and department counts
-    # ============================================
     print(f"📊 Branches in context: {branches.count()}")
     print(f"📊 Departments in context: {departments.count()}")
     
@@ -976,8 +981,8 @@ def checklist_builder(request):
         'user_profile': user_profile,
         'checklists': checklists,
         'users': users,
-        'branches': branches,  # Make sure this is included
-        'departments': departments,  # Make sure this is included
+        'branches': branches,
+        'departments': departments,
         'frequencies': frequencies,
         'assignments': assignments,
     }
@@ -1020,9 +1025,6 @@ def api_create_checklist(request):
             
         data = json.loads(request.body)
         
-        # ============================================
-        # DEBUG - Print received data
-        # ============================================
         print("=" * 60)
         print("CREATE CHECKLIST - RECEIVED DATA:")
         print(f"Name: {data.get('name')}")
@@ -1088,9 +1090,7 @@ def api_create_checklist(request):
             checklist.assigned_users.set(users)
             print(f"✅ Assigned {users.count()} all active users")
         
-        # ============================================
-        # ASSIGN BRANCHES
-        # ============================================
+        # Assign branches
         print(f"\n📌 Processing Branches - IDs received: {assigned_branches_ids}")
         if assigned_branches_ids:
             branches = Branch.objects.filter(id__in=assigned_branches_ids, is_active=True)
@@ -1102,9 +1102,7 @@ def api_create_checklist(request):
         else:
             print("ℹ️ No branches to assign")
         
-        # ============================================
-        # ASSIGN DEPARTMENTS
-        # ============================================
+        # Assign departments
         print(f"\n📌 Processing Departments - IDs received: {assigned_departments_ids}")
         if assigned_departments_ids:
             departments = Department.objects.filter(id__in=assigned_departments_ids, is_active=True)
@@ -1162,6 +1160,7 @@ def api_create_checklist(request):
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_get_checklist(request, checklist_id):
@@ -1171,7 +1170,6 @@ def api_get_checklist(request, checklist_id):
         checklist = get_object_or_404(Checklist, id=checklist_id)
         tasks = checklist.tasks.all().order_by('order')
         
-        # Get branch names for display
         branch_names = [branch.name for branch in checklist.assigned_branches.all()]
         department_names = [dept.name for dept in checklist.assigned_departments.all()]
         
@@ -1234,9 +1232,7 @@ def api_edit_checklist(request, checklist_id):
         
         checklist.save()
         
-        # ============================================
-        # HANDLE USER ASSIGNMENT
-        # ============================================
+        # Handle user assignment
         assignment_target = data.get('assignment_target', checklist.assignment_target)
         if assignment_target == 'specific':
             assigned_users_ids = data.get('assigned_users', [])
@@ -1256,9 +1252,7 @@ def api_edit_checklist(request, checklist_id):
             checklist.assigned_users.set(UserProfile.objects.filter(status='active'))
             changes.append("Assigned to all active users")
         
-        # ============================================
-        # HANDLE BRANCH ASSIGNMENT
-        # ============================================
+        # Handle branch assignment
         assigned_branches_ids = data.get('assigned_branches', [])
         if assigned_branches_ids:
             branches = Branch.objects.filter(id__in=assigned_branches_ids, is_active=True)
@@ -1268,9 +1262,7 @@ def api_edit_checklist(request, checklist_id):
             checklist.assigned_branches.clear()
             changes.append("Cleared all branch assignments")
         
-        # ============================================
-        # HANDLE DEPARTMENT ASSIGNMENT
-        # ============================================
+        # Handle department assignment
         assigned_departments_ids = data.get('assigned_departments', [])
         if assigned_departments_ids:
             departments = Department.objects.filter(id__in=assigned_departments_ids, is_active=True)
@@ -1280,9 +1272,7 @@ def api_edit_checklist(request, checklist_id):
             checklist.assigned_departments.clear()
             changes.append("Cleared all department assignments")
         
-        # ============================================
-        # HANDLE TASKS
-        # ============================================
+        # Handle tasks
         if 'tasks' in data:
             checklist.tasks.all().delete()
             tasks_data = data['tasks']
@@ -1400,9 +1390,7 @@ def member_dashboard(request):
     # Get all logs for the user
     all_logs = ChecklistLog.objects.filter(user=user_profile)
     
-    # ============================================
-    # GET USER'S ASSIGNED BRANCHES AND DEPARTMENTS
-    # ============================================
+    # Get user's assigned branches and departments
     user_branches = user_profile.branches.all()
     user_departments = user_profile.departments.all()
     
@@ -1462,14 +1450,10 @@ def member_dashboard(request):
         checklist.status = status
         checklist.next_due_date = next_due.strftime('%b %d, %Y') if next_due else None
         
-        # ============================================
         # Filter branches/departments to ONLY those assigned to the user
-        # ============================================
-        # Get branches from checklist that the user is also assigned to
         checklist_branches = checklist.assigned_branches.all()
         user_matching_branches = [b for b in checklist_branches if b in user_branches]
         
-        # Get departments from checklist that the user is also assigned to
         checklist_departments = checklist.assigned_departments.all()
         user_matching_departments = [d for d in checklist_departments if d in user_departments]
         
@@ -1553,7 +1537,7 @@ def member_dashboard(request):
         'assigned_this_week': assigned_this_week,
         'exceptions_this_week': exceptions_this_week,
         'pending_submissions': pending_submissions,
-        'daily_checklists': display_checklists_with_progress[:5],  # Show top 5
+        'daily_checklists': display_checklists_with_progress[:5],
         'all_checklists_count': user_checklists.count(),
         'total_checklists_completed': total_checklists_completed,
         
@@ -1568,14 +1552,13 @@ def member_dashboard(request):
         'weekly_completion_rate': weekly_completion_rate,
         'frequency_summary': frequency_summary,
         
-        # ============================================
         # User's assigned branches and departments
-        # ============================================
         'user_branches': user_branches,
         'user_departments': user_departments,
     }
     
     return render(request, 'control_dashboard/memberboard.html', context)
+
 
 # ==================== SUBMIT REPORT VIEWS ====================
 
@@ -1618,14 +1601,13 @@ def drafts_page(request):
     }
     return render(request, 'control_dashboard/draft.html', context)
 
+
 @login_required
 def reports_page(request):
     try:
         user_profile = UserProfile.objects.get(email=request.user.email)
     except UserProfile.DoesNotExist:
         return redirect('control_dashboard:member_dashboard')
-    
-    from .models import ReportSchedule
     
     reports = Report.objects.filter(
         created_by=user_profile
@@ -1656,6 +1638,7 @@ def reports_page(request):
     }
     
     return render(request, 'control_dashboard/reports.html', context)
+
 
 @login_required
 def submit_page(request):
@@ -1734,6 +1717,9 @@ def submit_page(request):
     categories_list = [{'id': cat, 'name': cat} for cat in categories if cat]
     exception_report_types = list(set([e['report_type'] for e in exceptions_data]))
     
+    # Get pre-filled data from session (from submit_selected_reports)
+    submission_data = request.session.pop('submission_data', None)
+    
     context = {
         'user_profile': user_profile,
         'today': timezone.now(),
@@ -1750,9 +1736,13 @@ def submit_page(request):
             'username': user_profile.username,
             'department': user_profile.position or 'General'
         },
+        'pre_filled_data': json.dumps(submission_data) if submission_data else '',
+        'excel_data': json.dumps(submission_data.get('excel_data')) if submission_data and submission_data.get('excel_data') else '',
+        'screenshot_data': json.dumps(submission_data.get('screenshot_data')) if submission_data and submission_data.get('screenshot_data') else '',
     }
     
     return render(request, 'control_dashboard/submit.html', context)
+
 
 # ==================== API - IMPORT/EXPORT EXCEL ====================
 
@@ -1816,6 +1806,7 @@ def api_import_excel(request):
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_save_imported_data(request):
@@ -1856,21 +1847,17 @@ def api_save_imported_data(request):
             created_by=user_profile,
         )
         
-        # ============================================
         # SAVE HEADERS AS DATA FIELDS (ONLY ONCE)
-        # ============================================
         for i, header in enumerate(headers):
             ReportDataField.objects.create(
                 report=report,
                 field_name=header or f'Column_{i+1}',
-                field_value='',  # Headers don't have values
+                field_value='',
                 field_type='text',
                 order=i
             )
         
-        # ============================================
         # CREATE EXCEL IMPORT RECORD
-        # ============================================
         import_record = ReportExcelImport.objects.create(
             report=report,
             file_name=file_name,
@@ -1878,9 +1865,7 @@ def api_save_imported_data(request):
             row_count=len(rows_data)
         )
         
-        # ============================================
         # SAVE ROWS AND CELLS (THIS IS WHERE DATA GOES)
-        # ============================================
         for row_idx, row in enumerate(rows_data):
             excel_row = ReportExcelRow.objects.create(
                 import_record=import_record,
@@ -1918,6 +1903,7 @@ def api_save_imported_data(request):
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @login_required
 def member_checklist(request):
     try:
@@ -1928,15 +1914,13 @@ def member_checklist(request):
     from datetime import date, timedelta
     today = timezone.now().date()
     
-    # ============================================
     # GET FILTER PARAMETERS
-    # ============================================
     branch_filter = request.GET.get('branch', 'all')
     department_filter = request.GET.get('department', 'all')
     month_filter = request.GET.get('month', 'all')
     year_filter = request.GET.get('year', 'all')
     frequency_filter = request.GET.get('frequency', 'all')
-    quarter_filter = request.GET.get('quarter', 'all')  # NEW
+    quarter_filter = request.GET.get('quarter', 'all')
     
     # Get user's assigned branches and departments (ONLY assigned to the user)
     user_branches = user_profile.branches.all().order_by('name')
@@ -1951,9 +1935,7 @@ def member_checklist(request):
         Q(assignment_target=user_profile.position)
     ).distinct()
     
-    # ============================================
     # FILTER BY BRANCH
-    # ============================================
     if branch_filter != 'all':
         try:
             branch_id = int(branch_filter)
@@ -1965,9 +1947,7 @@ def member_checklist(request):
         except ValueError:
             pass
     
-    # ============================================
     # FILTER BY DEPARTMENT
-    # ============================================
     if department_filter != 'all':
         try:
             dept_id = int(department_filter)
@@ -1979,21 +1959,15 @@ def member_checklist(request):
         except ValueError:
             pass
     
-    # ============================================
     # FILTER BY FREQUENCY
-    # ============================================
     if frequency_filter != 'all':
         user_checklists = user_checklists.filter(frequency=frequency_filter)
     
-    # ============================================
     # GET YEARS FOR FILTER
-    # ============================================
     current_year = timezone.now().year
     years = list(range(current_year - 2, current_year + 1))
     
-    # ============================================
     # CALCULATE PROGRESS FOR EACH CHECKLIST
-    # ============================================
     checklist_data = []
     total_month_expected = 0
     total_month_actual = 0
@@ -2018,10 +1992,7 @@ def member_checklist(request):
         except ValueError:
             pass
     
-    # ============================================
     # DETERMINE QUARTER
-    # ============================================
-    # Get current quarter
     current_quarter = (display_month - 1) // 3 + 1
     
     if quarter_filter != 'all':
@@ -2063,9 +2034,7 @@ def member_checklist(request):
         month_expected = checklist.get_expected_occurrences(month_start, month_end)
         month_actual = logs.count()
         
-        # ============================================
         # CALCULATE QUARTER PROGRESS
-        # ============================================
         quarter_expected = checklist.get_expected_occurrences(quarter_start, quarter_end)
         quarter_actual = ChecklistLog.objects.filter(
             checklist=checklist,
@@ -2131,9 +2100,7 @@ def member_checklist(request):
             'next_due_date': next_due.strftime('%b %d, %Y') if next_due else None,
         })
     
-    # ============================================
     # CALCULATE OVERALL PROGRESS
-    # ============================================
     overall_month_progress = int((total_month_actual / total_month_expected * 100)) if total_month_expected > 0 else 0
     overall_quarter_progress = int((total_quarter_actual / total_quarter_expected * 100)) if total_quarter_expected > 0 else 0
     overall_year_progress = int((total_year_actual / total_year_expected * 100)) if total_year_expected > 0 else 0
@@ -2143,25 +2110,18 @@ def member_checklist(request):
     overall_quarter_progress = min(overall_quarter_progress, 100)
     overall_year_progress = min(overall_year_progress, 100)
     
-    # ============================================
     # GET FILTER OPTIONS (ONLY assigned to user)
-    # ============================================
-    # Get branches that are assigned to the user AND have checklists
     available_branches = user_branches.filter(
         checklist_assignments__in=user_checklists
     ).distinct().order_by('name')
     
-    # Get departments that are assigned to the user AND have checklists
     available_departments = user_departments.filter(
         checklist_assignments__in=user_checklists
     ).distinct().order_by('name')
     
-    # ============================================
     # BUILD COMBINED FILTER OPTIONS
-    # ============================================
     combined_filter_options = []
     
-    # Add branches with type 'branch'
     for branch in available_branches:
         combined_filter_options.append({
             'type': 'branch',
@@ -2170,7 +2130,6 @@ def member_checklist(request):
             'value': f'branch_{branch.id}'
         })
     
-    # Add departments with type 'department'
     for dept in available_departments:
         combined_filter_options.append({
             'type': 'department',
@@ -2179,27 +2138,22 @@ def member_checklist(request):
             'value': f'department_{dept.id}'
         })
     
-    # Sort by display name
     combined_filter_options.sort(key=lambda x: x['display'])
     
-    # Determine the active combined filter value
     active_combined_filter = 'all'
     if branch_filter != 'all':
         active_combined_filter = f'branch_{branch_filter}'
     elif department_filter != 'all':
         active_combined_filter = f'department_{department_filter}'
     
-    # Get selected display name
     selected_combined_display = 'All Branches/Departments'
     for option in combined_filter_options:
         if option['value'] == active_combined_filter:
             selected_combined_display = option['display']
             break
     
-    # Get all frequencies for filter
     available_frequencies = Checklist.FREQUENCY_CHOICES
     
-    # Frequency display
     selected_frequency_display = 'All Frequencies'
     if frequency_filter != 'all':
         for freq_value, freq_label in Checklist.FREQUENCY_CHOICES:
@@ -2207,7 +2161,6 @@ def member_checklist(request):
                 selected_frequency_display = freq_label
                 break
     
-    # Month names for filter
     month_names = [
         ('all', 'All Months'),
         ('0', 'January'),
@@ -2224,9 +2177,6 @@ def member_checklist(request):
         ('11', 'December'),
     ]
     
-    # ============================================
-    # QUARTER OPTIONS
-    # ============================================
     quarter_options = [
         ('all', 'All Quarters'),
         ('1', 'Q1 (Jan - Mar)'),
@@ -2235,7 +2185,6 @@ def member_checklist(request):
         ('4', 'Q4 (Oct - Dec)'),
     ]
     
-    # Get quarter name for display
     quarter_names = {
         1: 'Q1',
         2: 'Q2',
@@ -2265,7 +2214,6 @@ def member_checklist(request):
         'total_quarter_actual': total_quarter_actual,
         'total_year_expected': total_year_expected,
         'total_year_actual': total_year_actual,
-        # Filter data - Combined only
         'branch_filter': branch_filter,
         'department_filter': department_filter,
         'month_filter': month_filter,
@@ -2283,13 +2231,13 @@ def member_checklist(request):
         'display_month': display_month,
         'display_year': display_year,
         'current_quarter': current_quarter,
-        # Combined filter (what the template uses)
         'combined_filter_options': combined_filter_options,
         'active_combined_filter': active_combined_filter,
         'selected_combined_display': selected_combined_display,
     }
     
     return render(request, 'control_dashboard/checklist-mem.html', context)
+
 
 # ==================== API - CHECKLIST LOG ====================
 
@@ -2550,9 +2498,7 @@ def api_get_draft(request, report_id):
         except UserProfile.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'User profile context not found'}, status=404)
         
-        # ============================================
         # BUILD DATA FROM RELATIONAL TABLES
-        # ============================================
         report_data = {}
         form_data = {}
         
@@ -2595,6 +2541,7 @@ def api_get_draft(request, report_id):
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_edit_draft(request, report_id):
@@ -2612,37 +2559,96 @@ def api_edit_draft(request, report_id):
         
         data = json.loads(request.body)
         form_data = data.get('form_data', {})
+        is_excel = data.get('is_excel', False)
         
-        # ============================================
-        # UPDATE DATA FIELDS (RELATIONAL TABLES)
-        # ============================================
-        for field_name, field_value in form_data.items():
-            # Update existing field or create new one
-            field, created = ReportDataField.objects.update_or_create(
-                report=report,
-                field_name=field_name,
-                defaults={
-                    'field_value': field_value,
-                    'field_type': 'text'
-                }
-            )
+        # HANDLE EXCEL DATA UPDATE
+        if is_excel and 'headers' in form_data and 'data' in form_data:
+            headers = form_data.get('headers', [])
+            rows_data = form_data.get('data', [])
+            
+            # Get or create Excel import
+            excel_import = report.excel_imports.first()
+            if excel_import:
+                # Clear existing rows and cells
+                excel_import.rows.all().delete()
+                excel_import.headers = ','.join(headers)
+                excel_import.row_count = len(rows_data)
+                excel_import.save()
+            else:
+                # Create new import record
+                excel_import = ReportExcelImport.objects.create(
+                    report=report,
+                    file_name=form_data.get('file_name', 'edited.xlsx'),
+                    headers=','.join(headers),
+                    row_count=len(rows_data)
+                )
+            
+            # Save new rows and cells
+            for row_idx, row in enumerate(rows_data):
+                excel_row = ReportExcelRow.objects.create(
+                    import_record=excel_import,
+                    row_index=row_idx
+                )
+                for i, value in enumerate(row):
+                    if i < len(headers):
+                        ReportExcelCell.objects.create(
+                            row=excel_row,
+                            column_name=headers[i] or f'Column_{i+1}',
+                            value=str(value) if value is not None else ''
+                        )
+            
+            # Also update ReportDataField for backward compatibility
+            for i, header in enumerate(headers):
+                ReportDataField.objects.update_or_create(
+                    report=report,
+                    field_name=header or f'Column_{i+1}',
+                    defaults={
+                        'field_value': '',
+                        'field_type': 'text',
+                        'order': i
+                    }
+                )
+            
+            if report.status == 'assigned':
+                report.status = 'in_progress'
+            report.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Excel report updated successfully',
+                'data': {'headers': headers, 'rows': len(rows_data)}
+            })
         
-        if report.status == 'assigned':
-            report.status = 'in_progress'
-        report.save()
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'Report modifications saved successfully',
-            'data': form_data
-        })
+        # HANDLE REGULAR FORM DATA UPDATE
+        else:
+            for field_name, field_value in form_data.items():
+                field, created = ReportDataField.objects.update_or_create(
+                    report=report,
+                    field_name=field_name,
+                    defaults={
+                        'field_value': field_value,
+                        'field_type': 'text'
+                    }
+                )
+            
+            if report.status == 'assigned':
+                report.status = 'in_progress'
+            report.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Report modifications saved successfully',
+                'data': form_data
+            })
         
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON format received'}, status=400)
     except Exception as e:
-        print(f"Exception during edit save tracking: {e}")
+        print(f"Exception during edit save: {e}")
+        import traceback
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["DELETE"])
@@ -2658,9 +2664,7 @@ def api_delete_draft(request, report_id):
         except UserProfile.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'User context profile not found'}, status=404)
         
-        # ============================================
         # DELETE ALL RELATED DATA
-        # ============================================
         # Delete data fields
         report.data_fields.all().delete()
         
@@ -2680,6 +2684,7 @@ def api_delete_draft(request, report_id):
         import traceback
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 @require_http_methods(["GET"])
 def api_get_report_data(request):
@@ -3807,3 +3812,237 @@ def analytics_dashboard(request):
     }
     
     return render(request, 'control_dashboard/analytics.html', context)
+
+
+# ==================== SUBMIT SELECTED REPORTS ====================
+
+@login_required
+@csrf_exempt
+def submit_selected_reports(request):
+    """
+    Handle submission of selected reports with Excel and screenshot
+    """
+    try:
+        user_profile = UserProfile.objects.get(email=request.user.email)
+    except UserProfile.DoesNotExist:
+        return redirect('control_dashboard:member_dashboard')
+    
+    if request.method == 'POST':
+        try:
+            selected_ids = json.loads(request.POST.get('selected_reports', '[]'))
+            if not selected_ids:
+                messages.error(request, 'No reports selected.')
+                return redirect('control_dashboard:reports_page')
+            
+            # Get selected reports
+            reports = Report.objects.filter(
+                id__in=selected_ids,
+                created_by=user_profile
+            )
+            
+            if not reports.exists():
+                messages.error(request, 'Selected reports not found.')
+                return redirect('control_dashboard:reports_page')
+            
+            # Generate Excel file
+            excel_data = generate_excel_from_reports(reports)
+            
+            # Generate screenshot of exception data
+            screenshot_data = generate_exception_screenshot(reports)
+            
+            # Store in session for the submit page
+            request.session['submission_data'] = {
+                'reports': [{'id': r.id, 'report_type': r.report_type} for r in reports],
+                'excel_data': excel_data,
+                'screenshot_data': screenshot_data,
+                'report_count': reports.count()
+            }
+            
+            # Redirect to submit page with pre-filled data
+            return redirect('control_dashboard:submit_page')
+            
+        except Exception as e:
+            print(f"Error submitting reports: {e}")
+            import traceback
+            traceback.print_exc()
+            messages.error(request, f'Error preparing submission: {str(e)}')
+            return redirect('control_dashboard:reports_page')
+    
+    # GET request - show the submit page
+    return redirect('control_dashboard:submit_page')
+
+
+def generate_excel_from_reports(reports):
+    """
+    Generate Excel data from reports
+    """
+    import io
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill
+    from openpyxl.utils import get_column_letter
+    
+    wb = openpyxl.Workbook()
+    
+    for idx, report in enumerate(reports):
+        # Create a sheet for each report
+        ws = wb.create_sheet(title=f"Report_{idx+1}_{report.report_type[:20]}")
+        
+        # Get display data
+        display_data = report.get_display_data()
+        headers = display_data.get('headers', [])
+        rows = display_data.get('rows', [])
+        
+        # Add header
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.alignment = Alignment(horizontal="center")
+        
+        # Add data rows
+        for row_idx, row in enumerate(rows, 2):
+            if isinstance(row, dict):
+                for col_idx, header in enumerate(headers, 1):
+                    value = row.get(header, '')
+                    ws.cell(row=row_idx, column=col_idx, value=value)
+            elif isinstance(row, list):
+                for col_idx, value in enumerate(row, 1):
+                    if col_idx <= len(headers):
+                        ws.cell(row=row_idx, column=col_idx, value=value)
+        
+        # Auto-adjust column widths
+        for col in range(1, len(headers) + 1):
+            column_letter = get_column_letter(col)
+            max_length = 15
+            for row in range(1, min(ws.max_row + 1, 50)):
+                cell_value = ws.cell(row=row, column=col).value
+                if cell_value:
+                    max_length = max(max_length, len(str(cell_value)))
+            ws.column_dimensions[column_letter].width = min(max_length + 2, 50)
+    
+    # Remove default sheet
+    wb.remove(wb['Sheet'])
+    
+    # Save to bytes
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return {
+        'file_name': f'Exception_Report_{datetime.now().strftime("%Y%m%d")}.xlsx',
+        'file_data': base64.b64encode(output.getvalue()).decode('utf-8'),
+        'report_count': reports.count()
+    }
+
+
+def generate_exception_screenshot(reports):
+    """
+    Generate a screenshot-like representation of the exception data
+    """
+    import html
+    
+    # Build HTML table representation
+    html_content = """
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; background: white; }
+            .report-container { margin-bottom: 30px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; }
+            .report-title { font-size: 16px; font-weight: 600; color: #1a2332; margin-bottom: 10px; border-bottom: 2px solid #0066cc; padding-bottom: 8px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+            th { background: #0066cc; color: white; padding: 8px 12px; text-align: left; font-weight: 600; }
+            td { padding: 6px 12px; border-bottom: 1px solid #e5e7eb; }
+            tr:hover { background: #f8fafc; }
+            .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; }
+            .badge-success { background: #d1fae5; color: #065f46; }
+            .badge-warning { background: #fef3c7; color: #92400e; }
+            .badge-danger { background: #fee2e2; color: #991b1b; }
+            .badge-secondary { background: #f3f4f6; color: #6b7280; }
+            .excel-note { background: #f0f7ff; padding: 10px 15px; border-radius: 6px; border: 1px solid #0066cc; margin-top: 10px; font-size: 13px; color: #1a2332; }
+        </style>
+    </head>
+    <body>
+    """
+    
+    for report in reports:
+        display_data = report.get_display_data()
+        headers = display_data.get('headers', [])
+        rows = display_data.get('rows', [])
+        is_excel = display_data.get('is_excel', False)
+        
+        html_content += f"""
+        <div class="report-container">
+            <div class="report-title">
+                📊 {html.escape(report.report_type)} 
+                <span style="font-size:12px;font-weight:400;color:#6b7280;margin-left:10px;">
+                    ({len(rows)} records)
+                </span>
+            </div>
+        """
+        
+        if rows and headers:
+            html_content += "<table>"
+            
+            # Headers
+            html_content += "<thead><tr>"
+            for header in headers:
+                html_content += f"<th>{html.escape(str(header))}</th>"
+            html_content += "</tr></thead>"
+            
+            # Rows (limit to 20 for screenshot)
+            html_content += "<tbody>"
+            for row in rows[:20]:
+                html_content += "<tr>"
+                if isinstance(row, dict):
+                    for header in headers:
+                        value = row.get(header, '')
+                        # Check if it's a status field
+                        if 'status' in header.lower():
+                            status_class = get_status_class(value)
+                            html_content += f"<td><span class='badge {status_class}'>{html.escape(str(value))}</span></td>"
+                        else:
+                            html_content += f"<td>{html.escape(str(value))}</td>"
+                elif isinstance(row, list):
+                    for value in row[:len(headers)]:
+                        html_content += f"<td>{html.escape(str(value))}</td>"
+                html_content += "</tr>"
+            
+            if len(rows) > 20:
+                html_content += f"<tr><td colspan='{len(headers)}' style='text-align:center;color:#6b7280;font-style:italic;'>... and {len(rows) - 20} more rows</td></tr>"
+            
+            html_content += "</tbody></table>"
+        else:
+            html_content += "<p style='color:#6b7280;font-style:italic;'>No data available</p>"
+        
+        if is_excel:
+            html_content += """
+            <div class="excel-note">
+                📎 Excel file attached with all data.
+            </div>
+            """
+        
+        html_content += "</div>"
+    
+    html_content += """
+    </body>
+    </html>
+    """
+    
+    return {
+        'html': html_content,
+        'report_count': reports.count()
+    }
+
+
+def get_status_class(status):
+    """Get CSS class for status badge"""
+    status_lower = str(status).lower() if status else ''
+    if status_lower in ['open', 'pending', 'in progress']:
+        return 'badge-warning'
+    elif status_lower in ['closed', 'resolved', 'approved', 'completed']:
+        return 'badge-success'
+    elif status_lower in ['rejected', 'cancelled']:
+        return 'badge-danger'
+    else:
+        return 'badge-secondary'

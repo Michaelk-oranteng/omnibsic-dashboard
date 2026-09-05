@@ -6,16 +6,18 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'stylesheets/submit.css' %}" type="text/css">
 <style>
-    /* Override grid to be 1fr 1fr - half and half */
+    /* Single column layout - email form only */
     .email-builder-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr;
         gap: 24px;
         margin-top: 20px;
         align-items: start;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
     }
     
-    /* Make both cards equal height and full width */
     .builder-card {
         height: 100%;
         display: flex;
@@ -24,31 +26,6 @@
     
     .email-form-box {
         min-height: 500px;
-    }
-    
-    .exception-selector-box {
-        min-height: 500px;
-    }
-    
-    .exception-checklist-stack {
-        flex: 1;
-        max-height: 420px;
-        overflow-y: auto;
-        padding-right: 4px;
-    }
-    
-    .exception-checklist-stack::-webkit-scrollbar {
-        width: 4px;
-    }
-    
-    .exception-checklist-stack::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 4px;
-    }
-    
-    .exception-checklist-stack::-webkit-scrollbar-thumb {
-        background: #0066cc;
-        border-radius: 4px;
     }
     
     .form-row {
@@ -64,367 +41,9 @@
         margin-top: auto;
     }
     
-    .selected-summary {
-        margin: 12px 0 16px;
-        padding: 12px 16px;
-        background: #f8fafc;
-        border-radius: 8px;
-        border: 1px solid #e5e7eb;
-    }
-    
-    .selected-summary.has-selections {
-        border-color: #0066cc;
-        background: #f0f7ff;
-    }
-    
-    .selected-header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 8px;
-    }
-    
-    .selected-count {
-        font-size: 18px;
-        font-weight: 700;
-        color: #0066cc;
-    }
-    
-    .selected-label {
-        font-size: 13px;
-        color: #6b7280;
-    }
-    
-    .selected-tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        max-height: 60px;
-        overflow-y: auto;
-    }
-    
-    .selected-tag {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 2px 10px 2px 8px;
-        background: #dbeafe;
-        color: #1e40af;
-        border-radius: 12px;
-        font-size: 11px;
-        font-weight: 500;
-        white-space: nowrap;
-    }
-    
-    .selected-tag .remove-tag {
-        cursor: pointer;
-        font-size: 10px;
-        opacity: 0.6;
-        transition: opacity 0.2s;
-    }
-    
-    .selected-tag .remove-tag:hover {
-        opacity: 1;
-    }
-    
-    .empty-selection-text {
-        font-size: 13px;
-        color: #9ca3af;
-        font-style: italic;
-    }
-    
-    /* Exception Card Styles */
-    .exception-select-card {
-        display: flex;
-        align-items: stretch;
-        padding: 10px 12px;
-        margin-bottom: 6px;
-        background: #f8fafc;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        transition: all 0.2s ease;
-        cursor: pointer;
-    }
-    
-    .exception-select-card:hover {
-        background: #f1f5f9;
-        border-color: #d1d5db;
-    }
-    
-    .exception-select-card.active {
-        background: #f0f7ff;
-        border-color: #0066cc;
-        box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.1);
-    }
-    
-    .exception-checkbox-wrapper {
-        display: flex;
-        align-items: center;
-        padding-right: 10px;
-        flex-shrink: 0;
-    }
-    
-    .exception-checkbox {
-        width: 18px;
-        height: 18px;
-        accent-color: #0066cc;
-        cursor: pointer;
-        border-radius: 4px;
-    }
-    
-    .exception-card-info {
-        flex: 1;
-        min-width: 0;
-        cursor: pointer;
-    }
-    
-    .ex-header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-bottom: 2px;
-    }
-    
-    .ex-unit {
-        font-size: 11px;
-        font-weight: 500;
-        color: #6b7280;
-        background: #e5e7eb;
-        padding: 1px 8px;
-        border-radius: 4px;
-    }
-    
-    .report-type-badge {
-        font-size: 10px;
-        font-weight: 600;
-        color: white;
-        background: #0066cc;
-        padding: 1px 8px;
-        border-radius: 4px;
-        text-transform: uppercase;
-    }
-    
-    .ex-status {
-        font-size: 10px;
-        font-weight: 600;
-        padding: 1px 8px;
-        border-radius: 4px;
-        text-transform: uppercase;
-    }
-    
-    .ex-status.submitted {
-        background: #dbeafe;
-        color: #1e40af;
-    }
-    
-    .ex-status.draft {
-        background: #fef3c7;
-        color: #92400e;
-    }
-    
-    .ex-status.rejected {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-    
-    .ex-status.approved {
-        background: #d1fae5;
-        color: #065f46;
-    }
-    
-    .ex-title {
-        font-size: 13px;
-        font-weight: 600;
-        color: #1a2332;
-        margin: 2px 0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    
-    .ex-details {
-        font-size: 12px;
-        color: #6b7280;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        margin: 1px 0;
-    }
-    
-    .ex-details i {
-        margin-right: 4px;
-        font-size: 10px;
-        color: #9ca3af;
-    }
-    
-    .ex-fields {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        margin-top: 2px;
-    }
-    
-    .ex-field {
-        font-size: 11px;
-        color: #6b7280;
-        background: #f3f4f6;
-        padding: 1px 6px;
-        border-radius: 3px;
-    }
-    
-    .ex-field-more {
-        font-size: 10px;
-        color: #9ca3af;
-        padding: 1px 6px;
-    }
-    
-    .ex-meta {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-top: 3px;
-        font-size: 10px;
-        color: #9ca3af;
-    }
-    
-    .ex-meta i {
-        margin-right: 2px;
-        font-size: 10px;
-    }
-    
-    .exception-select-arrow {
-        display: flex;
-        align-items: center;
-        padding-left: 8px;
-        flex-shrink: 0;
-        color: #9ca3af;
-        transition: all 0.2s ease;
-    }
-    
-    .exception-select-arrow i {
-        transition: transform 0.2s ease;
-    }
-    
-    .exception-select-arrow i.selected {
-        color: #0066cc;
-        transform: rotate(90deg);
-    }
-    
-    /* No exceptions message */
-    .no-exceptions-msg {
-        text-align: center;
-        padding: 30px 20px;
-        color: #6b7280;
-    }
-    
-    .no-exceptions-msg i {
-        font-size: 40px;
-        color: #d1d5db;
-        display: block;
-        margin-bottom: 12px;
-    }
-    
-    .no-exceptions-msg p {
-        margin: 4px 0;
-    }
-    
-    .no-exceptions-msg .sub-text {
-        font-size: 13px;
-        color: #9ca3af;
-    }
-    
-    /* Category filter */
-    .category-filter {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin: 12px 0;
-    }
-    
-    .category-btn {
-        padding: 4px 14px;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        font-size: 11px;
-        font-weight: 500;
-        color: #6b7280;
-        background: white;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        font-family: 'Poppins', sans-serif;
-    }
-    
-    .category-btn:hover {
-        background: #f3f4f6;
-    }
-    
-    .category-btn.active {
-        background: #0066cc;
-        color: white;
-        border-color: #0066cc;
-    }
-    
-    /* Selector header */
-    .selector-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-    
-    .selector-header-left {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    
-    .selector-header-left h4 {
-        font-size: 15px;
-        font-weight: 600;
-        color: #1a2332;
-        margin: 0;
-    }
-    
-    .exception-count {
-        font-size: 12px;
-        color: #6b7280;
-        background: #f3f4f6;
-        padding: 2px 10px;
-        border-radius: 12px;
-    }
-    
-    .btn-select-all {
-        padding: 4px 14px;
-        border: 1px solid #e5e7eb;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 500;
-        color: #0066cc;
-        background: white;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        font-family: 'Poppins', sans-serif;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
-    
-    .btn-select-all:hover {
-        background: #f0f7ff;
-        border-color: #0066cc;
-    }
-    
-    .btn-select-all i {
-        font-size: 12px;
-    }
-    
-    /* Template textarea */
     .template-textarea {
         width: 100%;
-        min-height: 120px;
+        min-height: 150px;
         padding: 10px 14px;
         border: 1.5px solid #e5e7eb;
         border-radius: 8px;
@@ -505,6 +124,7 @@
         font-weight: 600;
         transition: all 0.3s ease;
         font-family: 'Poppins', sans-serif;
+        width: 100%;
     }
     
     .btn-send-mail:hover:not(:disabled) {
@@ -527,6 +147,225 @@
         color: #dc2626;
         font-weight: 700;
     }
+
+    /* Attachment info styles */
+    .attachment-info {
+        background: #f0f7ff;
+        border: 1px solid #0066cc;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin: 10px 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .attachment-info i {
+        font-size: 20px;
+        color: #0066cc;
+    }
+    
+    .attachment-info .attachment-details {
+        flex: 1;
+    }
+    
+    .attachment-info .attachment-details .file-name {
+        font-weight: 600;
+        color: #1a2332;
+        font-size: 13px;
+    }
+    
+    .attachment-info .attachment-details .file-size {
+        font-size: 12px;
+        color: #6b7280;
+    }
+    
+    .screenshot-preview {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+        margin: 10px 0;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .screenshot-preview iframe {
+        width: 100%;
+        height: 300px;
+        border: none;
+    }
+
+    /* Email Modal Styles */
+    .email-modal-content {
+        max-width: 700px;
+        width: 95%;
+    }
+    
+    .email-modal-content .form-group {
+        margin-bottom: 14px;
+    }
+    
+    .email-modal-content .form-group label {
+        display: block;
+        margin-bottom: 4px;
+        font-weight: 500;
+        font-size: 13px;
+        color: #1a2332;
+    }
+    
+    .email-modal-content .form-group label .required {
+        color: #dc2626;
+    }
+    
+    .email-modal-content .form-control {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 13px;
+        font-family: 'Poppins', sans-serif;
+        transition: border-color 0.3s ease;
+        background: white;
+        color: #1a2332;
+    }
+    
+    .email-modal-content .form-control:focus {
+        border-color: #0066cc;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.08);
+    }
+    
+    .email-modal-content .form-control.message-body {
+        min-height: 200px;
+        resize: vertical;
+        font-family: 'Poppins', sans-serif;
+        line-height: 1.6;
+    }
+    
+    .email-modal-content .modal-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid #f0f0f0;
+    }
+    
+    .email-modal-content .btn-cancel {
+        padding: 8px 20px;
+        background: #f3f4f6;
+        color: #374151;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    .email-modal-content .btn-cancel:hover {
+        background: #e5e7eb;
+    }
+    
+    .email-modal-content .btn-open-email {
+        padding: 8px 20px;
+        background: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.3s;
+        font-family: 'Poppins', sans-serif;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .email-modal-content .btn-open-email:hover {
+        background: #004e8c;
+    }
+    
+    .email-modal-content .btn-open-email i {
+        font-size: 14px;
+    }
+    
+    .email-modal-content .email-info-box {
+        background: #f8fafc;
+        border-radius: 6px;
+        padding: 10px 14px;
+        margin: 10px 0;
+        border: 1px solid #e5e7eb;
+        font-size: 12px;
+        color: #6b7280;
+    }
+    
+    .email-modal-content .email-info-box i {
+        margin-right: 6px;
+        color: #0066cc;
+    }
+    
+    .modal-wrapper {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(4px);
+    }
+    
+    .modal-wrapper.show {
+        display: flex;
+    }
+    
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 550px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    }
+    
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    
+    .modal-header h3 {
+        margin: 0;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .modal-header h3 i {
+        color: #0066cc;
+    }
+    
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #9ca3af;
+        transition: color 0.2s;
+    }
+    
+    .modal-close:hover {
+        color: #1a2332;
+    }
     
     /* Loading overlay */
     .loading-overlay {
@@ -537,10 +376,14 @@
         height: 100%;
         background: rgba(0, 0, 0, 0.5);
         backdrop-filter: blur(4px);
-        display: flex;
+        display: none;
         justify-content: center;
         align-items: center;
         z-index: 99999;
+    }
+    
+    .loading-overlay.show {
+        display: flex;
     }
     
     .loading-content {
@@ -650,29 +493,6 @@
     }
     
     /* Responsive */
-    @media (max-width: 1024px) {
-        .email-builder-grid {
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
-        
-        .builder-card {
-            min-height: auto;
-        }
-        
-        .email-form-box {
-            min-height: auto;
-        }
-        
-        .exception-selector-box {
-            min-height: 400px;
-        }
-        
-        .exception-checklist-stack {
-            max-height: 350px;
-        }
-    }
-    
     @media (max-width: 768px) {
         .email-builder-grid {
             gap: 16px;
@@ -684,12 +504,8 @@
             border-radius: 16px;
         }
         
-        .exception-selector-box {
-            min-height: 350px;
-        }
-        
-        .exception-checklist-stack {
-            max-height: 300px;
+        .email-form-box {
+            min-height: auto;
         }
         
         .form-row {
@@ -697,67 +513,33 @@
         }
         
         .template-textarea {
-            min-height: 80px;
+            min-height: 100px;
         }
         
-        .ex-title {
-            font-size: 12px;
+        .email-modal-content {
+            padding: 16px;
+            margin: 10px;
         }
         
-        .ex-details {
-            font-size: 11px;
-        }
-        
-        .selected-tags {
-            max-height: 40px;
-        }
-        
-        .selected-tag {
-            font-size: 10px;
-            padding: 1px 8px 1px 6px;
-        }
-    }
-    
-    @media (max-width: 480px) {
-        .ex-header {
+        .email-modal-content .modal-actions {
             flex-wrap: wrap;
         }
         
-        .ex-meta {
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-        
-        .exception-select-card {
-            padding: 8px 10px;
-        }
-        
-        .exception-checkbox-wrapper {
-            padding-right: 6px;
-        }
-        
-        .exception-checkbox {
-            width: 16px;
-            height: 16px;
-        }
-        
-        .selector-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        
-        .btn-select-all {
+        .email-modal-content .modal-actions button {
             width: 100%;
             justify-content: center;
         }
         
-        .category-filter {
-            gap: 4px;
+        .attachment-info {
+            flex-wrap: wrap;
         }
         
-        .category-btn {
-            font-size: 10px;
-            padding: 2px 10px;
+        .screenshot-preview {
+            max-height: 200px;
+        }
+        
+        .screenshot-preview iframe {
+            height: 200px;
         }
     }
 </style>
@@ -795,14 +577,12 @@
 {% endblock %}
 
 {% block top_header_right %}
-<button class="btn-send-header" onclick="sendEmail()">
-    <i class="fas fa-paper-plane"></i> Send Mail
-</button>
+<!-- Send button moved to bottom of form -->
 {% endblock %}
 
 {% block content %}
 <div class="email-builder-grid">
-    <!-- LEFT COLUMN - Email Form -->
+    <!-- Single Column - Email Form -->
     <div class="builder-card email-form-box">
         <div class="form-row">
             <label for="email-to">To <span class="required">*</span></label>
@@ -828,73 +608,50 @@
 
         <div class="form-row">
             <label for="report-type-select">Report Type <span class="required">*</span></label>
-                <select id="reportType" class="form-control" required>
-                    <option value="">Select Report Type...</option>
-                    {% for report_type in report_types %}
-                    <option value="{{ report_type }}">{{ report_type }}</option>
-                    {% endfor %}
-                </select>
+            <select id="reportType" class="form-control" style="width:100%;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:6px;font-size:13px;font-family:'Poppins',sans-serif;" required>
+                <option value="">Select Report Type...</option>
+                {% for report_type in report_types %}
+                <option value="{{ report_type }}">{{ report_type }}</option>
+                {% endfor %}
+            </select>
         </div>
 
         <div class="form-row">
             <label for="email-subject">Subject <span class="required">*</span></label>
-            <input type="text" id="email-subject" class="table-input" placeholder="Select exceptions to auto-generate subject...">
+            <input type="text" id="email-subject" class="table-input" placeholder="Enter email subject...">
         </div>
 
         <div class="form-row">
             <label for="email-body">Body <span class="required">*</span></label>
-            <textarea id="email-body" class="template-textarea" placeholder="Dear Sir,&#10;&#10;Kindly find attached exceptions for the week ending...&#10;&#10;Best regards,"></textarea>
+            <textarea id="email-body" class="template-textarea" placeholder="Dear Sir,&#10;&#10;Kindly find the report details below...&#10;&#10;Best regards,"></textarea>
         </div>
 
-        <div class="selected-summary" id="selectedSummary">
-            <div class="selected-header">
-                <span class="selected-count" id="selectedCount">0</span>
-                <span class="selected-label">Exceptions Selected</span>
-            </div>
-            <div class="selected-tags" id="selectedTags">
-                <span class="empty-selection-text">No exceptions selected</span>
-            </div>
-        </div>
-
-        <button class="btn-send-mail" id="sendMailBtn" onclick="sendEmail()">
-            <i class="fas fa-paper-plane"></i> Send Email
+        <button class="btn-send-mail" id="sendMailBtn" onclick="openEmailModal()">
+            <i class="fas fa-envelope"></i> Compose & Send Email
         </button>
     </div>
+</div>
 
-    <!-- RIGHT COLUMN - Exception Selector -->
-    <div class="builder-card exception-selector-box">
-        <div class="selector-header">
-            <div class="selector-header-left">
-                <h4>Available Exceptions</h4>
-                <span class="exception-count" id="exceptionCount">0 exceptions</span>
-            </div>
-            <div class="selector-header-right">
-                <button class="btn-select-all" onclick="toggleSelectAll()">
-                    <i class="fas fa-check-double"></i> <span id="selectAllText">Select All</span>
-                </button>
-            </div>
+<!-- ============================================ -->
+<!-- EMAIL COMPOSITION MODAL                      -->
+<!-- ============================================ -->
+<div id="emailModal" class="modal-wrapper">
+    <div class="modal-content email-modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-envelope"></i> Compose Email</h3>
+            <button class="modal-close" onclick="closeEmailModal()">&times;</button>
         </div>
-
-        <div class="category-filter" id="categoryFilter">
-            <button class="category-btn active" data-category="all" onclick="filterByCategory('all')">All</button>
-            {% for category in categories_list %}
-            <button class="category-btn" data-category="{{ category.id }}" onclick="filterByCategory('{{ category.id }}')">
-                {{ category.name }}
-            </button>
-            {% endfor %}
-        </div>
-
-        <div class="exception-checklist-stack" id="exceptionStack">
-            <!-- Rendered by JavaScript -->
+        <div id="emailModalFields">
+            <!-- Populated by JavaScript -->
         </div>
     </div>
 </div>
 
 <!-- Loading Overlay -->
-<div class="loading-overlay" id="loadingOverlay" style="display: none;">
+<div class="loading-overlay" id="loadingOverlay">
     <div class="loading-content">
         <div class="spinner"></div>
-        <p>Sending email...</p>
+        <p>Preparing your email...</p>
     </div>
 </div>
 
@@ -907,28 +664,44 @@
     </div>
     <button class="toast-close" onclick="closeToast()"><i class="fas fa-times"></i></button>
 </div>
+
+<!-- Hidden data for pre-filled submissions -->
+<input type="hidden" id="preFilledData" value="{{ pre_filled_data|default:'' }}">
+<input type="hidden" id="excelData" value="{{ excel_data|default:'' }}">
+<input type="hidden" id="screenshotData" value="{{ screenshot_data|default:'' }}">
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
     // ============================================
     // CSRF Token Helper
     // ============================================
     function getCsrfToken() {
-        return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+               document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
     }
 
     // ============================================
     // TOAST NOTIFICATION
     // ============================================
 
-    function showToast(message, title = 'Success!') {
+    function showToast(message, title = 'Success!', isError = false) {
         const toast = document.getElementById('toastNotification');
         const msgEl = document.getElementById('toastMessage');
         const titleEl = toast.querySelector('.toast-title');
+        const iconEl = toast.querySelector('.toast-icon i');
+        
         msgEl.textContent = message || 'Action completed successfully.';
         titleEl.textContent = title;
+        
+        if (isError) {
+            toast.classList.add('error');
+            iconEl.className = 'fas fa-exclamation-circle';
+        } else {
+            toast.classList.remove('error');
+            iconEl.className = 'fas fa-check';
+        }
+        
         toast.classList.add('show');
         
         if (window.toastTimeout) {
@@ -950,34 +723,8 @@
     };
 
     // ============================================
-    // EXCEPTION DATA - Coming from server
+    // USER DATA
     // ============================================
-
-    let exceptionsData = [];
-    try {
-        exceptionsData = JSON.parse('{{ exceptions_json|safe }}');
-        console.log('Exceptions loaded:', exceptionsData.length);
-    } catch (e) {
-        console.error('Exception payload error:', e);
-        {% if exceptions %}
-            exceptionsData = [
-            {% for exception in exceptions %}
-                {
-                    id: {{ exception.id }},
-                    report_type: '{{ exception.report_type|escapejs }}',
-                    status: '{{ exception.status|escapejs }}',
-                    status_display: '{{ exception.get_status_display|escapejs }}',
-                    data: {{ exception.data|safe }},
-                    created_at: '{{ exception.created_at|date:"M d, Y" }}',
-                    unit: '{{ exception.unit|default:"N/A"|escapejs }}',
-                    category: '{{ exception.category|default:"uncategorized"|escapejs }}',
-                    assigned_to: '{{ exception.assigned_to|default:"" }}',
-                    created_by: '{{ exception.created_by|default:"" }}'
-                },
-            {% endfor %}
-            ];
-        {% endif %}
-    }
 
     const userData = {
         name: '{{ user_data.name|escapejs }}',
@@ -985,303 +732,59 @@
         department: '{{ user_data.department|escapejs }}'
     };
 
-    const userEmail = '{{ user_data.email }}';
-    
-    // Filter exceptions for the current user
-    const originalExceptions = [...exceptionsData];
-    exceptionsData = exceptionsData.filter(ex => {
-        return ex.assigned_to === userEmail || ex.created_by === userEmail;
-    });
-
-    console.log('Total exceptions:', originalExceptions.length);
-    console.log('After filtering by user, exceptions:', exceptionsData.length);
-
-    let selectedExceptions = new Set();
-    let currentCategory = 'all';
-    let currentReportType = 'all';
-
     // ============================================
-    // INITIALIZATION
+    // PRE-FILLED DATA FROM REPORTS
     // ============================================
 
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOM loaded, exceptions count:', exceptionsData.length);
-        loadDraft();
-        renderExceptions();
-        updateSelectedSummary();
-        updateSubjectLine();
-    });
+    let preFilledData = null;
+    let excelFileData = null;
+    let screenshotHtml = null;
 
-    // ============================================
-    // RENDER EXCEPTIONS
-    // ============================================
-
-    function renderExceptions() {
-        const stack = document.getElementById('exceptionStack');
-        if (!stack) return;
-        
-        stack.innerHTML = '';
-
-        let filtered = getFilteredExceptions();
-
-        if (filtered.length === 0) {
-            let msg = 'No exceptions available for selection';
-            let subMsg = 'You have no submitted reports available to send via email';
-            
-            if (originalExceptions.length > 0) {
-                const statuses = [...new Set(originalExceptions.map(e => e.status))];
-                subMsg = `You have ${originalExceptions.length} total exceptions. Filter by report type to view them.`;
+    function loadPreFilledData() {
+        try {
+            const preFilledEl = document.getElementById('preFilledData');
+            if (preFilledEl && preFilledEl.value) {
+                preFilledData = JSON.parse(preFilledEl.value);
+                console.log('Pre-filled data loaded:', preFilledData);
             }
             
-            stack.innerHTML = `
-                <div class="no-exceptions-msg">
-                    <i class="fas fa-inbox"></i>
-                    <p>${msg}</p>
-                    <p class="sub-text">${subMsg}</p>
-                </div>
-            `;
-            document.getElementById('exceptionCount').textContent = '0 exceptions';
-            return;
-        }
-
-        filtered.forEach(exception => {
-            const isChecked = selectedExceptions.has(exception.id);
-            const card = document.createElement('div');
-            card.className = `exception-select-card ${isChecked ? 'active' : ''}`;
-            card.dataset.id = exception.id;
-
-            const header = exception.data?.header || exception.report_type || 'Untitled';
-            const unit = exception.unit || 'N/A';
-            const statusClass = exception.status || 'draft';
-            const statusDisplay = exception.status_display || (exception.status ? exception.status.charAt(0).toUpperCase() + exception.status.slice(1) : 'Draft');
-            
-            // Get the observation/details
-            let details = 'No details provided';
-            const formData = exception.data?.form_data || exception.data;
-            
-            if (formData) {
-                let dataObj = formData;
-                if (Array.isArray(formData) && formData.length > 0) {
-                    dataObj = formData[0];
-                }
-                
-                if (dataObj && typeof dataObj === 'object') {
-                    const observationFields = [
-                        'OBSERVATION', 'observation', 'Details', 'details', 
-                        'DESCRIPTION', 'description', 'KEY FINDINGS', 'key_findings',
-                        'FINDINGS', 'findings', 'COMMENT', 'comment',
-                        'REMARKS', 'remarks', 'NOTES', 'notes', 'OBSERVATIONS', 'observations'
-                    ];
-                    
-                    for (const field of observationFields) {
-                        if (dataObj[field] && dataObj[field] !== '' && dataObj[field] !== 'N/A') {
-                            details = dataObj[field];
-                            break;
-                        }
-                    }
-                }
+            const excelEl = document.getElementById('excelData');
+            if (excelEl && excelEl.value) {
+                excelFileData = JSON.parse(excelEl.value);
+                console.log('Excel data loaded:', excelFileData);
             }
             
-            const createdDate = exception.created_at || new Date().toLocaleDateString();
-
-            card.innerHTML = `
-                <div class="exception-checkbox-wrapper" onclick="toggleException(${exception.id})">
-                    <input type="checkbox" class="exception-checkbox" ${isChecked ? 'checked' : ''} 
-                           onclick="event.stopPropagation(); toggleException(${exception.id})">
-                </div>
-                <div class="exception-card-info" onclick="toggleException(${exception.id})">
-                    <div class="ex-header">
-                        <span class="ex-unit">
-                            <i class="fas fa-building"></i> ${unit}
-                        </span>
-                        <span class="report-type-badge">${exception.report_type || 'General'}</span>
-                        <span class="ex-status ${statusClass}">${statusDisplay}</span>
-                    </div>
-                    <h5 class="ex-title">${header}</h5>
-                    <div class="ex-details">
-                        <i class="fas fa-align-left"></i> ${details}
-                    </div>
-                    <div class="ex-meta">
-                        <span><i class="far fa-calendar-alt"></i> ${createdDate}</span>
-                        <span><i class="fas fa-id-card"></i> ID: ${exception.id}</span>
-                    </div>
-                </div>
-                <div class="exception-select-arrow" onclick="toggleException(${exception.id})">
-                    <i class="fas fa-chevron-right ${isChecked ? 'selected' : ''}"></i>
-                </div>
-            `;
-
-            stack.appendChild(card);
-        });
-
-        updateSelectAllButton();
-        updateExceptionCount();
-    }
-
-    function getFilteredExceptions() {
-        let filtered = exceptionsData;
-
-        if (currentReportType !== 'all') {
-            filtered = filtered.filter(ex => ex.report_type === currentReportType);
-        }
-
-        if (currentCategory !== 'all') {
-            filtered = filtered.filter(ex => ex.category === currentCategory);
-        }
-
-        return filtered;
-    }
-
-    // ============================================
-    // FILTER FUNCTIONS
-    // ============================================
-
-    function filterByCategory(category) {
-        currentCategory = category;
-        
-        document.querySelectorAll('.category-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.category === category);
-        });
-        
-        renderExceptions();
-    }
-
-    function filterByReportType() {
-        const select = document.getElementById('report-type-select');
-        currentReportType = select ? select.value : 'all';
-        console.log('Filtering by report type:', currentReportType);
-        renderExceptions();
-    }
-
-    // ============================================
-    // SELECTION FUNCTIONS
-    // ============================================
-
-    function toggleException(id) {
-        if (selectedExceptions.has(id)) {
-            selectedExceptions.delete(id);
-        } else {
-            selectedExceptions.add(id);
-        }
-        
-        renderExceptions();
-        updateSelectedSummary();
-        updateSubjectLine();
-        autoSaveDraft();
-    }
-
-    function toggleSelectAll() {
-        const visibleCards = document.querySelectorAll('.exception-select-card');
-        const visibleIds = Array.from(visibleCards).map(card => parseInt(card.dataset.id));
-        
-        if (visibleIds.length === 0) return;
-        
-        const allSelected = visibleIds.every(id => selectedExceptions.has(id));
-        
-        if (allSelected) {
-            visibleIds.forEach(id => selectedExceptions.delete(id));
-        } else {
-            visibleIds.forEach(id => selectedExceptions.add(id));
-        }
-        
-        renderExceptions();
-        updateSelectedSummary();
-        updateSubjectLine();
-        updateSelectAllButton();
-        autoSaveDraft();
-    }
-
-    function updateSelectAllButton() {
-        const textSpan = document.getElementById('selectAllText');
-        if (!textSpan) return;
-
-        const visibleCards = document.querySelectorAll('.exception-select-card');
-        const visibleIds = Array.from(visibleCards).map(card => parseInt(card.dataset.id));
-        
-        if (visibleIds.length === 0) {
-            textSpan.textContent = 'Select All';
-            return;
-        }
-        
-        const allSelected = visibleIds.every(id => selectedExceptions.has(id));
-        textSpan.textContent = allSelected ? 'Deselect All' : 'Select All';
-    }
-
-    // ============================================
-    // UPDATE UI FUNCTIONS
-    // ============================================
-
-    function updateSelectedSummary() {
-        const count = selectedExceptions.size;
-        const countEl = document.getElementById('selectedCount');
-        const tagsContainer = document.getElementById('selectedTags');
-        
-        if (countEl) countEl.textContent = count;
-        if (!tagsContainer) return;
-        
-        if (count === 0) {
-            tagsContainer.innerHTML = '<span class="empty-selection-text">No exceptions selected</span>';
-            return;
-        }
-        
-        const selectedItems = exceptionsData.filter(ex => selectedExceptions.has(ex.id));
-        
-        tagsContainer.innerHTML = selectedItems.map(ex => {
-            const header = ex.data?.header || ex.report_type || 'Untitled';
-            const unit = ex.unit || 'N/A';
-            return `<span class="selected-tag">
-                <i class="fas fa-file-alt"></i> ${unit}: ${header}
-                <span class="remove-tag" onclick="event.stopPropagation(); toggleException(${ex.id})">
-                    <i class="fas fa-times"></i>
-                </span>
-            </span>`;
-        }).join('');
-        
-        const summary = document.getElementById('selectedSummary');
-        if (summary) {
-            summary.classList.toggle('has-selections', count > 0);
-        }
-    }
-
-    function updateSubjectLine() {
-        const count = selectedExceptions.size;
-        const subjectInput = document.getElementById('email-subject');
-        if (!subjectInput) return;
-        
-        if (count === 0) {
-            if (!subjectInput.value || subjectInput.value.startsWith('EXCEPTION REPORT')) {
-                subjectInput.placeholder = 'Select exceptions to auto-generate subject...';
-                if (subjectInput.value.startsWith('EXCEPTION REPORT')) {
-                    subjectInput.value = '';
-                }
+            const screenshotEl = document.getElementById('screenshotData');
+            if (screenshotEl && screenshotEl.value) {
+                screenshotHtml = JSON.parse(screenshotEl.value);
+                console.log('Screenshot data loaded');
             }
-            return;
-        }
-        
-        const selectedItems = exceptionsData.filter(ex => selectedExceptions.has(ex.id));
-        const units = [...new Set(selectedItems.map(ex => ex.unit || 'Various'))];
-        const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-        const reportTypes = [...new Set(selectedItems.map(ex => ex.report_type || 'Exception'))];
-        
-        let subject = 'EXCEPTION REPORT';
-        if (reportTypes.length === 1 && reportTypes[0] !== 'Exception') {
-            subject = reportTypes[0];
-        }
-        if (units.length > 0 && units.length <= 3) {
-            subject += ` - ${units.join(' & ')}`;
-        }
-        subject += ` (${selectedItems.length} exceptions) for ${date}`;
-        
-        if (!subjectInput.value || subjectInput.value.startsWith('EXCEPTION REPORT') || subjectInput.value.includes('exceptions) for')) {
-            subjectInput.value = subject;
-        }
-    }
+            
+            // Auto-fill form if we have pre-filled data
+            if (preFilledData && preFilledData.reports) {
+                const reportTypes = preFilledData.reports.map(r => r.report_type).join(', ');
+                const subjectInput = document.getElementById('email-subject');
+                if (subjectInput && !subjectInput.value) {
+                    subjectInput.value = `Exception Report - ${reportTypes} (${preFilledData.report_count} reports)`;
+                }
+                const bodyInput = document.getElementById('email-body');
+                if (bodyInput && !bodyInput.value) {
+                    bodyInput.value = `Dear Team,
 
-    function updateExceptionCount() {
-        const countEl = document.getElementById('exceptionCount');
-        if (!countEl) return;
-        const visible = document.querySelectorAll('.exception-select-card').length;
-        countEl.textContent = `${visible} exceptions`;
+Please find the attached exception report(s) for review.
+
+Report Type(s): ${reportTypes}
+Number of Reports: ${preFilledData.report_count}
+Generated: ${new Date().toLocaleString()}
+
+Best regards,
+${userData.name}`;
+                }
+                autoSaveDraft();
+            }
+        } catch (e) {
+            console.warn('Error loading pre-filled data:', e);
+        }
     }
 
     // ============================================
@@ -1292,10 +795,9 @@
         const emailData = {
             to: document.getElementById('email-to').value,
             cc: document.getElementById('email-cc').value,
-            report_type: document.getElementById('report-type-select').value,
+            report_type: document.getElementById('report-type-select')?.value || '',
             subject: document.getElementById('email-subject').value,
-            body: document.getElementById('email-body').value,
-            selected: Array.from(selectedExceptions)
+            body: document.getElementById('email-body').value
         };
         
         try {
@@ -1312,22 +814,11 @@
                 const data = JSON.parse(draft);
                 if (data.to) document.getElementById('email-to').value = data.to;
                 if (data.cc) document.getElementById('email-cc').value = data.cc;
-                if (data.report_type) {
+                if (data.report_type && document.getElementById('report-type-select')) {
                     document.getElementById('report-type-select').value = data.report_type;
-                    currentReportType = data.report_type;
                 }
                 if (data.subject) document.getElementById('email-subject').value = data.subject;
                 if (data.body) document.getElementById('email-body').value = data.body;
-                if (data.selected && data.selected.length > 0) {
-                    data.selected.forEach(id => {
-                        if (exceptionsData.some(ex => ex.id === id)) {
-                            selectedExceptions.add(id);
-                        }
-                    });
-                    renderExceptions();
-                    updateSelectedSummary();
-                    updateSubjectLine();
-                }
             }
         } catch (e) {
             console.warn("Draft loading failed: ", e);
@@ -1341,89 +832,229 @@
     });
 
     // ============================================
-    // SEND EMAIL - Opens Mail App
+    // INITIALIZATION
     // ============================================
 
-    function sendEmail() {
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Email submit page loaded successfully!');
+        loadDraft();
+        loadPreFilledData();
+    });
+
+    // ============================================
+    // EMAIL MODAL - Compose & Send (SINGLE POPUP)
+    // ============================================
+
+    function openEmailModal() {
         const to = document.getElementById('email-to').value;
         const cc = document.getElementById('email-cc').value;
         const subject = document.getElementById('email-subject').value;
         const body = document.getElementById('email-body').value;
-        const reportType = document.getElementById('report-type-select').value;
+        const reportType = document.getElementById('report-type-select')?.value || '';
         
+        // Validate required fields
         if (!to) {
-            showToast('Please select a recipient.', 'Error');
+            showToast('Please select a recipient.', 'Error', true);
+            document.getElementById('email-to').focus();
             return;
         }
         
         if (!subject) {
-            showToast('Please enter a subject.', 'Error');
+            showToast('Please enter a subject.', 'Error', true);
+            document.getElementById('email-subject').focus();
             return;
         }
         
         if (!body) {
-            showToast('Please enter an email body.', 'Error');
+            showToast('Please enter an email body.', 'Error', true);
+            document.getElementById('email-body').focus();
             return;
         }
         
-        if (selectedExceptions.size === 0) {
-            showToast('Please select at least one exception to send.', 'Error');
-            return;
-        }
-        
-        const selectedExList = exceptionsData.filter(ex => selectedExceptions.has(ex.id));
-        const selectedCount = selectedExList.length;
-        
-        // Build mailto link
-        let mailtoLink = `mailto:${to}`;
-        if (cc) {
-            mailtoLink += `?cc=${encodeURIComponent(cc)}`;
-        }
-        
-        // Add subject and body
-        const fullSubject = `[SUBMITTED] ${subject} - Report Sent`;
-        const fullBody = `${body}
+        // Build the email body preview with attachments
+        const fullSubject = subject;
+        let fullBody = body;
+
+        // Add report details if from pre-filled data
+        if (preFilledData && preFilledData.reports) {
+            const reportTypes = preFilledData.reports.map(r => r.report_type).join(', ');
+            fullBody += `
+
+---
+Report Type(s): ${reportTypes}
+Number of Reports: ${preFilledData.report_count}
+Submitted by: ${userData.name} (${userData.email})
+Submitted on: ${new Date().toLocaleString()}
+---
+📎 Excel file with all report data is attached.
+📊 Screenshot of report data is included below.`;
+        } else {
+            fullBody += `
 
 ---
 Report Type: ${reportType || 'N/A'}
-Number of Exceptions: ${selectedCount}
 Submitted by: ${userData.name} (${userData.email})
 Submitted on: ${new Date().toLocaleString()}
-
-Selected Exceptions:
-${selectedExList.map((ex, i) => `${i+1}. ${ex.report_type || 'Exception'} - ${ex.unit || 'N/A'} - ${ex.data?.header || ex.report_type || 'Untitled'}`).join('\n')}
-
 ---
-This report has been recorded in the system.`;
-
-        if (mailtoLink.includes('?')) {
-            mailtoLink += `&subject=${encodeURIComponent(fullSubject)}`;
-            mailtoLink += `&body=${encodeURIComponent(fullBody)}`;
-        } else {
-            mailtoLink += `?subject=${encodeURIComponent(fullSubject)}`;
-            mailtoLink += `&body=${encodeURIComponent(fullBody)}`;
+This email has been recorded in the system.`;
         }
 
+        // Build attachment info
+        let attachmentHtml = '';
+        if (excelFileData) {
+            attachmentHtml = `
+                <div class="attachment-info">
+                    <i class="fas fa-file-excel"></i>
+                    <div class="attachment-details">
+                        <div class="file-name">📎 ${excelFileData.file_name || 'Exception_Report.xlsx'}</div>
+                        <div class="file-size">${excelFileData.report_count || 0} report(s) included</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Build screenshot preview
+        let screenshotHtmlContent = '';
+        if (screenshotHtml) {
+            // Create a data URI for the screenshot
+            const encodedHtml = encodeURIComponent(screenshotHtml.html || '');
+            screenshotHtmlContent = `
+                <div class="screenshot-preview">
+                    <iframe srcdoc="${encodedHtml.replace(/"/g, '&quot;')}"></iframe>
+                </div>
+            `;
+        }
+
+        // Show the modal with populated fields
+        const modal = document.getElementById('emailModal');
+        const fieldsContainer = document.getElementById('emailModalFields');
+        
+        fieldsContainer.innerHTML = `
+            <div class="form-group">
+                <label>To <span class="required">*</span></label>
+                <input type="email" class="form-control" id="modalEmailTo" value="${to}" readonly style="background:#f3f4f6;">
+            </div>
+            ${cc ? `
+            <div class="form-group">
+                <label>CC</label>
+                <input type="text" class="form-control" id="modalEmailCc" value="${cc}" readonly style="background:#f3f4f6;">
+            </div>
+            ` : ''}
+            <div class="form-group">
+                <label>Subject <span class="required">*</span></label>
+                <input type="text" class="form-control" id="modalEmailSubject" value="${fullSubject.replace(/"/g, '&quot;')}">
+            </div>
+            <div class="form-group">
+                <label>Message <span class="required">*</span></label>
+                <textarea class="form-control message-body" id="modalEmailBody">${fullBody.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+            </div>
+            ${attachmentHtml}
+            ${screenshotHtmlContent}
+            <div class="email-info-box">
+                <i class="fas fa-info-circle"></i>
+                ${excelFileData ? '📎 Excel file will be attached to the email.' : ''}
+                ${screenshotHtml ? '📊 Screenshot of report data is included.' : ''}
+                This will open your default email client with the draft pre-filled.
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" onclick="closeEmailModal()">Cancel</button>
+                <button type="button" class="btn-open-email" onclick="sendEmailFromModal()">
+                    <i class="fas fa-envelope"></i> Open Email Client
+                </button>
+            </div>
+        `;
+        
+        modal.classList.add('show');
+    }
+
+    function closeEmailModal() {
+        document.getElementById('emailModal').classList.remove('show');
+        document.getElementById('emailModalFields').innerHTML = '';
+    }
+
+    function sendEmailFromModal() {
+        const to = document.getElementById('modalEmailTo').value;
+        const cc = document.getElementById('modalEmailCc')?.value || '';
+        const subject = document.getElementById('modalEmailSubject').value;
+        const body = document.getElementById('modalEmailBody').value;
+        
+        if (!to) {
+            showToast('Recipient is required.', 'Error', true);
+            return;
+        }
+        
+        if (!subject) {
+            showToast('Subject is required.', 'Error', true);
+            return;
+        }
+        
+        // Close the modal first
+        closeEmailModal();
+        
+        // Show loading
+        const loading = document.getElementById('loadingOverlay');
+        loading.classList.add('show');
+        
+        // Build mailto link with attachments note
+        let mailtoLink = `mailto:${encodeURIComponent(to)}`;
+        const params = [];
+        
+        if (cc) {
+            params.push(`cc=${encodeURIComponent(cc)}`);
+        }
+        
+        // Add subject
+        params.push(`subject=${encodeURIComponent(subject)}`);
+        
+        // Build the full email body with attachment notes
+        let fullBody = body;
+        
+        // Add note about attachments if we have Excel data
+        if (excelFileData) {
+            fullBody += `
+
+---
+📎 ATTACHMENT: ${excelFileData.file_name || 'Exception_Report.xlsx'} (${excelFileData.report_count || 0} reports)
+
+📊 Report data preview is shown below in the email body.`;
+        }
+        
+        // Add screenshot HTML as a data URI if available
+        if (screenshotHtml && screenshotHtml.html) {
+            // For mailto, we include the HTML as text since mailto doesn't support attachments
+            // The user will need to manually attach the file
+            fullBody += `
+
+--- REPORT DATA PREVIEW ---
+${screenshotHtml.html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}
+--- END PREVIEW ---`;
+        }
+        
+        params.push(`body=${encodeURIComponent(fullBody)}`);
+        
+        if (params.length > 0) {
+            mailtoLink += `?${params.join('&')}`;
+        }
+        
+        const reportType = document.getElementById('report-type-select')?.value || 'General Report';
+        
         // Record the sent report in the system
         const reportData = {
-            report_type: reportType || 'Exception Report',
+            report_type: reportType,
             frequency: 'one-off',
-            description: `Sent ${selectedCount} exceptions via email`,
+            description: preFilledData ? 
+                `Sent ${preFilledData.report_count} reports via email with Excel attachment` : 
+                'Sent email via system',
             status: 'completed',
             created_by: userData.email,
             data: {
                 sent_at: new Date().toISOString(),
                 recipients: to,
                 cc: cc || '',
-                subject: fullSubject,
-                exception_count: selectedCount,
-                exceptions: selectedExList.map(ex => ({
-                    id: ex.id,
-                    report_type: ex.report_type,
-                    unit: ex.unit,
-                    header: ex.data?.header || ex.report_type,
-                    status: ex.status
-                }))
+                subject: subject,
+                has_attachments: !!excelFileData,
+                attachment_count: excelFileData ? excelFileData.report_count : 0,
+                report_count: preFilledData ? preFilledData.report_count : 0
             }
         };
 
@@ -1438,29 +1069,42 @@ This report has been recorded in the system.`;
         })
         .then(response => response.json())
         .then(data => {
+            loading.classList.remove('show');
             if (data.success) {
                 console.log('Report recorded successfully:', data);
                 // Open mail app
-                window.location.href = mailtoLink;
-                
-                // Clear selection after sending
-                selectedExceptions.clear();
-                renderExceptions();
-                updateSelectedSummary();
-                updateSubjectLine();
-                autoSaveDraft();
-                
-                showToast(`Email opened with ${selectedCount} exceptions!`, 'Success');
+                window.open(mailtoLink, '_blank');
+                showToast(excelFileData ? 
+                    `Email opened with ${excelFileData.report_count} report(s) attached!` : 
+                    'Email opened successfully!', 'Success');
             } else {
-                showToast('Error recording report: ' + (data.error || 'Unknown error'), 'Error');
+                showToast('Error recording report: ' + (data.error || 'Unknown error'), 'Error', true);
+                // Still open mail app even if recording fails
+                window.open(mailtoLink, '_blank');
             }
         })
         .catch(error => {
             console.error('Error recording report:', error);
+            loading.classList.remove('show');
             // Still open mail app even if recording fails
-            window.location.href = mailtoLink;
-            showToast('Email opened, but report recording failed.', 'Warning');
+            window.open(mailtoLink, '_blank');
+            showToast('Email opened, but report recording failed.', 'Warning', true);
         });
     }
+
+    // Close modal on outside click
+    document.addEventListener('click', function(event) {
+        const modal = document.getElementById('emailModal');
+        if (event.target === modal) {
+            closeEmailModal();
+        }
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeEmailModal();
+        }
+    });
 </script>
 {% endblock %}

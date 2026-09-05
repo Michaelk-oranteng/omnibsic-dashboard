@@ -86,6 +86,7 @@ urlpatterns = [
     path('submit/', views.submit_page, name='submit_page'),
     path('api/import-excel/', views.api_import_excel, name='api_import_excel'),
     path('api/save-imported-data/', views.api_save_imported_data, name='api_save_imported_data'),
+    path('submit/selected/', views.submit_selected_reports, name='submit_selected'),
 
     # Analytics Dashboard
     path('analytics/', views.analytics_dashboard, name='analytics_dashboard'),

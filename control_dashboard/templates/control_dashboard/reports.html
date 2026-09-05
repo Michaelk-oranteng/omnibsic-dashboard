@@ -6,6 +6,305 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'stylesheets/reports.css' %}" type="text/css">
+<style>
+    /* Selection Controls */
+    .selection-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: #f8fafc;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .selection-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .selection-left .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #1a2332;
+        cursor: pointer;
+    }
+
+    .selection-left .checkbox-label input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: #0066cc;
+        cursor: pointer;
+    }
+
+    .selected-count-badge {
+        font-size: 13px;
+        color: #6b7280;
+        background: #f3f4f6;
+        padding: 2px 12px;
+        border-radius: 12px;
+    }
+
+    .btn-submit-selected {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 20px;
+        background: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .btn-submit-selected:hover:not(:disabled) {
+        background: #004e8c;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 102, 204, 0.3);
+    }
+
+    .btn-submit-selected:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .btn-submit-selected i {
+        font-size: 14px;
+    }
+
+    .checkbox-cell {
+        width: 40px;
+        text-align: center;
+        padding: 4px 8px !important;
+    }
+
+    .checkbox-cell input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: #0066cc;
+        cursor: pointer;
+    }
+
+    .report-row {
+        cursor: default;
+    }
+
+    .report-row:hover {
+        background: rgba(0, 51, 102, 0.02);
+    }
+
+    .report-row.selected {
+        background: #f0f7ff;
+    }
+
+    /* Excel edit styles */
+    .excel-edit-container {
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .excel-edit-container .excel-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e5e7eb;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .excel-edit-container .excel-toolbar .toolbar-actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    .excel-edit-container .excel-toolbar .toolbar-btn {
+        padding: 4px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-family: 'Poppins', sans-serif;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .excel-edit-container .excel-toolbar .toolbar-btn.btn-add-row {
+        background: #dbeafe;
+        color: #2563eb;
+    }
+    .excel-edit-container .excel-toolbar .toolbar-btn.btn-add-row:hover {
+        background: #bfdbfe;
+    }
+    .excel-edit-container .excel-toolbar .toolbar-btn.btn-add-col {
+        background: #d1fae5;
+        color: #059669;
+    }
+    .excel-edit-container .excel-toolbar .toolbar-btn.btn-add-col:hover {
+        background: #a7f3d0;
+    }
+    .excel-edit-container .excel-toolbar .toolbar-btn.btn-remove-row {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    .excel-edit-container .excel-toolbar .toolbar-btn.btn-remove-row:hover {
+        background: #fecaca;
+    }
+    .excel-edit-container .excel-toolbar .toolbar-btn.btn-remove-col {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    .excel-edit-container .excel-toolbar .toolbar-btn.btn-remove-col:hover {
+        background: #fde68a;
+    }
+    .excel-edit-container .excel-toolbar .toolbar-info {
+        font-size: 12px;
+        color: #6b7280;
+    }
+    .excel-edit-container .excel-table-wrapper {
+        max-height: 400px;
+        overflow: auto;
+        position: relative;
+    }
+    .excel-edit-container .excel-table-wrapper table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    .excel-edit-container .excel-table-wrapper table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: #f1f5f9;
+        padding: 4px 6px;
+        border: 1px solid #d1d5db;
+        min-width: 80px;
+        text-align: center;
+    }
+    .excel-edit-container .excel-table-wrapper table thead th .header-input-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+    .excel-edit-container .excel-table-wrapper table thead th .header-input-wrapper input {
+        width: 100%;
+        border: none;
+        background: transparent;
+        padding: 6px 4px;
+        font-weight: 600;
+        font-size: 12px;
+        text-align: center;
+        font-family: 'Poppins', sans-serif;
+        border-bottom: 2px solid transparent;
+        transition: border-color 0.2s;
+        min-width: 60px;
+    }
+    .excel-edit-container .excel-table-wrapper table thead th .header-input-wrapper input:focus {
+        outline: none;
+        border-bottom-color: #0066cc;
+    }
+    .excel-edit-container .excel-table-wrapper table thead th .header-actions {
+        display: flex;
+        gap: 2px;
+        opacity: 0.4;
+        transition: opacity 0.2s;
+    }
+    .excel-edit-container .excel-table-wrapper table thead th:hover .header-actions {
+        opacity: 1;
+    }
+    .excel-edit-container .excel-table-wrapper table thead th .header-actions button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 10px;
+        padding: 2px 4px;
+        border-radius: 3px;
+        color: #6b7280;
+        transition: all 0.2s;
+    }
+    .excel-edit-container .excel-table-wrapper table thead th .header-actions button:hover {
+        background: #e5e7eb;
+        color: #1a2332;
+    }
+    .excel-edit-container .excel-table-wrapper table thead th .header-actions button.btn-remove-col:hover {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    .excel-edit-container .excel-table-wrapper table tbody td {
+        padding: 2px 4px;
+        border: 1px solid #e5e7eb;
+    }
+    .excel-edit-container .excel-table-wrapper table tbody td .cell-input-wrapper {
+        position: relative;
+    }
+    .excel-edit-container .excel-table-wrapper table tbody td input {
+        width: 100%;
+        border: none;
+        padding: 6px 8px;
+        font-size: 13px;
+        font-family: 'Poppins', sans-serif;
+        background: transparent;
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+    .excel-edit-container .excel-table-wrapper table tbody td input:hover {
+        background: #f8fafc;
+    }
+    .excel-edit-container .excel-table-wrapper table tbody td input:focus {
+        outline: none;
+        background: #eff6ff;
+        box-shadow: inset 0 0 0 2px #0066cc;
+    }
+    .excel-edit-container .excel-table-wrapper table tbody td .row-actions {
+        display: flex;
+        gap: 2px;
+        justify-content: center;
+        opacity: 0.3;
+        transition: opacity 0.2s;
+    }
+    .excel-edit-container .excel-table-wrapper table tbody tr:hover td .row-actions {
+        opacity: 1;
+    }
+    .excel-edit-container .excel-table-wrapper table tbody td .row-actions button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        color: #6b7280;
+        transition: all 0.2s;
+    }
+    .excel-edit-container .excel-table-wrapper table tbody td .row-actions button:hover {
+        background: #e5e7eb;
+        color: #1a2332;
+    }
+    .excel-edit-container .excel-table-wrapper table tbody td .row-actions button.btn-remove-row:hover {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    .excel-edit-container .excel-edit-footer {
+        padding: 8px 12px;
+        background: #fafafa;
+        border-top: 1px solid #e5e7eb;
+        font-size: 11px;
+        color: #6b7280;
+        font-style: italic;
+    }
+</style>
 {% endblock %}
 
 {% block dashboard_url %}{% url 'control_dashboard:member_dashboard' %}{% endblock %}
@@ -67,6 +366,22 @@
 
 {% block content %}
 <div class="table-container">
+    <!-- Selection Controls -->
+    <div class="selection-controls">
+        <div class="selection-left">
+            <label class="checkbox-label">
+                <input type="checkbox" id="selectAllReports" onchange="toggleSelectAllReports()">
+                <span>Select All</span>
+            </label>
+            <span class="selected-count-badge" id="selectedCountBadge">0 selected</span>
+        </div>
+        <div class="selection-right">
+            <button class="btn-submit-selected" onclick="submitSelectedReports()" id="submitSelectedBtn" disabled>
+                <i class="fas fa-paper-plane"></i> Submit Selected
+            </button>
+        </div>
+    </div>
+
     <div class="table-header">
         <h4>Saved Reports <span class="report-count">({{ reports|length }})</span></h4>
         <div class="table-actions">
@@ -97,6 +412,9 @@
                                 <table class="report-details-table">
                                     <thead>
                                         <tr>
+                                            <th class="checkbox-cell">
+                                                <input type="checkbox" class="select-all-in-group" data-group="{{ type_group.grouper }}" onchange="toggleGroupSelection(this)">
+                                            </th>
                                             {% if display.is_excel %}
                                                 {# Excel Import: Use Excel headers #}
                                                 {% for header in display.headers %}
@@ -121,7 +439,10 @@
                                 {# EXCEL IMPORT - Show all rows with dynamic headers #}
                                 {# ============================================ #}
                                 {% for row in display.rows %}
-                                    <tr data-type="{{ report_item.report_type }}" data-id="{{ report_item.id }}">
+                                    <tr data-type="{{ report_item.report_type }}" data-id="{{ report_item.id }}" class="report-row">
+                                        <td class="checkbox-cell">
+                                            <input type="checkbox" class="report-checkbox" data-id="{{ report_item.id }}" onchange="toggleReportSelection(this)">
+                                        </td>
                                         {% for header in display.headers %}
                                             <td>
                                                 {% with value=row|get_item:header %}
@@ -142,7 +463,7 @@
                                     </tr>
                                 {% empty %}
                                     <tr>
-                                        <td colspan="{{ display.headers|length|add:1 }}" class="empty-row">
+                                        <td colspan="{{ display.headers|length|add:2 }}" class="empty-row">
                                             No data rows found in this Excel import.
                                         </td>
                                     </tr>
@@ -152,7 +473,10 @@
                                 {# REGULAR REPORT - Single row with standard fields #}
                                 {# ============================================ #}
                                 {% with row=display.rows.0 %}
-                                    <tr data-type="{{ report_item.report_type }}" data-id="{{ report_item.id }}">
+                                    <tr data-type="{{ report_item.report_type }}" data-id="{{ report_item.id }}" class="report-row">
+                                        <td class="checkbox-cell">
+                                            <input type="checkbox" class="report-checkbox" data-id="{{ report_item.id }}" onchange="toggleReportSelection(this)">
+                                        </td>
                                         {% if row %}
                                             <td>
                                                 {% with value=row.Branch|default:row.branch|default:row.BRANCH|default:row.BRANCH_UNIT|default:row.branch_unit|default:row.Unit|default:row.unit|default:"-" %}
@@ -229,7 +553,7 @@
 
 <!-- EDIT REPORT MODAL -->
 <div id="editReportModal" class="modal-wrapper" style="display: none;">
-    <div class="modal-content" style="max-width: 700px;">
+    <div class="modal-content" style="max-width: 900px;">
         <div class="modal-header">
             <h3>Edit Report</h3>
             <button class="modal-close" onclick="closeEditModal()">&times;</button>
@@ -279,524 +603,6 @@
         <i class="fas fa-times"></i>
     </button>
 </div>
-
-<style>
-    /* ============================================
-       REPORTS PAGE STYLES
-    ============================================ */
-    .report-type-group {
-        margin-bottom: 20px;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        overflow: hidden;
-        background: white;
-    }
-    .report-type-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 16px;
-        background: #f8fafc;
-        cursor: pointer;
-        border-bottom: 1px solid #e5e7eb;
-        transition: background 0.2s;
-    }
-    .report-type-header:hover {
-        background: #f1f5f9;
-    }
-    .report-type-left {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    .report-type-icon {
-        color: #0066cc;
-        font-size: 18px;
-    }
-    .report-type-title {
-        margin: 0;
-        font-size: 15px;
-        font-weight: 600;
-        color: #1a2332;
-    }
-    .report-type-count {
-        font-size: 12px;
-        color: #6b7280;
-        background: #e5e7eb;
-        padding: 2px 10px;
-        border-radius: 12px;
-    }
-    .report-type-toggle {
-        color: #6b7280;
-        transition: transform 0.3s;
-    }
-    .report-type-toggle.open {
-        transform: rotate(180deg);
-    }
-    .report-type-body {
-        padding: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease;
-    }
-    .report-type-body.hidden {
-        display: none;
-    }
-    .report-details-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 13px;
-    }
-    .report-details-table thead th {
-        background: rgba(0, 51, 102, 0.03);
-        color: rgba(26, 35, 50, 0.5);
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        text-align: left;
-        padding: 10px 14px;
-        border-bottom: 2px solid #f0f0f0;
-        white-space: nowrap;
-    }
-    .report-details-table tbody td {
-        padding: 10px 14px;
-        color: #1a2332;
-        border-bottom: 1px solid #f3f4f6;
-        max-width: 200px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        vertical-align: middle;
-    }
-    .report-details-table tbody td:first-child {
-        font-weight: 500;
-    }
-    .report-details-table tbody tr:last-child td {
-        border-bottom: none;
-    }
-    .report-details-table tbody tr:hover td {
-        background: rgba(0, 51, 102, 0.02);
-    }
-    .report-details-table tbody .empty-row {
-        text-align: center;
-        color: #6b7280;
-        padding: 20px;
-        font-style: italic;
-    }
-    .badge-success {
-        display: inline-block;
-        padding: 3px 12px;
-        border-radius: 12px;
-        font-size: 11px;
-        font-weight: 500;
-        background: #d1fae5;
-        color: #065f46;
-    }
-    .badge-secondary {
-        display: inline-block;
-        padding: 3px 12px;
-        border-radius: 12px;
-        font-size: 11px;
-        font-weight: 500;
-        background: #f3f4f6;
-        color: #6b7280;
-    }
-    .badge-warning {
-        display: inline-block;
-        padding: 3px 12px;
-        border-radius: 12px;
-        font-size: 11px;
-        font-weight: 500;
-        background: #fef3c7;
-        color: #92400e;
-    }
-    .badge-danger {
-        display: inline-block;
-        padding: 3px 12px;
-        border-radius: 12px;
-        font-size: 11px;
-        font-weight: 500;
-        background: #fee2e2;
-        color: #991b1b;
-    }
-    .table-actions-cluster {
-        display: flex;
-        gap: 4px;
-        justify-content: center;
-    }
-    .btn-edit-modal {
-        padding: 4px 10px;
-        background: #fef3c7;
-        color: #d97706;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        transition: all 0.3s;
-    }
-    .btn-edit-modal:hover {
-        background: #fde68a;
-    }
-    .btn-delete {
-        padding: 4px 10px;
-        background: #fee2e2;
-        color: #dc2626;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        transition: all 0.3s;
-    }
-    .btn-delete:hover {
-        background: #fecaca;
-    }
-    .btn-cancel {
-        padding: 8px 20px;
-        background: #f3f4f6;
-        color: #374151;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        transition: all 0.3s;
-    }
-    .btn-cancel:hover {
-        background: #e5e7eb;
-    }
-    .btn-create {
-        padding: 8px 20px;
-        background: #0066cc;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        transition: all 0.3s;
-    }
-    .btn-create:hover {
-        background: #004e8c;
-    }
-    .btn-danger {
-        background: #dc2626;
-    }
-    .btn-danger:hover {
-        background: #b91c1c;
-    }
-    .modal-wrapper {
-        display: none;
-        position: fixed;
-        z-index: 9999;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        justify-content: center;
-        align-items: center;
-        backdrop-filter: blur(4px);
-    }
-    .modal-content {
-        background: white;
-        border-radius: 12px;
-        padding: 24px;
-        max-width: 550px;
-        width: 90%;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-    }
-    .modal-icon {
-        text-align: center;
-        font-size: 48px;
-        margin-bottom: 16px;
-    }
-    .modal-icon.danger {
-        color: #dc2626;
-    }
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 16px;
-    }
-    .modal-header h3 {
-        margin: 0;
-        font-size: 18px;
-    }
-    .modal-close {
-        background: none;
-        border: none;
-        font-size: 24px;
-        cursor: pointer;
-        color: #9ca3af;
-    }
-    .modal-close:hover {
-        color: #1a2332;
-    }
-    .modal-actions {
-        display: flex;
-        gap: 12px;
-        justify-content: flex-end;
-        margin-top: 16px;
-        padding-top: 16px;
-        border-top: 1px solid #f0f0f0;
-    }
-    .form-group {
-        margin-bottom: 14px;
-    }
-    .form-group label {
-        display: block;
-        margin-bottom: 4px;
-        font-weight: 500;
-        font-size: 13px;
-        color: #1a2332;
-    }
-    .form-control {
-        width: 100%;
-        padding: 8px 12px;
-        border: 1.5px solid #e5e7eb;
-        border-radius: 6px;
-        font-size: 13px;
-        font-family: 'Poppins', sans-serif;
-        transition: border-color 0.3s;
-    }
-    .form-control:focus {
-        border-color: #0066cc;
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.08);
-    }
-    .toast-notification {
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-        padding: 16px 20px;
-        max-width: 400px;
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        border-left: 4px solid #10b981;
-        transform: translateX(120%);
-        transition: transform 0.3s ease;
-        font-family: 'Poppins', sans-serif;
-    }
-    .toast-notification.show {
-        transform: translateX(0);
-    }
-    .toast-notification.error {
-        border-left-color: #ef4444;
-    }
-    .toast-notification .toast-icon {
-        flex-shrink: 0;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-        background: rgba(16, 185, 129, 0.1);
-        color: #10b981;
-    }
-    .toast-notification.error .toast-icon {
-        background: rgba(239, 68, 68, 0.1);
-        color: #ef4444;
-    }
-    .toast-notification .toast-content {
-        flex: 1;
-    }
-    .toast-notification .toast-title {
-        font-weight: 600;
-        font-size: 14px;
-        color: #1a2332;
-        margin: 0;
-    }
-    .toast-notification .toast-message {
-        font-size: 13px;
-        color: #6b7280;
-        margin: 2px 0 0 0;
-    }
-    .toast-notification .toast-close {
-        background: none;
-        border: none;
-        font-size: 18px;
-        cursor: pointer;
-        color: #9ca3af;
-        padding: 0 4px;
-    }
-    .toast-notification .toast-close:hover {
-        color: #1a2332;
-    }
-    .text-center {
-        text-align: center;
-    }
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
-    }
-    .empty-state i {
-        font-size: 48px;
-        color: #d1d5db;
-        margin-bottom: 16px;
-        display: block;
-    }
-    .empty-state p {
-        font-size: 15px;
-        color: #6b7280;
-        margin: 0;
-    }
-    .table-actions {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    .badge-count {
-        font-size: 12px;
-        color: #6b7280;
-        background: #f3f4f6;
-        padding: 4px 12px;
-        border-radius: 12px;
-    }
-    .report-count {
-        font-size: 14px;
-        font-weight: 400;
-        color: #6b7280;
-    }
-    .table-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 16px;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-    .table-header h4 {
-        margin: 0;
-        font-size: 16px;
-        font-weight: 600;
-        color: #1a2332;
-    }
-
-    /* Header filter styles */
-    .header-filter-group {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .header-filter-group label {
-        font-size: 12px;
-        font-weight: 500;
-        color: #6b7280;
-    }
-    .header-select {
-        padding: 6px 12px;
-        border: 1.5px solid #e5e7eb;
-        border-radius: 6px;
-        font-size: 13px;
-        background: white;
-        color: #1a2332;
-        cursor: pointer;
-        font-family: 'Poppins', sans-serif;
-        min-width: 140px;
-    }
-    .header-select:focus {
-        border-color: #0066cc;
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.08);
-    }
-    .header-date-group {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .header-date-group label {
-        font-size: 12px;
-        font-weight: 500;
-        color: #6b7280;
-    }
-    .header-date-wrapper {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .header-date-wrapper span {
-        font-size: 12px;
-        color: #6b7280;
-    }
-    .header-date-input {
-        padding: 6px 10px;
-        border: 1.5px solid #e5e7eb;
-        border-radius: 6px;
-        font-size: 13px;
-        background: white;
-        color: #1a2332;
-        font-family: 'Poppins', sans-serif;
-        min-width: 130px;
-    }
-    .header-date-input:focus {
-        border-color: #0066cc;
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.08);
-    }
-    .header-divider {
-        width: 1px;
-        height: 30px;
-        background: #e5e7eb;
-    }
-    .btn-reset-header {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 16px;
-        background: #f3f4f6;
-        color: #6b7280;
-        border: 1px solid #e5e7eb;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 13px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        font-family: 'Poppins', sans-serif;
-    }
-    .btn-reset-header:hover {
-        background: #e5e7eb;
-        color: #1a2332;
-    }
-
-    @media (max-width: 768px) {
-        .report-details-table {
-            min-width: 600px;
-            font-size: 12px;
-        }
-        .report-details-table thead th,
-        .report-details-table tbody td {
-            padding: 8px 10px;
-            font-size: 12px;
-        }
-        .modal-content {
-            padding: 16px;
-            margin: 16px;
-        }
-        .table-actions-cluster {
-            flex-wrap: wrap;
-        }
-        .header-filter-group, .header-date-group {
-            flex-wrap: wrap;
-        }
-        .header-date-wrapper {
-            flex-wrap: wrap;
-        }
-        .header-date-input {
-            min-width: 100px;
-        }
-        .header-divider {
-            display: none;
-        }
-    }
-</style>
 
 <script>
     // ============================================
@@ -856,6 +662,94 @@
         if (toast) {
             toast.classList.remove('show');
         }
+    }
+
+    // ============================================
+    // REPORT SELECTION - Submit Selected
+    // ============================================
+
+    let selectedReportIds = new Set();
+
+    function toggleSelectAllReports() {
+        const checkboxes = document.querySelectorAll('.report-checkbox');
+        const selectAll = document.getElementById('selectAllReports');
+        const allChecked = selectAll.checked;
+        
+        checkboxes.forEach(function(cb) {
+            cb.checked = allChecked;
+            const id = parseInt(cb.dataset.id);
+            if (allChecked) {
+                selectedReportIds.add(id);
+            } else {
+                selectedReportIds.delete(id);
+            }
+        });
+        
+        updateSelectionCount();
+    }
+
+    function toggleReportSelection(cb) {
+        const id = parseInt(cb.dataset.id);
+        if (cb.checked) {
+            selectedReportIds.add(id);
+        } else {
+            selectedReportIds.delete(id);
+            document.getElementById('selectAllReports').checked = false;
+        }
+        updateSelectionCount();
+    }
+
+    function updateSelectionCount() {
+        const count = selectedReportIds.size;
+        const badge = document.getElementById('selectedCountBadge');
+        const btn = document.getElementById('submitSelectedBtn');
+        
+        if (badge) {
+            badge.textContent = count + ' selected';
+        }
+        
+        if (btn) {
+            btn.disabled = count === 0;
+            if (count > 0) {
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit ' + count + ' Selected';
+            } else {
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Selected';
+            }
+        }
+    }
+
+    function submitSelectedReports() {
+        if (selectedReportIds.size === 0) {
+            showToast('Please select at least one report to submit.', 'error');
+            return;
+        }
+        
+        const selectedIds = Array.from(selectedReportIds);
+        
+        // Show loading
+        showToast('Preparing ' + selectedIds.length + ' reports for submission...', 'success');
+        
+        // Create form to submit to submit page
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/adminboard/submit/selected/';
+        form.target = '_blank';
+        
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = getCsrfToken();
+        form.appendChild(csrfInput);
+        
+        const dataInput = document.createElement('input');
+        dataInput.type = 'hidden';
+        dataInput.name = 'selected_reports';
+        dataInput.value = JSON.stringify(selectedIds);
+        form.appendChild(dataInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
     }
 
     // ============================================
@@ -920,6 +814,249 @@
     }
 
     // ============================================
+    // EXCEL HELPER FUNCTIONS
+    // ============================================
+    function escapeHtml(text) {
+        if (!text) return '';
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function getExcelHeaders() {
+        var headers = [];
+        var headerInputs = document.querySelectorAll('.excel-header-input');
+        headerInputs.forEach(function(input) {
+            headers.push(input.value.trim() || 'Column');
+        });
+        return headers;
+    }
+
+    function getExcelData() {
+        var headers = getExcelHeaders();
+        var rows = [];
+        var cells = document.querySelectorAll('.excel-cell');
+        var rowData = {};
+        
+        cells.forEach(function(cell) {
+            var rowIdx = parseInt(cell.dataset.row);
+            var colIdx = parseInt(cell.dataset.col);
+            var header = headers[colIdx] || 'Column_' + (colIdx + 1);
+            
+            if (!rowData[rowIdx]) {
+                rowData[rowIdx] = {};
+            }
+            rowData[rowIdx][header] = cell.value;
+        });
+        
+        // Convert to array format for API
+        var rowKeys = Object.keys(rowData).sort(function(a, b) { return parseInt(a) - parseInt(b); });
+        rowKeys.forEach(function(key) {
+            var rowArray = [];
+            headers.forEach(function(header) {
+                rowArray.push(rowData[key][header] || '');
+            });
+            rows.push(rowArray);
+        });
+        
+        return {
+            headers: headers,
+            data: rows
+        };
+    }
+
+    // ============================================
+    // EXCEL TABLE OPERATIONS
+    // ============================================
+    function addExcelRow() {
+        var tbody = document.getElementById('excelDataBody');
+        if (!tbody) return;
+        
+        var headers = getExcelHeaders();
+        var rowCount = tbody.querySelectorAll('tr').length;
+        
+        var tr = document.createElement('tr');
+        tr.className = 'excel-data-row';
+        
+        headers.forEach(function(header, colIndex) {
+            var td = document.createElement('td');
+            td.style.cssText = 'padding:2px 4px;border:1px solid #e5e7eb;';
+            
+            var wrapper = document.createElement('div');
+            wrapper.className = 'cell-input-wrapper';
+            
+            var input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'excel-cell';
+            input.dataset.row = rowCount;
+            input.dataset.col = colIndex;
+            input.value = '';
+            input.placeholder = '...';
+            input.style.cssText = 'width:100%;border:none;padding:6px 8px;font-size:13px;font-family:inherit;background:transparent;border-radius:4px;';
+            
+            wrapper.appendChild(input);
+            td.appendChild(wrapper);
+            
+            if (colIndex === 0) {
+                var actionsTd = document.createElement('td');
+                actionsTd.style.cssText = 'padding:2px 4px;border:1px solid #e5e7eb;width:50px;text-align:center;';
+                var actionsDiv = document.createElement('div');
+                actionsDiv.className = 'row-actions';
+                var removeBtn = document.createElement('button');
+                removeBtn.className = 'btn-remove-row';
+                removeBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                removeBtn.title = 'Remove this row';
+                removeBtn.onclick = function() { removeExcelRow(this); };
+                actionsDiv.appendChild(removeBtn);
+                actionsTd.appendChild(actionsDiv);
+                tr.appendChild(actionsTd);
+            }
+            
+            tr.appendChild(td);
+        });
+        
+        tbody.appendChild(tr);
+        updateRowIndices();
+    }
+
+    function removeExcelRow(btn) {
+        var row = btn.closest('tr');
+        if (row) {
+            var tbody = row.closest('tbody');
+            if (tbody && tbody.querySelectorAll('tr').length <= 1) {
+                showToast('Cannot remove the last row', 'error');
+                return;
+            }
+            row.remove();
+            updateRowIndices();
+        }
+    }
+
+    function removeLastExcelRow() {
+        var tbody = document.getElementById('excelDataBody');
+        if (!tbody) return;
+        var rows = tbody.querySelectorAll('tr');
+        if (rows.length <= 1) {
+            showToast('Cannot remove the last row', 'error');
+            return;
+        }
+        rows[rows.length - 1].remove();
+        updateRowIndices();
+    }
+
+    function addExcelColumn() {
+        var table = document.getElementById('excelEditTable');
+        if (!table) return;
+        
+        var thead = table.querySelector('thead tr');
+        var tbody = document.getElementById('excelDataBody');
+        
+        if (!thead || !tbody) return;
+        
+        var colIndex = thead.querySelectorAll('th').length;
+        
+        var th = document.createElement('th');
+        th.style.cssText = 'padding:4px 6px;border:1px solid #d1d5db;min-width:80px;text-align:center;';
+        var wrapper = document.createElement('div');
+        wrapper.className = 'header-input-wrapper';
+        
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'excel-header-input';
+        input.dataset.col = colIndex;
+        input.value = 'New Column ' + (colIndex + 1);
+        input.placeholder = 'Column ' + (colIndex + 1);
+        input.style.cssText = 'width:100%;border:none;background:transparent;padding:6px 4px;font-weight:600;font-size:12px;text-align:center;font-family:inherit;border-bottom:2px solid transparent;';
+        
+        var actions = document.createElement('div');
+        actions.className = 'header-actions';
+        var removeBtn = document.createElement('button');
+        removeBtn.className = 'btn-remove-col';
+        removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+        removeBtn.title = 'Remove this column';
+        removeBtn.onclick = function() { removeExcelColumn(this); };
+        actions.appendChild(removeBtn);
+        
+        wrapper.appendChild(input);
+        wrapper.appendChild(actions);
+        th.appendChild(wrapper);
+        thead.appendChild(th);
+        
+        var rows = tbody.querySelectorAll('tr');
+        rows.forEach(function(row, rowIndex) {
+            var cells = row.querySelectorAll('td');
+            var lastCell = cells.length > 0 ? cells[cells.length - 1] : null;
+            
+            var td = document.createElement('td');
+            td.style.cssText = 'padding:2px 4px;border:1px solid #e5e7eb;';
+            
+            var wrapper = document.createElement('div');
+            wrapper.className = 'cell-input-wrapper';
+            
+            var cellInput = document.createElement('input');
+            cellInput.type = 'text';
+            cellInput.className = 'excel-cell';
+            cellInput.dataset.row = rowIndex;
+            cellInput.dataset.col = colIndex;
+            cellInput.value = '';
+            cellInput.placeholder = '...';
+            cellInput.style.cssText = 'width:100%;border:none;padding:6px 8px;font-size:13px;font-family:inherit;background:transparent;border-radius:4px;';
+            
+            wrapper.appendChild(cellInput);
+            td.appendChild(wrapper);
+            
+            if (lastCell && lastCell.querySelector('.row-actions')) {
+                row.insertBefore(td, lastCell);
+            } else {
+                row.appendChild(td);
+            }
+        });
+        
+        updateRowIndices();
+    }
+
+    function removeExcelColumn(btn) {
+        var th = btn.closest('th');
+        if (!th) return;
+        var colIndex = Array.from(th.parentElement.children).indexOf(th);
+        var table = th.closest('table');
+        var tbody = document.getElementById('excelDataBody');
+        
+        if (!table || !tbody) return;
+        
+        th.remove();
+        
+        var rows = tbody.querySelectorAll('tr');
+        rows.forEach(function(row) {
+            var cells = row.querySelectorAll('td');
+            var cellIndex = 0;
+            for (var i = 0; i < cells.length; i++) {
+                if (!cells[i].querySelector('.row-actions')) {
+                    if (cellIndex === colIndex) {
+                        cells[i].remove();
+                        break;
+                    }
+                    cellIndex++;
+                }
+            }
+        });
+        
+        updateRowIndices();
+    }
+
+    function updateRowIndices() {
+        var tbody = document.getElementById('excelDataBody');
+        if (!tbody) return;
+        var rows = tbody.querySelectorAll('tr');
+        rows.forEach(function(row, index) {
+            var cells = row.querySelectorAll('.excel-cell');
+            cells.forEach(function(cell) {
+                cell.dataset.row = index;
+            });
+        });
+    }
+
+    // ============================================
     // OPEN EDIT MODAL
     // ============================================
     function openEditModal(reportId) {
@@ -955,54 +1092,95 @@
                 
                 var formHTML = '';
                 
-                // Check if it's an Excel import
                 if (reportData.import_type === 'excel' || reportData.headers) {
                     var headers = reportData.headers || [];
                     var rows = reportData.data || [];
                     
-                    formHTML += '<p style="color:#6b7280;font-size:13px;margin-bottom:12px;">';
-                    formHTML += '<strong>File:</strong> ' + (reportData.file_name || 'uploaded.xlsx') + ' &nbsp;|&nbsp; ';
-                    formHTML += '<strong>Records:</strong> ' + rows.length;
-                    formHTML += '</p>';
+                    formHTML += '<div class="excel-edit-container">';
+                    formHTML += '<div class="excel-toolbar">';
+                    formHTML += '<div class="toolbar-info">';
+                    formHTML += '<i class="fas fa-file-excel"></i> ';
+                    formHTML += '<strong>' + (reportData.file_name || 'uploaded.xlsx') + '</strong> &nbsp;|&nbsp; ';
+                    formHTML += '<span id="recordCount">' + rows.length + '</span> records';
+                    formHTML += '</div>';
+                    formHTML += '<div class="toolbar-actions">';
+                    formHTML += '<button type="button" class="toolbar-btn btn-add-row" onclick="addExcelRow()"><i class="fas fa-plus"></i> Add Row</button>';
+                    formHTML += '<button type="button" class="toolbar-btn btn-remove-row" onclick="removeLastExcelRow()"><i class="fas fa-minus"></i> Remove Row</button>';
+                    formHTML += '<button type="button" class="toolbar-btn btn-add-col" onclick="addExcelColumn()"><i class="fas fa-plus"></i> Add Column</button>';
+                    formHTML += '<button type="button" class="toolbar-btn btn-remove-col" onclick="removeLastExcelColumn()"><i class="fas fa-minus"></i> Remove Column</button>';
+                    formHTML += '</div>';
+                    formHTML += '</div>';
                     
-                    formHTML += '<div style="max-height:300px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:6px;">';
-                    formHTML += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+                    formHTML += '<div class="excel-table-wrapper">';
+                    formHTML += '<table id="excelEditTable" style="width:100%;border-collapse:collapse;font-size:13px;">';
                     
-                    if (headers.length > 0) {
-                        formHTML += '<thead><tr style="background:#f8fafc;">';
-                        headers.forEach(function(header) {
-                            formHTML += '<th style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:left;">' + (header || 'Column') + '</th>';
-                        });
-                        formHTML += '</tr></thead>';
-                    }
-                    
-                    formHTML += '<tbody>';
-                    var displayRows = rows.slice(0, 10);
-                    displayRows.forEach(function(row) {
-                        formHTML += '<tr>';
-                        if (typeof row === 'object' && !Array.isArray(row)) {
-                            for (var i = 0; i < headers.length; i++) {
-                                var value = row[headers[i]] !== undefined && row[headers[i]] !== null ? row[headers[i]] : '';
-                                formHTML += '<td style="padding:4px 10px;border-bottom:1px solid #f3f4f6;">' + value + '</td>';
-                            }
-                        } else if (Array.isArray(row)) {
-                            for (var i = 0; i < headers.length; i++) {
-                                var value = row[i] !== undefined && row[i] !== null ? row[i] : '';
-                                formHTML += '<td style="padding:4px 10px;border-bottom:1px solid #f3f4f6;">' + value + '</td>';
-                            }
-                        }
-                        formHTML += '</tr>';
+                    formHTML += '<thead><tr>';
+                    headers.forEach(function(header, index) {
+                        formHTML += '<th style="padding:4px 6px;border:1px solid #d1d5db;min-width:80px;text-align:center;">';
+                        formHTML += '<div class="header-input-wrapper">';
+                        formHTML += '<input type="text" class="excel-header-input" data-col="' + index + '" value="' + escapeHtml(header) + '" placeholder="Column ' + (index + 1) + '" style="width:100%;border:none;background:transparent;padding:6px 4px;font-weight:600;font-size:12px;text-align:center;font-family:inherit;border-bottom:2px solid transparent;">';
+                        formHTML += '<div class="header-actions">';
+                        formHTML += '<button class="btn-remove-col" onclick="removeExcelColumn(this)" title="Remove column"><i class="fas fa-times"></i></button>';
+                        formHTML += '</div>';
+                        formHTML += '</div>';
+                        formHTML += '</th>';
                     });
+                    formHTML += '</tr></thead>';
                     
-                    if (rows.length > 10) {
-                        formHTML += '<tr><td colspan="' + headers.length + '" style="text-align:center;padding:8px;color:#6b7280;font-style:italic;">... and ' + (rows.length - 10) + ' more rows</td></tr>';
+                    formHTML += '<tbody id="excelDataBody">';
+                    if (rows.length === 0) {
+                        formHTML += '<tr class="excel-data-row">';
+                        headers.forEach(function(header, index) {
+                            formHTML += '<td style="padding:2px 4px;border:1px solid #e5e7eb;">';
+                            formHTML += '<div class="cell-input-wrapper">';
+                            formHTML += '<input type="text" class="excel-cell" data-row="0" data-col="' + index + '" value="" placeholder="..." style="width:100%;border:none;padding:6px 8px;font-size:13px;font-family:inherit;background:transparent;border-radius:4px;">';
+                            formHTML += '</div>';
+                            formHTML += '</td>';
+                        });
+                        formHTML += '<td style="padding:2px 4px;border:1px solid #e5e7eb;width:50px;text-align:center;">';
+                        formHTML += '<div class="row-actions">';
+                        formHTML += '<button class="btn-remove-row" onclick="removeExcelRow(this)" title="Remove row"><i class="fas fa-trash"></i></button>';
+                        formHTML += '</div>';
+                        formHTML += '</td>';
+                        formHTML += '</tr>';
+                    } else {
+                        rows.forEach(function(row, rowIndex) {
+                            formHTML += '<tr class="excel-data-row">';
+                            if (typeof row === 'object' && !Array.isArray(row)) {
+                                for (var i = 0; i < headers.length; i++) {
+                                    var value = row[headers[i]] !== undefined && row[headers[i]] !== null ? row[headers[i]] : '';
+                                    formHTML += '<td style="padding:2px 4px;border:1px solid #e5e7eb;">';
+                                    formHTML += '<div class="cell-input-wrapper">';
+                                    formHTML += '<input type="text" class="excel-cell" data-row="' + rowIndex + '" data-col="' + i + '" value="' + escapeHtml(value) + '" placeholder="..." style="width:100%;border:none;padding:6px 8px;font-size:13px;font-family:inherit;background:transparent;border-radius:4px;">';
+                                    formHTML += '</div>';
+                                    formHTML += '</td>';
+                                }
+                            } else if (Array.isArray(row)) {
+                                for (var i = 0; i < Math.max(headers.length, row.length); i++) {
+                                    var value = row[i] !== undefined && row[i] !== null ? row[i] : '';
+                                    formHTML += '<td style="padding:2px 4px;border:1px solid #e5e7eb;">';
+                                    formHTML += '<div class="cell-input-wrapper">';
+                                    formHTML += '<input type="text" class="excel-cell" data-row="' + rowIndex + '" data-col="' + i + '" value="' + escapeHtml(value) + '" placeholder="..." style="width:100%;border:none;padding:6px 8px;font-size:13px;font-family:inherit;background:transparent;border-radius:4px;">';
+                                    formHTML += '</div>';
+                                    formHTML += '</td>';
+                                }
+                            }
+                            formHTML += '<td style="padding:2px 4px;border:1px solid #e5e7eb;width:50px;text-align:center;">';
+                            formHTML += '<div class="row-actions">';
+                            formHTML += '<button class="btn-remove-row" onclick="removeExcelRow(this)" title="Remove row"><i class="fas fa-trash"></i></button>';
+                            formHTML += '</div>';
+                            formHTML += '</td>';
+                            formHTML += '</tr>';
+                        });
                     }
-                    
                     formHTML += '</tbody></table></div>';
-                    formHTML += '<p style="margin-top:12px;color:#6b7280;font-size:12px;font-style:italic;">Excel data is displayed for reference. To edit, please re-upload a new Excel file.</p>';
+                    
+                    formHTML += '<div class="excel-edit-footer">';
+                    formHTML += '💡 Click any cell, header, or use the buttons above to modify your data. All changes saved when you click "Save Changes".';
+                    formHTML += '</div>';
+                    formHTML += '</div>';
                     
                 } else {
-                    // Regular form data
                     var formData = {};
                     if (reportData.form_data && reportData.form_data.length > 0) {
                         formData = reportData.form_data[0];
@@ -1011,7 +1189,7 @@
                     }
                     
                     if (!formData || Object.keys(formData).length === 0) {
-                        formHTML += '<p style="color:#6b7280;">No editable fields found.</p>';
+                        formHTML += '<p style="color:#6b7280;text-align:center;padding:20px;">No editable fields found.</p>';
                     } else {
                         var fields = [
                             { label: 'Branch/Unit', field_type: 'text' },
@@ -1052,6 +1230,7 @@
                 }
                 
                 document.getElementById('editFormFields').innerHTML = formHTML;
+                updateRecordCount();
             } else {
                 showToast('Error loading report details: ' + (data.error || 'Unknown error'), 'error');
                 closeEditModal();
@@ -1064,6 +1243,51 @@
         });
     }
 
+    function updateRecordCount() {
+        var tbody = document.getElementById('excelDataBody');
+        var countSpan = document.getElementById('recordCount');
+        if (tbody && countSpan) {
+            countSpan.textContent = tbody.querySelectorAll('tr').length;
+        }
+    }
+
+    function removeLastExcelColumn() {
+        var thead = document.querySelector('#excelEditTable thead tr');
+        if (!thead) return;
+        var headers = thead.querySelectorAll('th');
+        if (headers.length <= 1) {
+            showToast('Cannot remove the last column', 'error');
+            return;
+        }
+        var lastHeader = headers[headers.length - 1];
+        var colIndex = Array.from(thead.children).indexOf(lastHeader);
+        
+        lastHeader.remove();
+        
+        var tbody = document.getElementById('excelDataBody');
+        if (!tbody) return;
+        var rows = tbody.querySelectorAll('tr');
+        rows.forEach(function(row) {
+            var cells = row.querySelectorAll('td');
+            var cellIndex = 0;
+            for (var i = cells.length - 1; i >= 0; i--) {
+                if (!cells[i].querySelector('.row-actions')) {
+                    if (cellIndex === 0) {
+                        cells[i].remove();
+                        break;
+                    }
+                    cellIndex++;
+                }
+            }
+        });
+        
+        updateRowIndices();
+        updateRecordCount();
+    }
+
+    // ============================================
+    // CLOSE EDIT MODAL
+    // ============================================
     function closeEditModal() {
         document.getElementById('editReportModal').style.display = 'none';
         document.getElementById('editReportId').value = '';
@@ -1081,15 +1305,28 @@
         var submitBtn = event.target.querySelector('button[type="submit"]');
         var originalText = submitBtn.innerHTML;
         
-        var formData = {};
-        var inputs = formContainer.querySelectorAll('input, select, textarea');
+        var excelCells = formContainer.querySelectorAll('.excel-cell');
+        var isExcel = excelCells.length > 0;
         
-        inputs.forEach(function(input) {
-            var key = input.getAttribute('data-key');
-            if (key) {
-                formData[key] = input.value;
-            }
-        });
+        var formData = {};
+        
+        if (isExcel) {
+            var excelData = getExcelData();
+            formData = {
+                import_type: 'excel',
+                headers: excelData.headers,
+                data: excelData.data,
+                file_name: 'Edited_Report.xlsx'
+            };
+        } else {
+            var inputs = formContainer.querySelectorAll('input, select, textarea');
+            inputs.forEach(function(input) {
+                var key = input.getAttribute('data-key');
+                if (key) {
+                    formData[key] = input.value;
+                }
+            });
+        }
         
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
         submitBtn.disabled = true;
@@ -1103,7 +1340,10 @@
                 'X-CSRFToken': getCsrfToken(),
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({ form_data: formData }),
+            body: JSON.stringify({ 
+                form_data: formData,
+                is_excel: isExcel
+            }),
             credentials: 'same-origin'
         })
         .then(function(response) {
@@ -1149,7 +1389,6 @@
     // FILTER REPORTS
     // ============================================
     document.addEventListener('DOMContentLoaded', function() {
-        // Open all groups by default
         document.querySelectorAll('.report-type-body').forEach(function(body) {
             body.classList.remove('hidden');
         });
@@ -1157,7 +1396,6 @@
             toggle.classList.add('open');
         });
 
-        // Filter by type
         document.getElementById('type-filter').addEventListener('change', function() {
             var selectedType = this.value;
             var rows = document.querySelectorAll('.report-details-table tbody tr');
@@ -1172,7 +1410,6 @@
             });
         });
 
-        // Filter by date
         document.getElementById('start-date').addEventListener('change', applyDateFilter);
         document.getElementById('end-date').addEventListener('change', applyDateFilter);
     });
